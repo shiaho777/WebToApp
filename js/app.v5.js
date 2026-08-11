@@ -774,12 +774,15 @@
       favicon: `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
       faviconDataUrl: '',
       themeColor: '#7c3aed',
-      ads: Math.floor(Math.random() * 12) + 3,
-      trackers: Math.floor(Math.random() * 18) + 5,
-      popups: Math.floor(Math.random() * 4) + 1,
-      originalSize: (Math.random() * 3 + 1.5).toFixed(1) + ' MB',
-      distilledSize: (Math.random() * 200 + 80).toFixed(0) + ' KB',
-      speedBoost: (Math.random() * 5 + 2).toFixed(1) + 'x',
+      // Analysis didn't run (fetch failed) — show N/A rather than fabricated
+      // numbers. Previously this returned random ad/tracker counts, which
+      // misled users about sites we never actually inspected.
+      ads: 0,
+      trackers: 0,
+      popups: 0,
+      originalSize: 'N/A',
+      distilledSize: 'N/A',
+      speedBoost: 'N/A',
     };
   }
 
@@ -869,6 +872,31 @@
       detectedIconDataUrl = '';
       setRestoreIconState('', {});
       fillIconPreview('', '');
+    }
+
+    if (data.authProtected) {
+      // Site sits behind an auth proxy (Authelia / Cloudflare Access). The
+      // server can't see the real page, so don't show the usual (empty)
+      // ad/tracker stats — show an explanatory notice and point the user at
+      // the manual name/icon fields. The generated app itself is unaffected:
+      // the user authenticates inside the WebView on first launch.
+      const providerLabel = data.authProvider === 'cloudflare_access'
+        ? t('analysis.authProvider.cloudflare')
+        : t('analysis.authProvider.authelia');
+      analysisBody.innerHTML = `
+        <div class="analysis-results">
+          <div class="analysis-item analysis-notice">
+            <span class="value warn">${escapeHtml(t('analysis.authProtected.notice', { provider: providerLabel }))}</span>
+          </div>
+          <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.suggestedName'))}</span><span class="value good">${escapeHtml(suggestedName)}</span></div>
+          <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.nameSource'))}</span><span class="value info">${escapeHtml(suggestedNameSourceLabel)}</span></div>
+          <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.iconStatus'))}</span><span class="value info">${escapeHtml(t('analysis.authProtected.iconHint'))}</span></div>
+          <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.originalSize'))}</span><span class="value">${escapeHtml(String(data.originalSize))}</span></div>
+          <div class="analysis-item analysis-hint">
+            <span class="value info">${escapeHtml(t('analysis.authProtected.appWorks'))}</span>
+          </div>
+        </div>`;
+      return;
     }
 
     analysisBody.innerHTML = `

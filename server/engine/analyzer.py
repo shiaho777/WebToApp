@@ -37,6 +37,53 @@ POPUP_PATTERNS = [
     r'gdpr',
 ]
 
+# Authentication-wall (reverse-proxy SSO) signatures. When a site sits behind
+# one of these, an unauthenticated server-side fetch is redirected to the
+# provider's login portal and never sees the real page. We detect that and
+# return a structured "auth-protected" result instead of analyzing the login
+# page (which would yield the portal's name/icon as if it were the app).
+#
+# The generated app itself still works: the WebView loads the target URL, the
+# user authenticates inside it once, and the session cookie persists in the
+# platform CookieManager. This detection only governs the analysis step.
+AUTH_WALL_HOST_SUFFIXES = (
+    "cloudflareaccess.com",     # Cloudflare Zero Trust / Access
+    ".cloudflareaccess.com",
+)
+AUTH_WALL_COOKIE_NAMES = (
+    "authelia_session",         # Authelia
+    "cf_authorization",         # Cloudflare Access (JWT)
+)
+AUTH_WALL_LOCATION_MARKERS = (
+    "cloudflareaccess.com/cdn-cgi/access",
+    "/auth/?rd=",               # Authelia redirect-to-portal: ?rd=<origin>
+    "/auth/reminder",           # Authelia reminder endpoint
+)
+
+
+def _detect_auth_wall(resp, location: str) -> str:
+    """Return the auth-provider name when ``resp`` looks like an auth wall, else "".
+
+    Checks, in order: the redirect Location URL, the response's Set-Cookie
+    header, and the final-page URL host. Mirrors how Authelia and Cloudflare
+    Access intercept unauthenticated requests.
+    """
+    loc = (location or "").lower()
+    for marker in AUTH_WALL_LOCATION_MARKERS:
+        if marker in loc:
+            return "cloudflare_access" if "cloudflareaccess" in marker else "authelia"
+
+    # Set-Cookie may be a list (multiple cookies) or a single string.
+    set_cookie = resp.headers.get("set-cookie") if resp is not None else None
+    if set_cookie:
+        cookies = set_cookie if isinstance(set_cookie, list) else [set_cookie]
+        joined = "\n".join(cookies).lower()
+        for name in AUTH_WALL_COOKIE_NAMES:
+            if name in joined:
+                return "authelia" if name.startswith("authelia") else "cloudflare_access"
+
+    return ""
+
 
 class SiteAnalyzer:
     """Analyzes a website's structure, performance, and bloat."""
@@ -60,12 +107,19 @@ class SiteAnalyzer:
             result["cacheHit"] = True
             result["durationMs"] = int((time.perf_counter() - started) * 1000)
             return result
-        final_url, html, content_length, raw = await self._fetch_page(url)
-        if raw is not None:
-            html_cache.set(f"bytes:{final_url}", raw)
-            if final_url != url:
-                html_cache.set(f"bytes:{url}", raw)
-        result = await self._analyze_html(final_url, html, content_length)
+        final_url, html, content_length, raw, auth_provider = await self._fetch_page(url)
+        if auth_provider:
+            # Site sits behind an auth proxy (Authelia / Cloudflare Access).
+            # There is no real page to analyze; return a structured signal so
+            # the UI can ask the user for the name/icon manually. The generated
+            # app itself still works — the user authenticates inside the WebView.
+            result = self._auth_protected_result(final_url, auth_provider)
+        else:
+            if raw is not None:
+                html_cache.set(f"bytes:{final_url}", raw)
+                if final_url != url:
+                    html_cache.set(f"bytes:{url}", raw)
+            result = await self._analyze_html(final_url, html, content_length)
         result["cacheHit"] = False
         result["durationMs"] = int((time.perf_counter() - started) * 1000)
         analysis_cache.set(cache_key, dict(result))
@@ -73,20 +127,70 @@ class SiteAnalyzer:
             analysis_cache.set(f"analyze:{final_url}", dict(result))
         return result
 
-    async def _fetch_page(self, url: str) -> tuple[str, str, int, bytes]:
+    def _auth_protected_result(self, url: str, provider: str) -> dict:
+        """Build a minimal but useful result for an auth-protected site.
+
+        The UI uses ``authProtected`` to show an explanatory notice and to
+        encourage the user to fill in the name/icon manually. We still provide
+        sensible fallbacks (host-derived name, favicon service) so the form is
+        usable without any server-side visibility into the protected page.
+        """
+        parsed = urlparse(url)
+        host = parsed.hostname or url
+        host_label = self._host_label(host) or host
+        suggested_name = self._trim_app_name(host_label[:1].upper() + host_label[1:])
+        favicon = f"https://www.google.com/s2/favicons?domain={parsed.hostname}&sz=64"
+        return {
+            "title": host,
+            "suggestedName": suggested_name,
+            "suggestedNameSource": "host_fallback",
+            "siteName": "",
+            "url": url,
+            "host": host,
+            "favicon": favicon,
+            "faviconDataUrl": "",
+            "themeColor": "#7c3aed",
+            "description": "",
+            "ads": 0,
+            "trackers": 0,
+            "popups": 0,
+            "totalScripts": 0,
+            "originalSize": "N/A",
+            "distilledSize": "N/A",
+            "speedBoost": "N/A",
+            "authProtected": True,
+            "authProvider": provider,
+        }
+
+    async def _fetch_page(self, url: str) -> tuple[str, str, int, bytes, str]:
+        """Fetch the page, following redirects manually.
+
+        Returns ``(final_url, html, content_length, raw_bytes, auth_provider)``
+        where ``auth_provider`` is a non-empty string ("authelia" /
+        "cloudflare_access") when the site is behind an authentication wall.
+        In that case the fetch stops at the auth redirect and ``html`` is empty
+        — there is no real page for the analyzer to read.
+        """
         current_url = await avalidate_public_http_url(url)
         for _ in range(config.outbound_redirect_limit() + 1):
             cached = html_cache.get(f"bytes:{current_url}")
             if cached is not None:
-                return current_url, cached.decode("utf-8", errors="ignore"), len(cached), cached
+                return current_url, cached.decode("utf-8", errors="ignore"), len(cached), cached, ""
             async with self.client.stream("GET", current_url) as resp:
                 if resp.status_code in {301, 302, 303, 307, 308}:
-                    current_url = await asyncio.to_thread(redirect_target, current_url, resp.headers.get("location", ""))
+                    location = resp.headers.get("location", "")
+                    # Stop and report when the redirect targets an auth portal
+                    # (Authelia / Cloudflare Access). Following it would only
+                    # analyze the login page.
+                    provider = _detect_auth_wall(resp, location)
+                    if provider:
+                        return current_url, "", 0, b"", provider
+                    current_url = await asyncio.to_thread(redirect_target, current_url, location)
                     continue
                 resp.raise_for_status()
                 raw = await aread_limited_response(resp, config.outbound_response_max_bytes())
                 encoding = getattr(resp, "encoding", None) or "utf-8"
-                return current_url, raw.decode(encoding, errors="ignore"), len(raw), raw
+                return current_url, raw.decode(encoding, errors="ignore"), len(raw), raw, ""
         raise httpx.TooManyRedirects(f"Exceeded redirect limit for {url}")
 
     async def _analyze_html(self, url: str, html: str, content_length: int) -> dict:
