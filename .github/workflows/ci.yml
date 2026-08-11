@@ -1,0 +1,43 @@
+# Continuous Integration — the merge gate for pull requests into `main`.
+#
+# Runs the pytest suite on every push to main and on every PR. A green run
+# is required before merging. This workflow MUST NOT close issues (issues
+# close via `Fixes #N` / `Closes #N` in the PR body, on merge only).
+#
+# Required check name for branch protection: `ci / test (Python <version>)`
+# (pick one version, e.g. 3.11, as the required check; the rest are advisory).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r server/requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: pytest tests/ -v
