@@ -40,4 +40,8 @@ jobs:
           pip install pytest
 
       - name: Run tests
+        env:
+          # The test suite imports the `server` package from the repo root,
+          # so make the repo root importable when pytest runs from /tests.
+          PYTHONPATH: .
         run: pytest tests/ -v
