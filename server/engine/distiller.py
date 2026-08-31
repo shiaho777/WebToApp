@@ -500,7 +500,9 @@ class Distiller:
 
     def _icons_from_manifest(self, manifest_url):
         """Parse a Web App Manifest and yield (size, absolute_url) for each icon."""
-        data = self._fetch_url_bytes(manifest_url, timeout=6)
+        # The same URL is fetched on every build of this site (the analysis
+        # step may have grabbed it too), so go through the HTML cache.
+        data = self._fetch_url_bytes(manifest_url, timeout=6, use_cache=True)
         if not data:
             return
         try:
