@@ -330,8 +330,30 @@ public class M extends Activity {
         android.view.Window window = getWindow();
         // Draw behind the system bars so content fills the whole screen with no
         // black letterbox where the status/navigation bars used to be.
+        // API 35+ (targetSdk 35+) enforces edge-to-edge and IGNORES the legacy
+        // setSystemUiVisibility flags, so those paths below are only for < 35.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(false);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            // targetSdk 35+: hide the bars entirely via WindowInsetsController and
+            // pad the WebView by the transient-bar insets so content is never
+            // drawn underneath the bars when the user swipes to reveal them.
+            WindowInsetsController controller = window.getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+            webView.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                @Override public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
+                    android.graphics.Insets bars = insets.getInsets(
+                        WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars()
+                        | WindowInsets.Type.displayCutout());
+                    v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                    return WindowInsets.CONSUMED;
+                }
+            });
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowInsetsController controller = window.getInsetsController();
             if (controller != null) {
                 controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
@@ -690,7 +712,7 @@ public class M extends Activity {
 MANIFEST_XML = """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="{pkg}" android:versionCode="{version_code}" android:versionName="{version_name}">
-    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="33"/>
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="36"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
@@ -716,7 +738,7 @@ class ApkBuilder:
     TEMPLATE_APP_NAME = "WebToApp Template"
     TEMPLATE_VERSION_CODE = 1
     TEMPLATE_VERSION_NAME = "1.0"
-    TEMPLATE_REVISION = "2026-08-21-filechooser-1"
+    TEMPLATE_REVISION = "2026-08-31-targetsdk36-1"
     # Keystore used only to sign the throwaway base *template* APK. The template
     # is always re-signed per-app afterwards, so this key never reaches users.
     TEMPLATE_KEY_ALIAS = "webtoapp"

@@ -229,7 +229,7 @@ To produce a real, installable WebView APK the server needs the Android build to
 sudo bash server/scripts/install_android_sdk.sh
 ```
 
-The script installs to `/opt/android-sdk` (platform 34 + build-tools 34.0.0) and places
+The script installs to `/opt/android-sdk` (platform 36 + build-tools 36.0.0) and places
 `apktool` at `server/engine/_android_tools/apktool.jar` plus `/usr/local/bin/apktool`.
 
 Then set in your env file (or systemd `EnvironmentFile`):
@@ -237,7 +237,7 @@ Then set in your env file (or systemd `EnvironmentFile`):
 ```bash
 ANDROID_HOME=/opt/android-sdk
 ANDROID_SDK_ROOT=/opt/android-sdk
-PATH=/opt/android-sdk/build-tools/34.0.0:/opt/android-sdk/platform-tools:/usr/local/bin:$PATH
+PATH=/opt/android-sdk/build-tools/36.0.0:/opt/android-sdk/platform-tools:/usr/local/bin:$PATH
 ```
 
 Restart the service and check `/api/metrics` for `"android_apk": true`.
