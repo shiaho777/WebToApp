@@ -3,10 +3,12 @@ Android APK Builder.
 
 Primary strategy:
 1. Reuse a cached template WebView APK.
-2. Patch package name / app name / version / icon / assets URL.
-3. Rebuild, zipalign, and sign with a per-app keystore (one signing
-   certificate per app_id; generated on first build and reused on every
-   later build of the same app_id so reinstalls are accepted as updates).
+2. Patch package name / app name / version / icon / assets URL by rewriting
+   the affected ZIP entries in place (AXML string-pool edit for the
+   manifest) — no apktool round-trip in the per-app path.
+3. Re-align and sign with a per-app keystore (one signing certificate per
+   app_id; generated on first build and reused on every later build of the
+   same app_id so reinstalls are accepted as updates).
 
 Fallback strategy:
 1. Build the minimal WebView shell from source if SDK tools are available.
@@ -28,6 +30,164 @@ from pathlib import Path
 
 from server import config
 from server.engine import apk_v2_signer
+
+
+class _AxmlPatcher:
+    """Minimal binary (compiled) Android XML editor.
+
+    The template manifest is compiled by our own aapt2 build, so patching per
+    app is a bounded edit of two AXML structures instead of an apktool
+    decode/re-encode round-trip:
+
+    1. The global UTF-16 string pool: strings are replaced **by content** and
+       the pool is re-serialized with the same entry order and count. Element
+       chunks reference strings by *index*, not offset, so as long as the
+       order is unchanged every other chunk stays valid — only the byte
+       offsets after the pool shift, and those are carried by chunk headers
+       which we rewrite.
+    2. ``android:versionCode`` attribute: the manifest element carries the
+       value as a raw little-endian int32 in its attribute payload; rewrite
+       it in place (offsets re-derived from the rebuilt stream).
+    """
+
+    _RES_XML_TYPE = 0x0003  # RES_XML doc header
+    _STRING_POOL_TYPE = 0x0001
+    _START_ELEMENT_TYPE = 0x0102
+    _UTF8_FLAG = 1 << 8
+
+    def __init__(self, axml: bytes):
+        self._axml = axml
+
+    def patch(self, string_swaps: dict, version_code: int) -> bytes:
+        strings = self._string_pool(self._axml)
+        rebuilt = [
+            string_swaps.get(s, s) for s in strings
+        ]
+        if rebuilt == strings and version_code == 1:
+            return self._axml
+        data = self._rebuild_pool(self._axml, rebuilt)
+        return self._patch_version_code(data, version_code)
+
+    def _rebuild_pool(self, data: bytes, strings: list) -> bytes:
+        """Re-serialize the string pool with new contents, same order/count.
+
+        Everything after the pool shifts by the size delta; the pool chunk
+        header and the wrapping RES_XML doc header are rewritten accordingly.
+        Subsequent chunk contents never carry absolute offsets to the pool
+        (references are indices), so a plain shift is safe.
+        """
+        pos = self._first_chunk_end(data)
+        chunk_type, header_size, chunk_size = struct.unpack_from("<HHI", data, pos)
+        if chunk_type != self._STRING_POOL_TYPE:
+            raise ValueError("AXML: string pool chunk not found")
+        string_count, style_count, flags, strings_start, styles_start = struct.unpack_from(
+            "<IIIII", data, pos + 8
+        )
+        if flags & self._UTF8_FLAG:
+            raise ValueError("AXML: UTF-8 string pools not supported")
+        if style_count or styles_start:
+            raise ValueError("AXML: styled strings not supported")
+
+        header = bytearray(data[pos:pos + header_size])
+        body = bytearray()
+        offsets = []
+        for s in strings:
+            encoded = s.encode("utf-16-le")
+            offsets.append(len(body))
+            u16len = len(s)
+            if u16len >= 0x8000:
+                body += struct.pack("<HH", (u16len >> 16) | 0x8000, u16len & 0xFFFF)
+            else:
+                body += struct.pack("<H", u16len)
+            body += encoded
+            body += b"\x00\x00"  # NUL terminator
+        # 4-byte align the strings block
+        while len(body) % 4:
+            body += b"\x00"
+
+        strings_start_new = header_size + string_count * 4
+        struct.pack_into("<I", header, 20, strings_start_new)  # stringsStart @ +20
+        new_pool = bytes(header) + struct.pack(f"<{string_count}I", *offsets) + bytes(body)
+
+        out = bytearray(data[:pos] + new_pool + data[pos + chunk_size:])
+        # Fix sizes: pool chunk header (offset 4) and the outer doc header (offset 4).
+        struct.pack_into("<I", out, pos + 4, len(new_pool))
+        doc_type, _hs, doc_size = struct.unpack_from("<HHI", out, 0)
+        if doc_type == self._RES_XML_TYPE:
+            struct.pack_into("<I", out, 4, doc_size + (len(new_pool) - chunk_size))
+        return bytes(out)
+
+    def _patch_version_code(self, data: bytes, version_code: int) -> bytes:
+        """Rewrite the manifest element's android:versionCode int attribute.
+
+        Walks the AXML chunk stream to find the first START_ELEMENT (the
+        ``<manifest>`` element) and patches the attribute whose name resolves
+        to ``versionCode`` in the string pool.
+        """
+        data = bytearray(data)
+        strings = self._string_pool(data)
+        idx = strings.index("versionCode") if "versionCode" in strings else -1
+        if idx < 0:
+            return data
+        pos = self._first_chunk_end(data)  # skip the document header chunk
+        while pos + 8 <= len(data):
+            chunk_type, _header_size, chunk_size = struct.unpack_from("<HHI", data, pos)
+            if chunk_type != self._START_ELEMENT_TYPE:
+                pos += chunk_size
+                continue
+            # START_ELEMENT: 16-byte header (type/size/line/comment), then the
+            # 20-byte attrExt block (ns, name, attrStart, attrSize, attrCount),
+            # then attribute records. attrStart is relative to attrExt.
+            attr_count = struct.unpack_from("<H", data, pos + 28)[0]
+            attr_start_rel = struct.unpack_from("<H", data, pos + 24)[0]
+            attr_base = pos + 16 + attr_start_rel
+            for i in range(attr_count):
+                base = attr_base + i * 20
+                _ns, name_idx, _raw_idx, typed_value, _value = struct.unpack_from("<IIIII", data, base)
+                if name_idx == idx and (typed_value >> 24) == 0x10:  # INT_DEC
+                    struct.pack_into("<I", data, base + 16, version_code & 0xFFFFFFFF)
+                    return data
+            break
+        return data
+
+    def _first_chunk_end(self, data: bytes) -> int:
+        # The outer chunk is the XML document header (type 0x0003) spanning
+        # the whole file; the real chunk stream (string pool, elements) starts
+        # right after its 8-byte header.
+        if len(data) < 8:
+            return len(data)
+        chunk_type, _hs, _size = struct.unpack_from("<HHI", data, 0)
+        if chunk_type != self._RES_XML_TYPE:
+            return 0
+        return 8
+
+    def _string_pool(self, data: bytes) -> list:
+        """Parse the global UTF-16 string pool (type 0x0001) into Python strs."""
+        pos = self._first_chunk_end(data)
+        if pos + 8 > len(data):
+            return []
+        chunk_type, _hs, size = struct.unpack_from("<HHI", data, pos)
+        if chunk_type != 0x0001:
+            return []
+        (string_count, _style_count, _flags, strings_start, _styles_start) = struct.unpack_from(
+            "<IIIII", data, pos + 8
+        )
+        base = pos + strings_start
+        offsets = struct.unpack_from(f"<{string_count}I", data, pos + 28)
+        out = []
+        for off in offsets:
+            start = base + off
+            if start + 2 > len(data):
+                break
+            (u16len,) = struct.unpack_from("<H", data, start)
+            if u16len & 0x8000:  # high bit = length spans two units
+                u16len = ((u16len & 0x7FFF) << 16) | struct.unpack_from("<H", data, start + 2)[0]
+                text_start = start + 4
+            else:
+                text_start = start + 2
+            raw = data[text_start:text_start + u16len * 2]
+            out.append(raw.decode("utf-16-le", errors="replace"))
+        return out
 
 
 ACTIVITY_JAVA = r"""
@@ -820,11 +980,15 @@ class ApkBuilder:
         return self._can_patch_apk() and (self._template_apk_path().exists() or self._can_build_template())
 
     def _can_patch_apk(self):
+        # The forkless patcher needs no apktool — just openssl (via
+        # _export_signing_material) and our own v1/v2 signer. keytool/java are
+        # only required to *mint* keystores; an existing per-app keystore is
+        # used as-is. They stay in the list so hosts without a JDK don't get
+        # silently switched to the PWA fallback on first build.
         return all([
-            self._find_apktool(),
+            shutil.which("openssl"),
             shutil.which("keytool"),
             shutil.which("java"),
-            self._find_tool("apksigner") or self._apksigner_jar(),
         ])
 
     def _can_build_template(self):
@@ -1137,39 +1301,41 @@ class ApkBuilder:
         return key_pem, cert_pem, key_der.read_bytes(), cert_der.read_bytes(), pub_der.read_bytes()
 
     def _patch_template_apk(self, template_apk: Path, output: Path, url: str, name: str, pkg: str, icon_png, version_code: int, version_name: str, feature_options: dict, app_id: str = None):
-        apktool = self._find_apktool()
-        zipalign = self._find_tool("zipalign")
-        apksigner = self._find_tool("apksigner")
-        apksigner_jar = self._apksigner_jar()
+        """Produce a per-app APK by copying the cached template and patching it
+        in place — no apktool decode/rebuild round-trip.
+
+        apktool spent ~1.8 s per build decoding the template to text and
+        re-encoding it, yet the patch set is tiny: the manifest's package /
+        version / label, one JSON asset and the launcher icon. All of those
+        live in plain ZIP entries, so the per-app APK is now a byte-level
+        rewrite of three entries followed by re-alignment and re-signing:
+
+        - AndroidManifest.xml: AXML string-pool edit + versionCode int patch
+        - assets/webtoapp_config.json: rewritten wholesale
+        - res/mipmap/ic_launcher.png: rewritten wholesale
+
+        The template's stale v1 signature files are dropped; build_v1 writes
+        a fresh set over the per-app key.
+        """
         keystore, password, alias = self._ensure_app_keystore(app_id or pkg)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
-            decoded = tmp / "decoded"
-            self._run_tool(apktool, ["d", "-f", str(template_apk), "-o", str(decoded)])
-
-            manifest_path = decoded / "AndroidManifest.xml"
-            manifest_text = manifest_path.read_text()
-            manifest_text = re.sub(r'package="[^"]+"', f'package="{pkg}"', manifest_text, count=1)
-            manifest_text = self._set_manifest_attr(manifest_text, "android:versionCode", str(int(version_code)))
-            manifest_text = self._set_manifest_attr(manifest_text, "android:versionName", version_name)
-            manifest_text = re.sub(r'android:label="[^"]+"', f'android:label="{self._xml_escape(name)}"', manifest_text, count=1)
-            manifest_path.write_text(manifest_text)
-
-            config_asset = decoded / "assets" / "webtoapp_config.json"
-            config_asset.parent.mkdir(parents=True, exist_ok=True)
-            config_asset.write_text(self._config_json(url, feature_options))
-
-            if icon_png:
-                mipmap = decoded / "res" / "mipmap" / "ic_launcher.png"
-                mipmap.parent.mkdir(parents=True, exist_ok=True)
-                mipmap.write_bytes(icon_png)
-
-            built_unsigned = tmp / "app-unsigned.apk"
-            self._run_tool(apktool, ["b", str(decoded), "-o", str(built_unsigned)])
+            patched = tmp / "app-patched.apk"
+            self._patch_apk_entries(
+                template_apk,
+                patched,
+                manifest=self._patched_manifest_xml(
+                    template_apk, pkg, version_code, version_name, name
+                ),
+                replacements={
+                    "assets/webtoapp_config.json": self._config_json(url, feature_options).encode("utf-8"),
+                    **({"res/mipmap/ic_launcher.png": icon_png} if icon_png else {}),
+                },
+            )
 
             built_aligned = tmp / "app-aligned.apk"
-            self._align_apk(built_unsigned, built_aligned)
+            self._align_apk(patched, built_aligned)
 
             output.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(built_aligned, output)
@@ -1182,6 +1348,60 @@ class ApkBuilder:
             )
             apk_v2_signer.build_v1(output, key_pem, cert_pem, alias)
             apk_v2_signer.sign_v2(output, key_der, cert_der, pub_der)
+
+    # ===== Forkless template patching (no apktool in the per-app path) =====
+
+    def _patched_manifest_xml(self, template_apk: Path, pkg: str, version_code: int, version_name: str, name: str) -> bytes:
+        """Binary-patch the template's compiled AndroidManifest.xml (AXML).
+
+        The template manifest is produced by our own aapt2 build and always
+        carries these exact literal strings, so the patch is a constrained
+        rewrite of the AXML string pool plus the versionCode attribute value:
+
+        - package="com.webtoapp.template"  ->  pkg
+        - label / versionName literal      ->  name / version_name
+        - versionCode="1" int attribute    ->  version_code
+        """
+        with zipfile.ZipFile(template_apk, "r") as zf:
+            axml = zf.read("AndroidManifest.xml")
+        patched = _AxmlPatcher(axml).patch(
+            {
+                self.TEMPLATE_PACKAGE: pkg,
+                self.TEMPLATE_APP_NAME: name,
+                self.TEMPLATE_VERSION_NAME: version_name,
+            },
+            version_code=int(version_code),
+        )
+        return patched
+
+    def _patch_apk_entries(self, source_apk: Path, output_apk: Path, manifest: bytes, replacements: dict) -> None:
+        """Copy ``source_apk`` to ``output_apk`` replacing whole ZIP entries.
+
+        The template's v1 signature (META-INF/MANIFEST.MF and the template
+        keystore's .SF/.RSA) is dropped — build_v1 writes a fresh set over the
+        per-app key, and a stale template MANIFEST.MF would survive as a
+        duplicate entry that v1 verifiers reject. Each entry keeps the
+        template's original compression (``resources.arsc`` stays STORED as
+        Android requires); the final zipalign pass restores the 4-byte
+        alignment the rewrite shifts around.
+        """
+        output_apk.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(source_apk, "r") as zin, zipfile.ZipFile(output_apk, "w") as zout:
+            for info in zin.infolist():
+                if info.filename == "AndroidManifest.xml":
+                    data = manifest
+                elif info.filename in replacements:
+                    data = replacements[info.filename]
+                elif info.filename == "META-INF/MANIFEST.MF" or (
+                    info.filename.startswith("META-INF/") and info.filename.upper().endswith((".SF", ".RSA"))
+                ):
+                    continue
+                else:
+                    data = zin.read(info.filename)
+                zinfo = zipfile.ZipInfo(info.filename, date_time=info.date_time)
+                zinfo.compress_type = info.compress_type
+                zinfo.external_attr = info.external_attr
+                zout.writestr(zinfo, data)
 
     def _align_apk(self, source: Path, output: Path) -> None:
         zipalign = self._find_tool("zipalign")
