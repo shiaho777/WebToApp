@@ -361,13 +361,19 @@ class Distiller:
         host = urlparse(url).netloc.lower()
         cache_key = f"icon:{host}"
         cached = icon_cache.get(cache_key)
-        if cached:
-            return cached
+        if cached is not None:
+            # b"" marks a known icon-less host (see the miss path below).
+            return cached or self._make_placeholder_png(recipe.get("color", "#7c3aed"))
         candidates = self._collect_icon_candidates(url)
         best = self._choose_best_icon(candidates)
         if best:
             icon_cache.set(cache_key, best)
             return best
+        # No icon anywhere (offline site, blocked fallbacks...). Cache the
+        # miss too so every later build of this host skips the same
+        # candidate sweep — on a CN host that sweep was ~2.3 s of serial
+        # 404s plus an unreachable Google s2 fallback.
+        icon_cache.set(cache_key, b"")
         return self._make_placeholder_png(recipe.get("color", "#7c3aed"))
 
     def _local_site_icon(self, recipe):
@@ -482,6 +488,11 @@ class Distiller:
                 (200, "/favicon.ico"),
             ]:
                 scored.append((prio, base + path))
+        # Google s2 is the last-resort fallback and unreachable from CN
+        # networks (its 4 s connect timeout would stall every icon fetch).
+        # Try DuckDuckGo's icon service FIRST (anycast, works globally) and
+        # keep Google behind it for non-CN hosts as a second fallback.
+        scored.append((150, f"https://icons.duckduckgo.com/ip3/{parsed.netloc}.ico"))
         scored.append((100, f"https://www.google.com/s2/favicons?domain={parsed.netloc}&sz=256"))
         seen = set()
         ordered = []
@@ -536,24 +547,22 @@ class Distiller:
                 return None
             return png, self._png_dimension(png), url
 
+        # Wait on the whole batch, not a "good-enough" early exit: candidate
+        # priority already encodes which source is likely best, so racing
+        # completion-by-size made a fast 96px ico beat a slow 512px
+        # apple-touch-icon whenever the smaller one landed first. The full
+        # batch runs in parallel anyway, so total latency = the slowest
+        # candidate (bounded by the per-request timeout) — and accepting a
+        # strict-excellent icon instead of merely good one is worth ~100ms.
         workers = max(1, min(6, len(urls)))
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = [pool.submit(fetch_one, url) for url in urls]
-            for future in as_completed(futures):
-                try:
-                    result = future.result()
-                except Exception:
-                    continue
+            for result in pool.map(fetch_one, urls):
                 if not result:
                     continue
                 png, dim, _url = result
                 if dim > best_dim:
                     best_dim = dim
                     best_png = png
-                if best_dim >= 128:
-                    for pending in futures:
-                        pending.cancel()
-                    break
         return best_png
 
     def _png_dimension(self, png_data):

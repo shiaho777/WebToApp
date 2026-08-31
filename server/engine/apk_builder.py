@@ -1096,7 +1096,9 @@ class ApkBuilder:
             classes = tmp / "classes"
             classes.mkdir()
             subprocess.run(
-                [javac, "-source", "1.8", "-target", "1.8", "-bootclasspath", jar, "-d", str(classes), str(src / "M.java")],
+                # -proc:none skips the annotation-processor classpath scan,
+                # which is pure startup overhead for a processor-less build.
+                [javac, "-proc:none", "-source", "1.8", "-target", "1.8", "-bootclasspath", jar, "-d", str(classes), str(src / "M.java")],
                 check=True,
                 capture_output=True,
             )
@@ -1231,6 +1233,7 @@ class ApkBuilder:
         subprocess.run(
             [
                 "keytool",
+                "-J-Djava.security.egd=file:/dev/urandom",
                 "-genkeypair",
                 "-v",
                 "-storetype",
