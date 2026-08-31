@@ -184,7 +184,7 @@ sudo certbot --nginx -d your-domain.com
 sudo bash server/scripts/install_android_sdk.sh
 ```
 
-脚本默认安装到 `/opt/android-sdk`（platform 34 + build-tools 34.0.0），并把 `apktool` 放到
+脚本默认安装到 `/opt/android-sdk`（platform 36 + build-tools 36.0.0），并把 `apktool` 放到
 `server/engine/_android_tools/apktool.jar` + `/usr/local/bin/apktool`。
 
 然后在环境文件中设置（systemd 的 `EnvironmentFile` 亦可）：
@@ -192,7 +192,7 @@ sudo bash server/scripts/install_android_sdk.sh
 ```bash
 ANDROID_HOME=/opt/android-sdk
 ANDROID_SDK_ROOT=/opt/android-sdk
-PATH=/opt/android-sdk/build-tools/34.0.0:/opt/android-sdk/platform-tools:/usr/local/bin:$PATH
+PATH=/opt/android-sdk/build-tools/36.0.0:/opt/android-sdk/platform-tools:/usr/local/bin:$PATH
 ```
 
 重启服务后访问 `/api/metrics`，应看到 `"android_apk": true`。
