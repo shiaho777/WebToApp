@@ -390,7 +390,9 @@ def test_favicon_data_url_cache_hit_miss_empty_and_exception(monkeypatch):
     monkeypatch.setattr(analyzer_module, "icon_cache", cache)
     analyzer.icon_distiller._choose_best_icon.return_value = None
     assert analyzer._favicon_data_url("https://empty.example") == ""
-    assert cache.set_calls == []
+    # A miss is cached (b"") so later builds of the same host skip the
+    # candidate sweep instead of re-running it (perf/issue #34 follow-up).
+    assert cache.data.get("icon:empty.example") == b""
 
     cache = MagicMock()
     cache.get.side_effect = RuntimeError("cache failed")

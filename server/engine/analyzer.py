@@ -385,14 +385,21 @@ class SiteAnalyzer:
             host = urlparse(url).netloc.lower()
             cache_key = f"icon:{host}"
             icon_png = icon_cache.get(cache_key)
-            if not icon_png:
+            if icon_png is None:
                 candidates = self.icon_distiller._collect_icon_candidates(url)
                 icon_png = self.icon_distiller._choose_best_icon(candidates)
                 if icon_png:
                     icon_cache.set(cache_key, icon_png)
+                else:
+                    # Cache the miss too — same contract as the build-side
+                    # sweep in distiller. Without it the frontend analyze step
+                    # re-ran the whole (possibly seconds-long) candidate
+                    # sweep, then the build re-ran it AGAIN because the miss
+                    # was never cached. b"" = known icon-less host.
+                    icon_cache.set(cache_key, b"")
+            if not icon_png:
+                return ""
         except Exception:
-            return ""
-        if not icon_png:
             return ""
         return "data:image/png;base64," + base64.b64encode(icon_png).decode("ascii")
 

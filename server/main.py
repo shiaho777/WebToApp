@@ -303,6 +303,13 @@ class DistillTaskQueue:
             task["stage"] = stage
             task["stage_detail"] = detail or {}
             task["updated_at"] = _utc_now_iso()
+            # Progress is transient UI state: the in-memory task (what the
+            # polling endpoint reads) is always updated, but SQLite only
+            # sees stage transitions. Persisting the per-platform "done"
+            # ticks too produced 5+ fsyncs per build that bought nothing —
+            # crash recovery only needs the task back in "pending".
+            if stage.startswith("platform_") and stage != "platform_error":
+                return
             self._persist(task)
 
     async def _worker_loop(self, _index: int) -> None:
@@ -564,9 +571,14 @@ def _run_distill_job(payload: dict, queue: Optional["DistillTaskQueue"] = None, 
     def progress_cb(stage: str, detail=None):
         if queue is None or not task_id or loop is None:
             return
+        # Fire-and-forget: the build thread must never wait on the event loop
+        # (set_progress persists to SQLite behind an asyncio.Lock). The old
+        # fut.result(timeout=2) handoff added a context switch per progress
+        # tick and, under lock contention, stalled real build work for up to
+        # 2 s per tick. Ordering loss is fine — every tick overwrites the
+        # same task row and the frontend polls the latest state anyway.
         try:
-            fut = asyncio.run_coroutine_threadsafe(queue.set_progress(task_id, stage, detail), loop)
-            fut.result(timeout=2)
+            asyncio.run_coroutine_threadsafe(queue.set_progress(task_id, stage, detail), loop)
         except Exception:
             pass
 
