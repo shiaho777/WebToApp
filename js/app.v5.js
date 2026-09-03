@@ -1010,7 +1010,6 @@
     const steps = [
       t('analysis.stepFetch'),
       t('analysis.stepDom'),
-      t('analysis.stepAds'),
       t('analysis.stepDesign'),
       t('analysis.stepOptimize'),
     ];
@@ -1054,9 +1053,6 @@
       // Analysis didn't run (fetch failed) — show N/A rather than fabricated
       // numbers. Previously this returned random ad/tracker counts, which
       // misled users about sites we never actually inspected.
-      ads: 0,
-      trackers: 0,
-      popups: 0,
       originalSize: 'N/A',
       distilledSize: 'N/A',
       speedBoost: 'N/A',
@@ -1182,9 +1178,6 @@
         <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.suggestedName'))}</span><span class="value good">${escapeHtml(suggestedName)}</span></div>
         <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.nameSource'))}</span><span class="value info">${escapeHtml(suggestedNameSourceLabel)}</span></div>
         <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.iconStatus'))}</span><span class="value ${data.faviconDataUrl ? 'good' : 'info'}">${escapeHtml(data.faviconDataUrl ? t('analysis.iconAutoFetched') : t('analysis.iconNotDetected'))}</span></div>
-        <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.adsDetected'))}</span><span class="value ${Number(data.ads) > 0 ? 'bad' : 'good'}">${escapeHtml(t('analysis.adsUnit', { n: data.ads }))}</span></div>
-        <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.trackers'))}</span><span class="value ${Number(data.trackers) > 0 ? 'bad' : 'good'}">${escapeHtml(t('analysis.trackersUnit', { n: data.trackers }))}</span></div>
-        <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.popups'))}</span><span class="value ${Number(data.popups) > 0 ? 'bad' : 'good'}">${escapeHtml(t('analysis.popupsUnit', { n: data.popups }))}</span></div>
         <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.originalSize'))}</span><span class="value">${escapeHtml(String(data.originalSize))}</span></div>
         <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.distilledSize'))}</span><span class="value good">${escapeHtml(String(data.distilledSize))}</span></div>
         <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.speedBoost'))}</span><span class="value good">${escapeHtml(String(data.speedBoost))}</span></div>
