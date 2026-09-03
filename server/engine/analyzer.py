@@ -151,10 +151,6 @@ class SiteAnalyzer:
             "faviconDataUrl": "",
             "themeColor": "#7c3aed",
             "description": "",
-            "ads": 0,
-            "trackers": 0,
-            "popups": 0,
-            "totalScripts": 0,
             "originalSize": "N/A",
             "distilledSize": "N/A",
             "speedBoost": "N/A",
@@ -212,6 +208,10 @@ class SiteAnalyzer:
         )
 
         scripts = list(doc.script_srcs)
+        # Bloat signals below feed ONLY the distilled-size/speed estimate.
+        # They used to be displayed as ad/tracker/popup rows, but those counts
+        # are rough heuristics — showing them invited more confusion than
+        # insight, so they stay internal (issue: drop the noisy rows).
         ad_scripts = [s for s in scripts if any(ad in s for ad in AD_DOMAINS)]
         tracker_scripts = [s for s in scripts if self._is_tracker(s)]
         popup_elements = sum(1 for p in POPUP_PATTERNS if re.search(p, html, re.I))
@@ -242,10 +242,6 @@ class SiteAnalyzer:
             "faviconDataUrl": favicon_data_url,
             "themeColor": theme_color,
             "description": description,
-            "ads": len(ad_scripts),
-            "trackers": len(tracker_scripts),
-            "popups": popup_elements,
-            "totalScripts": len(scripts),
             "originalSize": f"{original_kb:.0f} KB" if original_kb < 1024 else f"{original_kb/1024:.1f} MB",
             "distilledSize": f"{estimated_distilled_kb:.0f} KB",
             "speedBoost": f"{speed_boost}x",

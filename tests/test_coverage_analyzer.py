@@ -237,10 +237,6 @@ def test_analyze_html_extracts_all_metadata_and_mb_size(monkeypatch):
     assert result["faviconDataUrl"].startswith("data:image/png")
     assert result["themeColor"] == "#010203"
     assert result["description"] == "A description"
-    assert result["ads"] == 1
-    assert result["trackers"] == 2
-    assert result["popups"] == 3
-    assert result["totalScripts"] == 2
     assert result["originalSize"] == "2.0 MB"
 
 

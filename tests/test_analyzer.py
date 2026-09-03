@@ -33,9 +33,9 @@ class AnalyzerParsingTests(unittest.TestCase):
         self.assertEqual(result["description"], "Structured Description")
         self.assertEqual(result["themeColor"], "#112233")
         self.assertEqual(result["favicon"], "https://example.com/favicon-192.png")
-        self.assertEqual(result["totalScripts"], 2)
-        self.assertEqual(result["trackers"], 1)
-        self.assertEqual(result["popups"], 1)
+        self.assertIn("originalSize", result)
+        self.assertIn("distilledSize", result)
+        self.assertIn("speedBoost", result)
 
 
 class AuthWallDetectionTests(unittest.TestCase):
@@ -89,5 +89,4 @@ class AuthWallDetectionTests(unittest.TestCase):
         self.assertEqual(result["authProvider"], "authelia")
         self.assertEqual(result["suggestedName"], "App")
         self.assertEqual(result["originalSize"], "N/A")
-        self.assertEqual(result["ads"], 0)
 
