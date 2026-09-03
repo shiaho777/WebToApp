@@ -196,18 +196,24 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.ClipData;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
@@ -217,8 +223,10 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -232,6 +240,8 @@ public class M extends Activity {
     private static final int REQ_LOCATION = 2002;
     private static final int REQ_MEDIA = 2003;
     private static final int REQ_FILE_CHOOSER = 2004;
+    private static final int REQ_BRIDGE_STORAGE = 2005;
+    private static final int REQ_NOTIFY = 2006;
     private static final String DESKTOP_USER_AGENT =
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
         + "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -372,6 +382,7 @@ public class M extends Activity {
         });
         webView.setWebChromeClient(new AppChromeClient());
         webView.setDownloadListener(new AppDownloadListener());
+        webView.addJavascriptInterface(new WebAppBridge(), "WebToApp");
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -656,6 +667,28 @@ public class M extends Activity {
 
     private final class AppDownloadListener implements DownloadListener {
         @Override public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+            String lower = url != null ? url.trim().toLowerCase(Locale.US) : "";
+            String mime = mimeType != null ? mimeType : "";
+            // Page-generated content never reaches a server, so DownloadManager
+            // (http/https only) cannot fetch it. Resolve blobs inside the page
+            // and decode data: URLs locally instead of failing silently.
+            if (lower.startsWith("blob:")) {
+                String name = sanitizeFileSegment(URLUtil.guessFileName(url, contentDisposition, mimeType));
+                resolveBlobDownload(url, name, mime);
+                return;
+            }
+            if (lower.startsWith("data:")) {
+                byte[] data = decodeDataUrl(url);
+                if (data == null) {
+                    Log.w("WebToApp", "data: download undecodable");
+                    toastOnUi("导出失败，请重试");
+                } else {
+                    String name = sanitizeFileSegment(URLUtil.guessFileName(url, contentDisposition, mimeType));
+                    saveBytesAsync(data, name, mime);
+                }
+                return;
+            }
+            nudgeNotificationPermission();
             PendingDownload download = new PendingDownload();
             download.url = url;
             download.userAgent = userAgent;
@@ -695,7 +728,9 @@ public class M extends Activity {
                 buildDownloadRelativePath(download.fileName)
             );
             manager.enqueue(request);
-        } catch (Throwable ignored) {}
+        } catch (Throwable e) {
+            Log.w("WebToApp", "enqueueDownload failed: " + download.url, e);
+        }
     }
 
     private String buildDownloadRelativePath(String fileName) {
@@ -705,6 +740,187 @@ public class M extends Activity {
     private String sanitizeFileSegment(String value) {
         String cleaned = String.valueOf(value == null ? "" : value).replaceAll("[\\\\/:*?\"<>|]+", "_").trim();
         return cleaned.isEmpty() ? "download.bin" : cleaned;
+    }
+
+    // ── In-page file export bridge (issue #37) ──────────────────────────
+    // Pages call window.WebToApp.saveFile(dataUrl, fileName, mimeType) to
+    // save generated content (CSV / PDF / …) into the public Downloads
+    // folder, which file managers and the system Downloads app can browse.
+    // There is intentionally NO window.android.* alias: that name belongs to
+    // other packers' bridges with unknown signatures, and guessing them
+    // would silently do the wrong thing. Documented contract:
+    //   dataUrl  "data:[<mime>][;base64],<payload>" or a raw base64 payload
+    //   fileName plain file name; path separators are stripped server-side
+    //   mimeType e.g. "text/csv"; empty falls back to octet-stream
+    private final class WebAppBridge {
+        @JavascriptInterface public void saveFile(String dataUrl, String fileName, String mimeType) {
+            final byte[] data = decodeDataUrl(dataUrl);
+            final String safeName = sanitizeFileSegment(fileName);
+            final String mime = mimeType != null ? mimeType : "";
+            if (data == null) {
+                toastOnUi("保存失败：文件内容无效");
+                Log.w("WebToApp", "saveFile: undecodable payload");
+                return;
+            }
+            if (needsBridgeStoragePermission()) {
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        try {
+                            requestPermissions(
+                                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                REQ_BRIDGE_STORAGE);
+                        } catch (Throwable ignored) {}
+                    }
+                });
+                toastOnUi("需要存储权限，授权后请重新导出");
+                return;
+            }
+            saveBytesAsync(data, safeName, mime);
+        }
+        @JavascriptInterface public void onExportFailed(String message) {
+            Log.w("WebToApp", "page-side export failed: " + message);
+            toastOnUi("导出失败，请重试");
+        }
+    }
+
+    private boolean needsBridgeStoragePermission() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+            && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED;
+    }
+
+    // Only the page itself can read its own blob: URLs, so resolve them with
+    // page-side fetch() and hand the base64 back to the bridge. The script is
+    // built without a single double-quote so neither the Java nor the Python
+    // template layer needs escaping.
+    private static final String BLOB_FETCH_PREFIX =
+        "(function(u,n,m){"
+        + "fetch(u).then(function(r){return r.blob();}).then(function(b){"
+        + "var f=new FileReader();"
+        + "f.onload=function(){try{WebToApp.saveFile(f.result,n,m);}catch(e){WebToApp.onExportFailed(String(e));}};"
+        + "f.onerror=function(){WebToApp.onExportFailed('read failed');};"
+        + "f.readAsDataURL(b);"
+        + "}).catch(function(e){WebToApp.onExportFailed(String(e));});"
+        + "})('";
+    private static final String BLOB_FETCH_SEP = "','";
+    private static final String BLOB_FETCH_SUFFIX = "');";
+
+    private void resolveBlobDownload(final String blobUrl, final String fileName, final String mimeType) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                try {
+                    if (webView == null) return;
+                    String script = BLOB_FETCH_PREFIX + jsSingleQuote(blobUrl)
+                        + BLOB_FETCH_SEP + jsSingleQuote(fileName)
+                        + BLOB_FETCH_SEP + jsSingleQuote(mimeType) + BLOB_FETCH_SUFFIX;
+                    webView.evaluateJavascript(script, null);
+                } catch (Throwable e) {
+                    Log.w("WebToApp", "blob resolve failed", e);
+                    toastOnUi("导出失败，请重试");
+                }
+            }
+        });
+    }
+
+    private static String jsSingleQuote(String value) {
+        String s = String.valueOf(value == null ? "" : value);
+        return s.replace("\\", "\\\\").replace("'", "\\'");
+    }
+
+    private static byte[] decodeDataUrl(String dataUrl) {
+        if (dataUrl == null) return null;
+        String text = dataUrl.trim();
+        if (text.isEmpty()) return null;
+        try {
+            int comma = text.indexOf(',');
+            if (comma < 0) {
+                return Base64.decode(text, Base64.DEFAULT);
+            }
+            String header = text.substring(0, comma);
+            String payload = text.substring(comma + 1);
+            if (header.contains(";base64")) {
+                return Base64.decode(payload, Base64.DEFAULT);
+            }
+            return java.net.URLDecoder.decode(payload, "UTF-8").getBytes("UTF-8");
+        } catch (Throwable e) {
+            Log.w("WebToApp", "decodeDataUrl failed", e);
+            return null;
+        }
+    }
+
+    private void saveBytesAsync(final byte[] data, final String fileName, final String mime) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                boolean ok = writeDownloadFile(data, fileName, mime);
+                toastOnUi(ok ? "已保存到下载目录：" + fileName : "保存失败，请重试");
+            }
+        }).start();
+    }
+
+    private boolean writeDownloadFile(byte[] data, String fileName, String mimeType) {
+        if (data == null || data.length == 0) return false;
+        String mime = mimeType != null && !mimeType.isEmpty()
+            ? mimeType : "application/octet-stream";
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Scoped storage: MediaStore lands the file in the public
+                // Downloads collection — no permission needed, and it shows
+                // up in file managers (this is what issue #37 was missing).
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
+                values.put(MediaStore.Downloads.MIME_TYPE, mime);
+                values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                ContentResolver resolver = getContentResolver();
+                Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                if (uri == null) return false;
+                OutputStream out = resolver.openOutputStream(uri);
+                if (out == null) return false;
+                out.write(data);
+                out.close();
+                return true;
+            }
+            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+            java.io.File dir = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS);
+            if (!dir.exists() && !dir.mkdirs()) return false;
+            java.io.File target = new java.io.File(dir, fileName);
+            java.io.FileOutputStream out = new java.io.FileOutputStream(target);
+            out.write(data);
+            out.close();
+            sendBroadcast(new Intent(
+                Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(target)));
+            return true;
+        } catch (Throwable e) {
+            Log.w("WebToApp", "writeDownloadFile failed", e);
+            return false;
+        }
+    }
+
+    private void toastOnUi(final String message) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                try {
+                    Toast.makeText(M.this, message, Toast.LENGTH_LONG).show();
+                } catch (Throwable ignored) {}
+            }
+        });
+    }
+
+    // Android 13+ gates the DownloadManager "download complete" notification
+    // behind POST_NOTIFICATIONS. Nudge once per download; the download itself
+    // never waits for the grant.
+    private void nudgeNotificationPermission() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                        != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(
+                    new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIFY);
+            }
+        } catch (Throwable ignored) {}
     }
 
     private boolean needsLegacyWritePermission() {
@@ -807,6 +1023,12 @@ public class M extends Activity {
             }
             return;
         }
+        if (requestCode == REQ_BRIDGE_STORAGE) {
+            // Bridge saves hold no pending bytes by design (a retry just
+            // re-invokes saveFile), so only acknowledge the grant result.
+            toastOnUi(allGranted(grantResults) ? "已获得权限，请重新导出" : "缺少存储权限，无法保存");
+            return;
+        }
         if (requestCode == REQ_LOCATION) {
             GeolocationPermissions.Callback callback = pendingGeolocationCallback;
             String origin = pendingGeolocationOrigin;
@@ -879,6 +1101,7 @@ MANIFEST_XML = """<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application android:label="{name}" android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
         <activity android:name="w.M" android:exported="true"
@@ -898,7 +1121,7 @@ class ApkBuilder:
     TEMPLATE_APP_NAME = "WebToApp Template"
     TEMPLATE_VERSION_CODE = 1
     TEMPLATE_VERSION_NAME = "1.0"
-    TEMPLATE_REVISION = "2026-08-31-targetsdk36-1"
+    TEMPLATE_REVISION = "2026-09-03-exportbridge-1"
     # Keystore used only to sign the throwaway base *template* APK. The template
     # is always re-signed per-app afterwards, so this key never reaches users.
     TEMPLATE_KEY_ALIAS = "webtoapp"

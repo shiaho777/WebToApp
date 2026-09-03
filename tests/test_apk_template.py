@@ -5,6 +5,7 @@ build host, far away from CI — so these tests assert the load-bearing pieces
 of the source stay intact rather than executing anything.
 """
 
+import re
 import struct
 
 import pytest
@@ -66,6 +67,63 @@ def test_immersive_mode_handles_edge_to_edge_enforcement():
     assert "Build.VERSION_CODES.BAKLAVA" in ACTIVITY_JAVA
     assert "setOnApplyWindowInsetsListener" in ACTIVITY_JAVA
     assert "WindowInsets.CONSUMED" in ACTIVITY_JAVA
+
+
+# ===== In-page file export bridge (issue #37) =====
+#
+# window.android.downloadFile does not exist in our APK, and DownloadManager
+# cannot fetch blob:/data: URLs, so page-side exports failed silently. The
+# template now exposes window.WebToApp.saveFile and resolves blob:/data:
+# downloads natively. Like the file-chooser guards above, these assert the
+# load-bearing source pieces stay intact (the template compiles far away).
+
+
+def test_export_bridge_is_registered():
+    assert 'addJavascriptInterface(new WebAppBridge(), "WebToApp")' in ACTIVITY_JAVA
+    assert "import android.webkit.JavascriptInterface;" in ACTIVITY_JAVA
+    assert "@JavascriptInterface public void saveFile(" in ACTIVITY_JAVA
+    assert "@JavascriptInterface public void onExportFailed(" in ACTIVITY_JAVA
+
+
+def test_export_bridge_writes_to_public_downloads():
+    # Q+: MediaStore public collection (visible in file managers, no
+    # permission needed). Pre-Q: public dir + media scan broadcast.
+    assert "MediaStore.Downloads.EXTERNAL_CONTENT_URI" in ACTIVITY_JAVA
+    assert "MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS" in ACTIVITY_JAVA
+    assert "getExternalStoragePublicDirectory(" in ACTIVITY_JAVA
+    assert "ACTION_MEDIA_SCANNER_SCAN_FILE" in ACTIVITY_JAVA
+    assert "import android.provider.MediaStore;" in ACTIVITY_JAVA
+
+
+def test_blob_and_data_downloads_resolved_natively():
+    assert 'lower.startsWith("blob:")' in ACTIVITY_JAVA
+    assert 'lower.startsWith("data:")' in ACTIVITY_JAVA
+    assert "resolveBlobDownload(url, name, mime)" in ACTIVITY_JAVA
+    assert "evaluateJavascript(script, null)" in ACTIVITY_JAVA
+    # The fetch snippet must stay double-quote-free so neither the Java nor
+    # the Python template layer needs escaping. Compare literal *contents*
+    # (delimiters excluded) — the Java "..." delimiters themselves obviously
+    # contain quotes.
+    block = ACTIVITY_JAVA.split("BLOB_FETCH_PREFIX =", 1)[1].split(
+        "private void resolveBlobDownload", 1)[0]
+    js = "".join(re.findall(r'"((?:[^"\\]|\\.)*)"', block))
+    assert '"' not in js
+    assert "fetch(u)" in js and "WebToApp.saveFile" in js
+
+
+def test_download_failures_are_visible():
+    # Issue #37's core pain was silent failure: every catch swallowed the
+    # error. Failures must now surface via logcat and an on-screen Toast.
+    assert "enqueueDownload failed" in ACTIVITY_JAVA
+    assert "Toast.makeText(M.this, message, Toast.LENGTH_LONG).show()" in ACTIVITY_JAVA
+    assert "import android.widget.Toast;" in ACTIVITY_JAVA
+    assert "import android.util.Log;" in ACTIVITY_JAVA
+
+
+def test_notification_permission_nudged_not_blocking():
+    assert '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' in MANIFEST_XML
+    assert "REQ_NOTIFY" in ACTIVITY_JAVA
+    assert '"android.permission.POST_NOTIFICATIONS"' in ACTIVITY_JAVA
 
 
 # ===== Forkless per-app patching (issue #34) =====
