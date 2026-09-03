@@ -416,11 +416,14 @@ section {
 }
 
 .analysis-item .label {
+  flex-shrink: 0;
   color: var(--ink-soft);
   font-size: 0.92rem;
 }
 
 .analysis-item .value {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 600;
   text-align: right;
 }
@@ -941,11 +944,14 @@ section {
   background: rgba(252, 249, 244, 0.8);
 }
 
+/* Stacked (not side-by-side): the sub-copy is too long in most languages to
+   share one row inside a ~430px column — side-by-side squeezed the title
+   into vertical one-character-per-line stacking. */
 .platform-config-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   padding: 16px 18px 0;
 }
 
@@ -958,19 +964,18 @@ section {
 .platform-config-head small {
   color: rgba(30, 25, 20, 0.46);
   font-size: 0.84rem;
-  text-align: right;
-  white-space: nowrap;
+  line-height: 1.6;
 }
 
+/* Wrapped pills, not a scroller: five tabs physically cannot fit a ~394px
+   row, so horizontal scrolling always hid the last tab (Linux) with zero
+   affordance. Wrapping keeps every platform one tap away. */
 .platform-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
   padding: 0 18px 12px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
 }
 
 .platform-tab {
@@ -986,7 +991,6 @@ section {
   color: rgba(30, 25, 20, 0.62);
   font-size: 0.88rem;
   font-weight: 600;
-  scroll-snap-align: start;
   transition: border-color var(--transition), background var(--transition), color var(--transition);
 }
 
@@ -1654,15 +1658,13 @@ section {
   }
 
   .feature-panel summary,
-  .advanced-panel summary,
-  .platform-config-head {
+  .advanced-panel summary {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .feature-panel summary small,
-  .advanced-panel summary small,
-  .platform-config-head small {
+  .advanced-panel summary small {
     text-align: left;
   }
 
