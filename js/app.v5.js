@@ -126,6 +126,12 @@
   const androidPackagePrefixInput = document.getElementById('android-package-prefix');
   const immersiveFullscreenInput = document.getElementById('feature-immersive-fullscreen');
   const desktopModeInput = document.getElementById('feature-desktop-mode');
+  const windowsWidthInput = document.getElementById('windows-window-width');
+  const windowsHeightInput = document.getElementById('windows-window-height');
+  const windowsMaximizedInput = document.getElementById('windows-window-maximized');
+  const linuxWidthInput = document.getElementById('linux-window-width');
+  const linuxHeightInput = document.getElementById('linux-window-height');
+  const linuxMaximizedInput = document.getElementById('linux-window-maximized');
   const colorHex = document.getElementById('color-hex');
   const generateBtn = document.getElementById('generate-btn');
   const resultPanel = document.getElementById('result-panel');
@@ -170,9 +176,21 @@
     const options = raw && typeof raw === 'object' ? raw : {};
     const immersiveFullscreen = options['feature-immersive-fullscreen'] === true || options.feature_immersive_fullscreen === true;
     const desktopMode = options['feature-desktop-mode'] === true || options.feature_desktop_mode === true;
+    const windowOpts = {};
+    ['windows', 'linux'].forEach((prefix) => {
+      windowOpts[`${prefix}-window-width`] = sanitizeWindowSize(
+        options[`${prefix}-window-width`] != null ? options[`${prefix}-window-width`] : options[`${prefix}_window_width`]
+      );
+      windowOpts[`${prefix}-window-height`] = sanitizeWindowSize(
+        options[`${prefix}-window-height`] != null ? options[`${prefix}-window-height`] : options[`${prefix}_window_height`]
+      );
+      windowOpts[`${prefix}-window-maximized`] =
+        options[`${prefix}-window-maximized`] === true || options[`${prefix}_window_maximized`] === true;
+    });
     return {
       immersiveFullscreen,
       desktopMode,
+      ...windowOpts,
     };
   }
 
@@ -180,16 +198,34 @@
     const options = normalizeFeatureOptions(raw);
     immersiveFullscreenInput.checked = options.immersiveFullscreen;
     desktopModeInput.checked = options.desktopMode;
+    syncInputValue(windowsWidthInput, options['windows-window-width'] ? String(options['windows-window-width']) : '');
+    syncInputValue(windowsHeightInput, options['windows-window-height'] ? String(options['windows-window-height']) : '');
+    windowsMaximizedInput.checked = options['windows-window-maximized'];
+    syncInputValue(linuxWidthInput, options['linux-window-width'] ? String(options['linux-window-width']) : '');
+    syncInputValue(linuxHeightInput, options['linux-window-height'] ? String(options['linux-window-height']) : '');
+    linuxMaximizedInput.checked = options['linux-window-maximized'];
   }
 
   function collectFeatureOptions() {
     const featureOptions = normalizeFeatureOptions({
       'feature-immersive-fullscreen': immersiveFullscreenInput.checked,
       'feature-desktop-mode': desktopModeInput.checked,
+      'windows-window-width': windowsWidthInput.value,
+      'windows-window-height': windowsHeightInput.value,
+      'windows-window-maximized': windowsMaximizedInput.checked,
+      'linux-window-width': linuxWidthInput.value,
+      'linux-window-height': linuxHeightInput.value,
+      'linux-window-maximized': linuxMaximizedInput.checked,
     });
     return {
       'feature-immersive-fullscreen': featureOptions.immersiveFullscreen,
       'feature-desktop-mode': featureOptions.desktopMode,
+      'windows-window-width': featureOptions['windows-window-width'],
+      'windows-window-height': featureOptions['windows-window-height'],
+      'windows-window-maximized': featureOptions['windows-window-maximized'],
+      'linux-window-width': featureOptions['linux-window-width'],
+      'linux-window-height': featureOptions['linux-window-height'],
+      'linux-window-maximized': featureOptions['linux-window-maximized'],
     };
   }
 
@@ -231,6 +267,15 @@
     if (String(value).trim() === '') return '';
     const parsed = parseInt(String(value || '').trim(), 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : '';
+  }
+
+  // Desktop shell window dimension (px). '' = browser default (no flag).
+  function sanitizeWindowSize(value) {
+    if (value === null || value === undefined) return '';
+    if (String(value).trim() === '') return '';
+    const parsed = parseInt(String(value).trim(), 10);
+    if (!Number.isFinite(parsed)) return '';
+    return Math.max(320, Math.min(7680, parsed));
   }
 
   function sanitizeAndroidPackagePrefix(value) {
@@ -302,6 +347,38 @@
     urlInputWrap.classList.toggle('hidden', inputMode === 'html');
     htmlInputWrap.classList.toggle('hidden', inputMode !== 'html');
   }
+
+  // --- Platform tabs (per-platform settings) ---
+  // Only Android currently exposes extra knobs (they drive the real APK
+  // build); the other panels document their fixed shells + shared-settings
+  // reuse. IDs of the Android inputs are unchanged so the submit path below
+  // keeps working untouched.
+  const platformTabs = Array.from(document.querySelectorAll('[data-platform-tab]'));
+  const platformPanels = Array.from(document.querySelectorAll('[data-platform-panel]'));
+  function selectPlatformTab(name, focusTab) {
+    const target = String(name || 'android');
+    platformTabs.forEach((tab) => {
+      const active = tab.dataset.platformTab === target;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.tabIndex = active ? 0 : -1;
+      if (active && focusTab) tab.focus();
+    });
+    platformPanels.forEach((panel) => {
+      panel.hidden = panel.dataset.platformPanel !== target;
+    });
+  }
+  platformTabs.forEach((tab) => {
+    tab.addEventListener('click', () => selectPlatformTab(tab.dataset.platformTab, false));
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const dir = e.key === 'ArrowRight' ? 1 : -1;
+      const rtl = document.documentElement.dir === 'rtl';
+      const next = platformTabs[(platformTabs.indexOf(tab) + (rtl ? -dir : dir) + platformTabs.length) % platformTabs.length];
+      if (next) selectPlatformTab(next.dataset.platformTab, true);
+    });
+  });
 
   function formatBytes(bytes) {
     const n = Number(bytes || 0);
@@ -774,6 +851,12 @@
   });
   androidPackagePrefixInput.addEventListener('blur', () => {
     androidPackagePrefixInput.value = sanitizeAndroidPackagePrefix(androidPackagePrefixInput.value);
+  });
+  [windowsWidthInput, windowsHeightInput, linuxWidthInput, linuxHeightInput].forEach((input) => {
+    input.addEventListener('blur', () => {
+      const sanitized = sanitizeWindowSize(input.value);
+      input.value = sanitized ? String(sanitized) : '';
+    });
   });
 
   // --- URL Validation ---
