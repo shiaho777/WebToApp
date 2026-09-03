@@ -644,6 +644,15 @@ section {
   list-style: none;
 }
 
+/* Stacked override: the Android tab column (~430px) cannot fit title +
+   a nowrap sub like "Android version and package name" side by side —
+   it blew the summary (and the page) out horizontally. */
+.advanced-panel summary {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .feature-panel summary::-webkit-details-marker,
 .advanced-panel summary::-webkit-details-marker {
   display: none;
@@ -662,6 +671,12 @@ section {
   font-size: 0.84rem;
   text-align: right;
   white-space: nowrap;
+}
+
+.advanced-panel summary small {
+  text-align: left;
+  white-space: normal;
+  line-height: 1.6;
 }
 
 .feature-grid {
@@ -1657,14 +1672,12 @@ section {
     border-radius: 18px;
   }
 
-  .feature-panel summary,
-  .advanced-panel summary {
+  .feature-panel summary {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .feature-panel summary small,
-  .advanced-panel summary small {
+  .feature-panel summary small {
     text-align: left;
   }
 
