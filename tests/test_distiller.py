@@ -155,3 +155,82 @@ class DistillerMacosLauncherTests(unittest.TestCase):
         # Universal binaries start with the fat-binary magic 0xCAFEBABE.
         self.assertEqual(blob[:4], b"\xca\xfe\xba\xbe")
         self.assertGreater(len(blob), 4096)
+
+
+class DistillerDesktopWindowTests(unittest.TestCase):
+    def _recipe(self, options):
+        return {
+            "id": "abcd1234",
+            "name": "Example",
+            "url": "https://example.com",
+            "options": Distiller()._feature_options(options),
+        }
+
+    def _build_windows_bat(self, options):
+        import tempfile
+        import zipfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        with tempfile.TemporaryDirectory() as tmp:
+            distiller._build_windows(Path(tmp), self._recipe(options), None, "https://example.com")
+            with zipfile.ZipFile(Path(tmp) / "windows.zip") as z:
+                return z.read("Example/Example.bat").decode()
+
+    def _build_linux_desktop(self, options):
+        import tarfile
+        import tempfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        with tempfile.TemporaryDirectory() as tmp:
+            distiller._build_linux(Path(tmp), self._recipe(options), None, "https://example.com")
+            with tarfile.open(Path(tmp) / "linux.tar.gz") as t:
+                member = t.extractfile("Example/Example.desktop")
+                return member.read().decode()
+
+    def test_default_launchers_have_no_window_flags(self):
+        bat = self._build_windows_bat({})
+        self.assertIn('--app="%URL%" --new-window & exit', bat)
+        self.assertNotIn("--window-size", bat)
+        self.assertNotIn("--start-maximized", bat)
+        desktop = self._build_linux_desktop({})
+        self.assertIn('exec "$b" --app="$URL"; done', desktop)
+        self.assertNotIn("--window-size", desktop)
+        self.assertNotIn("--start-maximized", desktop)
+
+    def test_custom_size_flows_into_both_shells(self):
+        options = {"windows-window-width": 1280, "windows-window-height": 800,
+                   "linux-window-width": "1024", "linux-window-height": "768"}
+        bat = self._build_windows_bat(options)
+        self.assertIn("--window-size=1280,800", bat)
+        self.assertNotIn("--window-size=1024,768", bat)
+        desktop = self._build_linux_desktop(options)
+        self.assertIn("--window-size=1024,768", desktop)
+        self.assertNotIn("--window-size=1280,800", desktop)
+
+    def test_maximized_wins_over_size(self):
+        options = {"windows-window-width": 640, "windows-window-height": 480,
+                   "windows-window-maximized": True}
+        bat = self._build_windows_bat(options)
+        self.assertIn("--start-maximized", bat)
+        self.assertNotIn("--window-size", bat)
+
+    def test_dimensions_clamped_and_garbage_ignored(self):
+        distiller = Distiller()
+        normalized = distiller._feature_options({
+            "windows-window-width": 50,           # clamped to 320
+            "windows-window-height": 99999,       # clamped to 7680
+            "linux-window-width": "wide",         # garbage -> None
+            "linux-window-height": "",
+        })
+        self.assertEqual(normalized["windows-window-width"], 320)
+        self.assertEqual(normalized["windows-window-height"], 7680)
+        self.assertIsNone(normalized["linux-window-width"])
+        self.assertIsNone(normalized["linux-window-height"])
+        self.assertIn("--window-size=320,7680", distiller._desktop_window_flags(normalized, "windows"))
+        self.assertEqual(distiller._desktop_window_flags(normalized, "linux"), "")
+        # Half a size is no size: no flag rather than a broken one.
+        self.assertEqual(
+            distiller._desktop_window_flags({"windows-window-width": 1280}, "windows"), ""
+        )

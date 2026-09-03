@@ -196,7 +196,7 @@ class Distiller:
 
     def _feature_options(self, options):
         raw = options or {}
-        return {
+        normalized = {
             "feature-immersive-fullscreen": bool(
                 raw.get("feature-immersive-fullscreen") or raw.get("feature_immersive_fullscreen")
             ),
@@ -204,6 +204,59 @@ class Distiller:
                 raw.get("feature-desktop-mode") or raw.get("feature_desktop_mode")
             ),
         }
+        # Desktop browser-app shells (Windows .bat, Linux .desktop) honor
+        # Chromium's --window-size / --start-maximized flags. Each OS gets its
+        # own namespaced keys so a kiosk-style Linux box and a Windows laptop
+        # can be sized independently.
+        for prefix in ("windows", "linux"):
+            width = self._window_dimension(raw, prefix, "width")
+            height = self._window_dimension(raw, prefix, "height")
+            normalized[f"{prefix}-window-width"] = width
+            normalized[f"{prefix}-window-height"] = height
+            normalized[f"{prefix}-window-maximized"] = bool(
+                raw.get(f"{prefix}-window-maximized") or raw.get(f"{prefix}_window_maximized")
+            )
+        return normalized
+
+    _WINDOW_MIN_PX = 320
+    _WINDOW_MAX_PX = 7680
+
+    def _window_dimension(self, raw_options, prefix, key):
+        """Parse a namespaced window dimension (px) or return None when unset.
+
+        Accepts both dash and underscore spellings. Out-of-range values are
+        clamped; garbage yields None (= today's behavior, no flag emitted),
+        so old/empty option payloads produce byte-identical launchers.
+        """
+        raw = raw_options if isinstance(raw_options, dict) else {}
+        for variant in (f"{prefix}-window-{key}", f"{prefix}_window_{key}"):
+            value = raw.get(variant)
+            if value in (None, ""):
+                continue
+            try:
+                parsed = int(str(value).strip())
+            except (TypeError, ValueError):
+                continue
+            return max(self._WINDOW_MIN_PX, min(self._WINDOW_MAX_PX, parsed))
+        return None
+
+    def _desktop_window_flags(self, opts, prefix):
+        """Chromium app-mode flags for a desktop shell, or "" when default.
+
+        Maximized wins over an explicit size (the two contradict each other).
+        Dimensions are re-parsed (not just read) so direct builder calls with
+        raw user payloads behave exactly like the normalized recipe path.
+        The size is only a suggestion: Chromium may restore the last session's
+        window instead — the UI copy says so.
+        """
+        raw = opts if isinstance(opts, dict) else {}
+        if raw.get(f"{prefix}-window-maximized") or raw.get(f"{prefix}_window_maximized"):
+            return " --start-maximized"
+        width = self._window_dimension(raw, prefix, "width")
+        height = self._window_dimension(raw, prefix, "height")
+        if width is not None and height is not None:
+            return f" --window-size={width},{height}"
+        return ""
 
     def _feature_flag(self, raw_options, *keys, default=False):
         raw = raw_options if isinstance(raw_options, dict) else {}
@@ -1480,11 +1533,12 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 
     # ===== Windows — .bat + .ico =====
     def _build_windows(self, dl: Path, r: dict, icon_png, launch_url):
+        win_flags = self._desktop_window_flags(r.get("options") or {}, "windows")
         bat = f"""@echo off
 title {r['name']}
 set "URL={launch_url}"
-(where msedge >nul 2>&1) && (start "" msedge --app="%URL%" --new-window & exit /b)
-(where chrome >nul 2>&1) && (start "" chrome --app="%URL%" --new-window & exit /b)
+(where msedge >nul 2>&1) && (start "" msedge --app="%URL%" --new-window{win_flags} & exit /b)
+(where chrome >nul 2>&1) && (start "" chrome --app="%URL%" --new-window{win_flags} & exit /b)
 start "" "%URL%"
 """
         # VBS shortcut creator — auto-creates a desktop shortcut with the app icon
@@ -1580,13 +1634,14 @@ open "$WTA_URL"
     # ===== Linux — .desktop + icon.png =====
     def _build_linux(self, dl: Path, r: dict, icon_png, launch_url):
         n = r['name']
+        linux_flags = self._desktop_window_flags(r.get("options") or {}, "linux")
         # Icon path: relative to install location
         icon_line = f"Icon=$HOME/.local/share/icons/{n}.png" if icon_png else "Icon=web-browser"
         desktop = f"""[Desktop Entry]
 Type=Application
 Name={n}
 Comment=Distilled by WebToApp
-Exec=bash -c 'URL="{launch_url}"; for b in google-chrome chromium-browser microsoft-edge firefox; do command -v "$b" >/dev/null && exec "$b" --app="$URL"; done; xdg-open "$URL"'
+Exec=bash -c 'URL="{launch_url}"; for b in google-chrome chromium-browser microsoft-edge firefox; do command -v "$b" >/dev/null && exec "$b" --app="$URL"{linux_flags}; done; xdg-open "$URL"'
 {icon_line}
 Terminal=false
 Categories=Network;WebBrowser;

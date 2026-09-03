@@ -277,6 +277,8 @@ section {
   margin: 0 auto 88px;
   padding-top: 8px;
   padding-bottom: 40px;
+  /* Sticky nav (~70px) would otherwise cover the panel head on auto-scroll. */
+  scroll-margin-top: 84px;
 }
 
 #history-section {
@@ -288,6 +290,18 @@ section {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(380px, 430px);
   gap: 22px;
+  /* Panels have very different heights (short analysis summary vs long
+     config form). The grid default `stretch` forced the short panel to
+     grow to the tall one's height, leaving a big blank slab that fills
+     the viewport once the user scrolls down to the feature/advanced
+     sections. `start` keeps each panel at its natural height. */
+  align-items: start;
+}
+
+/* Short summary panel stays visible while the long config form scrolls. */
+#analysis-panel {
+  position: sticky;
+  top: 88px;
 }
 
 .panel {
@@ -368,7 +382,12 @@ section {
 }
 
 #config-panel .config-grid,
+#config-panel .feature-grid,
 #config-panel .advanced-grid {
+  /* The config column is only ~430px wide: a 2-col feature-grid squeezes
+     each card to ~200px and wraps Chinese copy one phrase per line (see
+     screenshot). Stack the feature cards full-width like every other
+     config section. */
   grid-template-columns: 1fr;
 }
 
@@ -606,6 +625,11 @@ section {
   background: rgba(252, 249, 244, 0.8);
 }
 
+/* NOTE: .feature-panel is currently unused (platform tabs replaced it) but
+   its summary sub-rules below are shared with .advanced-panel, which the
+   Android tab still uses — so the container stays until the last details
+   block migrates. */
+
 .feature-panel summary,
 .advanced-panel summary {
   display: flex;
@@ -825,6 +849,260 @@ section {
   grid-template-columns: 1fr 1fr;
   gap: 18px;
   padding: 0 18px 18px;
+}
+
+/* ===== Platform overview (left panel) ===== */
+.platform-overview {
+  padding: 22px 24px 24px;
+  border-top: 1px solid rgba(30, 25, 20, 0.08);
+}
+
+.platform-overview h3 {
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  font-weight: 600;
+}
+
+.platform-overview-sub {
+  margin-top: 6px;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.platform-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  list-style: none;
+}
+
+.platform-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(30, 25, 20, 0.07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.platform-list li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.platform-list strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.platform-list span {
+  color: rgba(30, 25, 20, 0.52);
+  font-size: 0.8rem;
+}
+
+.p-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(30, 25, 20, 0.08);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.p-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  display: block;
+}
+
+.p-icon-outline svg {
+  fill: none;
+}
+
+.p-icon-windows { color: #1889d6; }
+.p-icon-apple { color: #181412; }
+.p-icon-linux { color: #3f6b4c; }
+.p-icon-android { color: #4f8f4b; }
+
+/* ===== Platform tabs (right panel) ===== */
+.platform-config {
+  margin-bottom: 24px;
+  border: 1px solid rgba(30, 25, 20, 0.08);
+  border-radius: 18px;
+  background: rgba(252, 249, 244, 0.8);
+}
+
+.platform-config-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px 0;
+}
+
+.platform-config-head span {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.platform-config-head small {
+  color: rgba(30, 25, 20, 0.46);
+  font-size: 0.84rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.platform-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 0 18px 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.platform-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 16px 0 12px;
+  border: 1px solid rgba(30, 25, 20, 0.1);
+  border-radius: 999px;
+  background: rgba(250, 246, 240, 0.94);
+  color: rgba(30, 25, 20, 0.62);
+  font-size: 0.88rem;
+  font-weight: 600;
+  scroll-snap-align: start;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+
+.platform-tab svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Stroke-based glyphs (e.g. the Linux terminal icon) carry fill="none" as a
+   presentation attribute — any CSS fill rule outranks it, so re-assert none
+   here or the rect renders as a solid blob. */
+.platform-tab svg[fill="none"] {
+  fill: none;
+}
+
+.platform-tab:hover {
+  color: var(--ink);
+}
+
+.platform-tab.active {
+  border-color: rgba(180, 126, 87, 0.4);
+  background: rgba(180, 126, 87, 0.14);
+  color: var(--ink);
+}
+
+.platform-tab:focus-visible {
+  outline: 2px solid var(--accent-warm);
+  outline-offset: 2px;
+}
+
+.platform-panels {
+  padding: 0 18px 18px;
+}
+
+/* .feature-grid / .advanced-panel were designed as top-level config sections
+   with their own outer spacing; nested inside a tab panel that spacing would
+   double up (cards inset 36px while the advanced box sits at 18px). */
+.platform-panels .feature-grid {
+  padding: 0 0 14px;
+}
+
+.platform-panels .advanced-panel {
+  margin-bottom: 0;
+}
+
+.platform-panel[hidden] {
+  display: none;
+}
+
+/* Tab switches re-trigger this (display none -> block), giving a subtle
+   fade-rise instead of a hard cut. Gated on no-preference so reduced-motion
+   users get the instant switch. */
+@media (prefers-reduced-motion: no-preference) {
+  .platform-panel {
+    animation: panel-in 160ms ease;
+  }
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.platform-panel-intro {
+  margin: 0 0 14px;
+  color: rgba(30, 25, 20, 0.58);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.window-size-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.platform-panels .feature-card {
+  margin-top: 14px;
+}
+
+.platform-note {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(30, 25, 20, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.platform-note strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.platform-note p {
+  margin: 0;
+  color: rgba(30, 25, 20, 0.58);
+  font-size: 0.88rem;
+  line-height: 1.65;
 }
 
 .color-wrap {
@@ -1294,6 +1572,11 @@ section {
     grid-template-columns: 1fr;
   }
 
+  /* Stacked layout: sticky would cover content while scrolling. */
+  #analysis-panel {
+    position: static;
+  }
+
   .config-grid,
   .feature-grid,
   .advanced-grid {
@@ -1341,7 +1624,8 @@ section {
   .stats,
   .config-grid,
   .feature-grid,
-  .advanced-grid {
+  .advanced-grid,
+  .window-size-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1370,13 +1654,15 @@ section {
   }
 
   .feature-panel summary,
-  .advanced-panel summary {
+  .advanced-panel summary,
+  .platform-config-head {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .feature-panel summary small,
-  .advanced-panel summary small {
+  .advanced-panel summary small,
+  .platform-config-head small {
     text-align: left;
   }
 
