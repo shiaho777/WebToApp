@@ -37,6 +37,8 @@
     'hero.urlPlaceholder': 'Enter a website link',
     'hero.startBtn': 'Get started',
     'stats.generated': 'apps generated',
+    'stats.downloads': 'downloads',
+    'stats.views': 'page views',
     'stats.platforms': 'supported platforms',
     'stats.recipes': 'shared recipes',
 
@@ -241,6 +243,8 @@
     'hero.urlPlaceholder': '输入网站链接',
     'hero.startBtn': '开始创建',
     'stats.generated': '个应用已生成',
+    'stats.downloads': '次下载',
+    'stats.views': '次浏览',
     'stats.platforms': '个支持平台',
     'stats.recipes': '共享配方',
 

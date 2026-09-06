@@ -137,7 +137,6 @@ http_client = httpx.AsyncClient(
     timeout=30.0,
     headers={"User-Agent": "WebToApp/1.0 (+https://github.com/)"},
 )
-SUPPORTED_PLATFORM_COUNT = 5
 DISTILL_WORKER_COUNT = config.distill_worker_count()
 RECIPE_CACHE_SIZE = config.recipe_cache_size()
 DISTILL_TASK_TTL_SECONDS = 6 * 60 * 60
@@ -1130,11 +1129,11 @@ async def popular_recipes():
 @app.get("/api/stats")
 async def homepage_stats():
     app_count = sum(1 for _ in APPS_DIR.glob("*/recipe.json"))
-    recipe_count = len(recipes.get_popular())
+    traffic = history_store.traffic_totals()
     return {
         "generatedApps": app_count,
-        "supportedPlatforms": SUPPORTED_PLATFORM_COUNT,
-        "sharedRecipes": recipe_count,
+        "downloads": traffic["downloads"],
+        "views": traffic["views"],
     }
 
 

@@ -658,3 +658,31 @@ class HistoryStore:
             apps = self._conn.execute("SELECT COUNT(*) AS c FROM apps").fetchone()["c"]
             devices = self._conn.execute("SELECT COUNT(*) AS c FROM devices").fetchone()["c"]
             return {"backend": "sqlite", "apps": apps, "devices": devices, "db_path": str(self.db_path)}
+
+    def traffic_totals(self) -> dict:
+        """Homepage counters across all apps (flushes the pending buffer first).
+
+        views: pure page views (landing + install + pwa + launch channels).
+        downloads: per-platform download events summed from downloads_json.
+        Both cover surviving apps only: the 30-day retention purge deletes an
+        app's visits row along with the app itself.
+        """
+        with self._lock:
+            self._flush_visits_locked()
+            row = self._conn.execute(
+                "SELECT COALESCE(SUM(landing + install + pwa + launch), 0) AS views FROM visits"
+            ).fetchone()
+            views = int(row["views"] or 0)
+            downloads = 0
+            for (blob,) in self._conn.execute("SELECT downloads_json FROM visits"):
+                try:
+                    data = json.loads(blob or "{}")
+                except Exception:
+                    continue
+                if isinstance(data, dict):
+                    downloads += sum(
+                        int(value or 0)
+                        for value in data.values()
+                        if isinstance(value, (int, float))
+                    )
+            return {"views": views, "downloads": downloads}
