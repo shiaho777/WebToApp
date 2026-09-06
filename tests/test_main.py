@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional
 
+from fastapi.testclient import TestClient
+
 from server import main
 
 
@@ -80,3 +82,22 @@ class MainHelpersTests(unittest.TestCase):
                 main.RECIPE_CACHE_SIZE = original_cache_size
                 with main._recipe_cache_lock:
                     main._recipe_cache.clear()
+
+
+class EntryCacheHeaderTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(main.app)
+
+    def test_root_html_must_revalidate(self):
+        # Stale entry HTML + fresh ?v= assets inside it = users stranded on
+        # old UI talking to a new API (all-zero stats). no-cache forces a
+        # cheap 304 revalidation instead of heuristic caching.
+        for path in ("/", "/index.html"):
+            resp = self.client.get(path)
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.headers.get("cache-control"), "no-cache")
+
+    def test_versioned_assets_stay_long_cached(self):
+        resp = self.client.get("/css/style.css")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("max-age=86400", resp.headers.get("cache-control", ""))

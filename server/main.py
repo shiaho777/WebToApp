@@ -107,7 +107,14 @@ async def add_cache_headers(request: Request, call_next):
     existing = response.headers.get("cache-control")
     if existing:
         return response
-    if path.startswith(_LONG_CACHE_PREFIXES) or path.endswith(_LONG_CACHE_SUFFIXES):
+    if path in ("/", "/index.html"):
+        # Entry HTML must revalidate on every load. All frontend upgrades
+        # ride on ?v= cache-busters *inside* this file, so a heuristically
+        # cached copy strands users on stale UI talking to a new API
+        # (all-zero stats, missing panels). StaticFiles emits ETag and
+        # Last-Modified, so this costs a cheap 304, not a full download.
+        response.headers["Cache-Control"] = "no-cache"
+    elif path.startswith(_LONG_CACHE_PREFIXES) or path.endswith(_LONG_CACHE_SUFFIXES):
         # 1 day fresh, 7 days stale-while-revalidate. Hashed query strings
         # (?v=...) used in index.html keep these effectively immutable.
         response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
