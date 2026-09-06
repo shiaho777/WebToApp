@@ -64,6 +64,20 @@ class HistoryStoreSqliteTests(unittest.TestCase):
             self.assertEqual([i["app_id"] for i in items][:2], ["app2", "app1"])
             self.assertEqual(store.stats()["apps"], 2)
 
+    def test_traffic_totals_splits_views_and_downloads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HistoryStore(Path(tmp) / "_history.json")
+            store.record_visit("app1", "landing")
+            store.record_visit("app1", "landing")
+            store.record_visit("app1", "download:android")
+            store.record_visit("app2", "install")
+            store.record_visit("app2", "download:ios")
+            store.record_visit("app2", "download:ios")
+            totals = store.traffic_totals()
+            # Pure page views only; download events counted separately.
+            self.assertEqual(totals["views"], 3)
+            self.assertEqual(totals["downloads"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()

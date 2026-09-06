@@ -89,8 +89,8 @@
       const stats = await res.json();
       const mappings = [
         ['stat-generated-apps', stats.generatedApps],
-        ['stat-supported-platforms', stats.supportedPlatforms],
-        ['stat-shared-recipes', stats.sharedRecipes],
+        ['stat-downloads', stats.downloads],
+        ['stat-views', stats.views],
       ];
       mappings.forEach(([id, value]) => {
         const el = document.getElementById(id);
