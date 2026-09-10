@@ -1379,17 +1379,16 @@ DOWNLOAD_TYPES = {
 
 @app.get("/a/{app_id}")
 async def serve_download_page(app_id: str, request: Request):
-    """Serve the download landing page."""
+    """Serve the download landing page.
+
+    Visits are counted but never attached to the visitor's history —
+    history is 'apps generated on this device' (see #67: market visitors
+    were inheriting other people's apps, which also granted them
+    device-ownership over apps they never built)."""
     app_dir = APPS_DIR / app_id
     recipe_path = app_dir / "recipe.json"
     if not recipe_path.exists():
         raise HTTPException(404, "App not found")
-    device_fingerprint = _device_fingerprint(request)
-    if device_fingerprint:
-        try:
-            history_store.attach_app(device_fingerprint, app_id)
-        except Exception:
-            pass
     history_store.record_visit(app_id, "landing")
     page_path = app_dir / "page.html"
     if page_path.exists():
