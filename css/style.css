@@ -262,7 +262,7 @@ section {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 430px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 22px;
   /* Panels have very different heights (short analysis summary vs long
      config form). The grid default `stretch` forced the short panel to
@@ -356,10 +356,9 @@ section {
 #config-panel .config-grid,
 #config-panel .feature-grid,
 #config-panel .advanced-grid {
-  /* The config column is only ~430px wide: a 2-col feature-grid squeezes
-     each card to ~200px and wraps Chinese copy one phrase per line (see
-     screenshot). Stack the feature cards full-width like every other
-     config section. */
+  /* Full-width stacked rows read better than a 2-col split at this column
+     width: the feature cards keep their copy on 1-2 lines instead of
+     wrapping one phrase per line (see screenshot). */
   grid-template-columns: 1fr;
 }
 
