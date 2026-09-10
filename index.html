@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260909-hist2">
-  <script src="js/i18n.js?v=20260909-hist2"></script>
-  <script src="js/i18n.strings.js?v=20260909-hist2"></script>
+  <link rel="stylesheet" href="css/style.css?v=20260910-market1">
+  <script src="js/i18n.js?v=20260910-market1"></script>
+  <script src="js/i18n.strings.js?v=20260910-market1"></script>
 </head>
 <body>
   <header id="nav">
@@ -320,6 +320,33 @@
               </div>
             </div>
 
+            <div class="visibility-row">
+              <label class="visibility-control">
+                <span class="visibility-label" data-i18n="config.visibilityLabel">Link visibility</span>
+                <div class="source-mode visibility-toggle" role="group" aria-label="Link visibility">
+                  <button id="visibility-private-btn" class="mode-btn active" type="button" data-i18n="config.visibilityPrivate">Private</button>
+                  <button id="visibility-public-btn" class="mode-btn" type="button" data-i18n="config.visibilityPublic">Public</button>
+                </div>
+                <small class="field-note" data-i18n="config.visibilityNote">Private links work for anyone who has the link but are never listed. Public links appear in the app market.</small>
+              </label>
+              <div class="field field-full">
+                <span data-i18n="config.tagsLabel">Tags (required)</span>
+                <div class="tags-picker" id="tags-picker">
+                  <div class="tags-builtins" role="group" aria-label="Built-in tags">
+                    <button type="button" class="tag-chip" data-tag="tools" data-i18n="tags.tools">Tools</button>
+                    <button type="button" class="tag-chip" data-tag="games" data-i18n="tags.games">Games</button>
+                    <button type="button" class="tag-chip" data-tag="social" data-i18n="tags.social">Social</button>
+                    <button type="button" class="tag-chip" data-tag="news" data-i18n="tags.news">News</button>
+                    <button type="button" class="tag-chip" data-tag="entertainment" data-i18n="tags.entertainment">Entertainment</button>
+                  </div>
+                  <div class="tags-custom-row">
+                    <input id="tag-custom-input" type="text" maxlength="24" data-i18n-placeholder="config.tagsCustomPlaceholder" placeholder="Custom tag, press Enter">
+                  </div>
+                </div>
+                <small class="field-note" data-i18n="config.tagsNote">Pick at least one tag — 5 built-ins or type your own. Tags show on the app page and in the market.</small>
+              </div>
+            </div>
+
             <button id="generate-btn" class="btn-primary" type="button" data-i18n="config.generateBtn">Generate app</button>
             <small class="field-note create-note" data-i18n="config.retentionNote">A generated app link is cleaned up automatically after 30 days with no visits, to avoid holding system resources long-term.</small>
           </div>
@@ -406,8 +433,43 @@
       </div>
     </section>
 
+    <!-- ===== PUBLIC MARKET ===== -->
+    <section id="market-section">
+      <div class="market-shell panel">
+        <div class="market-head">
+          <div>
+            <p class="history-kicker" data-i18n="market.kicker">Market / Public links</p>
+            <h2 data-i18n="market.title">Public app market</h2>
+            <p class="history-sub" data-i18n="market.sub">Apps published by their creators as public links. Search, filter by tag, and install any of them.</p>
+          </div>
+          <div class="market-toolbar">
+            <input id="market-search" class="market-search" type="search" data-i18n-placeholder="market.searchPlaceholder" placeholder="Search apps..." autocomplete="off">
+            <select id="market-sort" class="market-sort" aria-label="Sort">
+              <option value="downloads" data-i18n="market.sortDownloads">Most downloads</option>
+              <option value="visits" data-i18n="market.sortVisits">Most visits</option>
+              <option value="newest" data-i18n="market.sortNewest">Newest</option>
+            </select>
+          </div>
+        </div>
+        <div class="market-tabs" role="tablist" aria-label="Market tags">
+          <button class="market-tab active" type="button" data-market-tag="" data-i18n="market.tabAll">All</button>
+          <button class="market-tab" type="button" data-market-tag="tools" data-i18n="tags.tools">Tools</button>
+          <button class="market-tab" type="button" data-market-tag="games" data-i18n="tags.games">Games</button>
+          <button class="market-tab" type="button" data-market-tag="social" data-i18n="tags.social">Social</button>
+          <button class="market-tab" type="button" data-market-tag="news" data-i18n="tags.news">News</button>
+          <button class="market-tab" type="button" data-market-tag="entertainment" data-i18n="tags.entertainment">Entertainment</button>
+        </div>
+        <div class="market-body">
+          <div id="market-empty" class="history-empty hidden">
+            <p data-i18n="market.empty">No public apps here yet. Publish one of yours from the build history.</p>
+          </div>
+          <div id="market-list" class="market-list"></div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <script src="js/app.v5.js?v=20260909-hist2"></script>
+  <script src="js/app.v5.js?v=20260910-market1"></script>
 </body>
 </html>

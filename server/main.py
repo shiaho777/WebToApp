@@ -422,6 +422,11 @@ class HistoryBulkDeletePayload(BaseModel):
     app_ids: List[str] = []
 
 
+class VisibilityPayload(BaseModel):
+    visibility: str
+    edit_token: str = ""
+
+
 # --- API Routes ---
 @app.post("/api/analyze")
 async def analyze_url(req: AnalyzeRequest):
@@ -1269,6 +1274,46 @@ async def delete_history_item(app_id: str, request: Request):
 
 
 HISTORY_BULK_DELETE_MAX = 500
+
+
+@app.get("/api/market")
+def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort: str = "downloads"):
+    if sort not in ("downloads", "visits", "newest"):
+        sort = "downloads"
+    items = history_store.list_public_apps(tag=tag, search=search, sort=sort)
+    for item in items:
+        recipe = item.get("recipe") or {}
+        recipe.pop("edit_token", None)
+        item["recipe"] = recipe
+    return {"items": items, "sort": sort}
+
+
+@app.post("/api/history/{app_id}/visibility")
+def set_history_visibility(app_id: str, payload: VisibilityPayload, request: Request):
+    # Ownership check: the edit_token minted at build time is the authority —
+    # a device fingerprint alone is not proof (see the recover leak in #59).
+    recipe_path = APPS_DIR / app_id / "recipe.json"
+    if not recipe_path.exists():
+        raise HTTPException(404, "App not found")
+    visibility = payload.visibility if payload.visibility in ("public", "private") else None
+    if not visibility:
+        raise HTTPException(400, "Invalid visibility")
+    try:
+        stored = json.loads(recipe_path.read_text())
+    except Exception:
+        raise HTTPException(500, "Corrupt recipe")
+    expected = str(stored.get("edit_token") or "")
+    device_fingerprint = _device_fingerprint(request)
+    owner = device_fingerprint and history_store.device_owns_app(device_fingerprint, app_id)
+    if not (owner or (expected and payload.edit_token == expected)):
+        raise HTTPException(403, "Not the app owner")
+    if visibility == "public" and not (stored.get("tags") or []):
+        raise HTTPException(400, "Public apps need at least one tag")
+    if not history_store.set_app_visibility(app_id, visibility, stored.get("tags")):
+        raise HTTPException(500, "Update failed")
+    stored["visibility"] = visibility
+    recipe_path.write_text(json.dumps(stored, ensure_ascii=False))
+    return {"app_id": app_id, "visibility": visibility, "history": _history_payload(request)}
 
 
 @app.post("/api/history/delete-bulk")

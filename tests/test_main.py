@@ -173,3 +173,105 @@ class HistoryBulkDeleteTests(unittest.TestCase):
         # recover handler exists anymore.
         resp = self.client.post("/api/history/recover", cookies=self._cookies())
         self.assertIn(resp.status_code, (404, 405))
+
+
+class MarketAndVisibilityTests(unittest.TestCase):
+    """Public/private visibility + tags + market listing (issue #61)."""
+
+    FP = "market-test-fp"
+
+    def setUp(self):
+        self.client = TestClient(main.app)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.apps_dir = Path(self._tmp.name)
+        self.original_apps_dir = main.APPS_DIR
+        self.original_store = main.history_store
+        main.APPS_DIR = self.apps_dir
+        from server.history_store import HistoryStore
+        main.history_store = HistoryStore(self.apps_dir / "_history.json")
+
+    def tearDown(self):
+        main.APPS_DIR = self.original_apps_dir
+        main.history_store = self.original_store
+        self._tmp.cleanup()
+
+    def _build(self, app_id, visibility, tags):
+        (self.apps_dir / app_id).mkdir(parents=True, exist_ok=True)
+        recipe = {
+            "id": app_id, "name": f"App {app_id}", "url": f"https://{app_id}.test",
+            "visibility": visibility, "tags": tags, "edit_token": f"tok-{app_id}",
+        }
+        (self.apps_dir / app_id / "recipe.json").write_text(json.dumps(recipe))
+        main.history_store.record_build(self.FP, recipe, f"/a/{app_id}", None)
+
+    def _cookies(self):
+        return {"webtoapp_device_fingerprint": self.FP}
+
+    def test_market_lists_only_public_apps(self):
+        self._build("pub1", "public", ["tools"])
+        self._build("priv1", "private", ["tools"])
+        resp = self.client.get("/api/market")
+        self.assertEqual(resp.status_code, 200)
+        ids = [item["app_id"] for item in resp.json()["items"]]
+        self.assertEqual(ids, ["pub1"])
+
+    def test_market_tag_filter_and_sort(self):
+        self._build("toolapp", "public", ["tools"])
+        self._build("gameapp", "public", ["games"])
+        resp = self.client.get("/api/market", params={"tag": "games"})
+        ids = [item["app_id"] for item in resp.json()["items"]]
+        self.assertEqual(ids, ["gameapp"])
+        resp = self.client.get("/api/market", params={"sort": "newest"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["sort"], "newest")
+
+    def test_market_search_matches_name(self):
+        self._build("findme", "public", ["tools"])
+        self._build("other", "public", ["tools"])
+        resp = self.client.get("/api/market", params={"search": "findme"})
+        ids = [item["app_id"] for item in resp.json()["items"]]
+        self.assertEqual(ids, ["findme"])
+
+    def test_market_never_leaks_edit_token(self):
+        self._build("pubtok", "public", ["tools"])
+        item = self.client.get("/api/market").json()["items"][0]
+        self.assertNotIn("edit_token", item.get("recipe") or {})
+
+    def test_visibility_toggle_requires_ownership(self):
+        self._build("owned", "private", ["tools"])
+        # Wrong token, wrong device -> 403
+        resp = self.client.post(
+            "/api/history/owned/visibility",
+            json={"visibility": "public", "edit_token": "wrong"},
+            cookies={"webtoapp_device_fingerprint": "someone-else"},
+        )
+        self.assertEqual(resp.status_code, 403)
+        # Owner device -> 200 and app becomes public
+        resp = self.client.post(
+            "/api/history/owned/visibility",
+            json={"visibility": "public", "edit_token": ""},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.status_code, 200)
+        ids = [i["app_id"] for i in self.client.get("/api/market").json()["items"]]
+        self.assertEqual(ids, ["owned"])
+        # Back to private -> disappears from market
+        resp = self.client.post(
+            "/api/history/owned/visibility",
+            json={"visibility": "private", "edit_token": "tok-owned"},
+            cookies={"webtoapp_device_fingerprint": "someone-else"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(self.client.get("/api/market").json()["items"], [])
+        # recipe.json visibility synced too
+        stored = json.loads((self.apps_dir / "owned" / "recipe.json").read_text())
+        self.assertEqual(stored["visibility"], "private")
+
+    def test_public_requires_tags(self):
+        self._build("notag", "private", [])
+        resp = self.client.post(
+            "/api/history/notag/visibility",
+            json={"visibility": "public", "edit_token": "tok-notag"},
+            cookies={"webtoapp_device_fingerprint": "someone-else"},
+        )
+        self.assertEqual(resp.status_code, 400)
