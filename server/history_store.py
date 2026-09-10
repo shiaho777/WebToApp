@@ -94,6 +94,16 @@ class HistoryStore:
                 CREATE INDEX IF NOT EXISTS idx_visits_last_visited_at ON visits(last_visited_at);
                 """
             )
+            try:
+                self._conn.executescript(
+                    """
+                    ALTER TABLE apps ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private';
+                    ALTER TABLE apps ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]';
+                    """
+                )
+            except Exception:
+                # Columns already exist from a previous run.
+                pass
 
     def _migrate_json_if_needed(self) -> None:
         with self._lock:
@@ -217,6 +227,8 @@ class HistoryStore:
             "public_path": public_path,
             "runtime_url": runtime_url or recipe.get("url") or "",
             "color": recipe.get("color") or "#7c3aed",
+            "visibility": recipe.get("visibility") or "private",
+            "tags": [str(tag) for tag in (recipe.get("tags") or [])],
             "recipe": safe_recipe,
             "created_at": _utc_now(),
             "updated_at": _utc_now(),
@@ -323,8 +335,9 @@ class HistoryStore:
             self._conn.execute(
                 """
                 INSERT OR REPLACE INTO apps(
-                    app_id, name, target_url, public_path, runtime_url, color, recipe_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    app_id, name, target_url, public_path, runtime_url, color, recipe_json, created_at, updated_at,
+                    visibility, tags_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     app_id,
@@ -336,6 +349,8 @@ class HistoryStore:
                     json.dumps(snapshot.get("recipe") or {}, ensure_ascii=False),
                     created_at,
                     now,
+                    snapshot.get("visibility") or "private",
+                    json.dumps(snapshot.get("tags") or [], ensure_ascii=False),
                 ),
             )
             if device_fingerprint:
@@ -483,6 +498,14 @@ class HistoryStore:
             recipe = json.loads(row["recipe_json"] or "{}")
         except Exception:
             recipe = {}
+        # Membership checks via keys() so rows from a pre-visibility schema
+        # (e.g. hand-built in tests or very old DBs) don't KeyError.
+        keys = row.keys()
+        try:
+            raw_tags = row["tags_json"] if "tags_json" in keys else "[]"
+            tags = json.loads(raw_tags or "[]")
+        except Exception:
+            tags = []
         return {
             "app_id": row["app_id"],
             "name": row["name"] or row["app_id"],
@@ -490,6 +513,8 @@ class HistoryStore:
             "public_path": row["public_path"] or f"/a/{row['app_id']}",
             "runtime_url": row["runtime_url"] or row["target_url"] or "",
             "color": row["color"] or "#7c3aed",
+            "visibility": (row["visibility"] if "visibility" in keys else None) or "private",
+            "tags": [str(tag) for tag in tags],
             "recipe": recipe,
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
@@ -609,6 +634,85 @@ class HistoryStore:
             filtered = [value for value in previous if value not in removed_set]
             self._set_device_app_ids_locked(device_fingerprint, filtered, _utc_now())
             return [app_id for app_id in wanted if app_id in removed_set]
+
+    def device_owns_app(self, device_fingerprint: Optional[str], app_id: str) -> bool:
+        if not device_fingerprint or not app_id:
+            return False
+        with self._lock:
+            self._flush_visits_locked()
+            return app_id in self._get_device_app_ids_locked(device_fingerprint)
+
+    def get_app_visibility(self, app_id: str) -> Optional[dict]:
+        with self._lock:
+            self._flush_visits_locked()
+            row = self._conn.execute("SELECT * FROM apps WHERE app_id = ?", (app_id,)).fetchone()
+            if not row:
+                return None
+            snapshot = self._app_row_to_snapshot(row)
+            return {"visibility": snapshot["visibility"], "tags": snapshot["tags"]}
+
+    def set_app_visibility(self, app_id: str, visibility: str, tags: Optional[List[str]] = None) -> bool:
+        """Flip public/private for an app, optionally refreshing its tags.
+        Updates both the apps columns and the embedded recipe_json so the
+        download page (which renders tags from recipe.json) stays in sync."""
+        if visibility not in ("public", "private"):
+            return False
+        with self._lock:
+            self._flush_visits_locked()
+            row = self._conn.execute("SELECT * FROM apps WHERE app_id = ?", (app_id,)).fetchone()
+            if not row:
+                return False
+            try:
+                recipe = json.loads(row["recipe_json"] or "{}")
+            except Exception:
+                recipe = {}
+            recipe["visibility"] = visibility
+            if tags is not None:
+                recipe["tags"] = [str(tag) for tag in tags]
+            new_tags = tags if tags is not None else json.loads(row["tags_json"] or "[]")
+            self._conn.execute(
+                "UPDATE apps SET visibility = ?, tags_json = ?, recipe_json = ?, updated_at = ? WHERE app_id = ?",
+                (
+                    visibility,
+                    json.dumps([str(tag) for tag in (new_tags or [])], ensure_ascii=False),
+                    json.dumps(recipe, ensure_ascii=False),
+                    _utc_now(),
+                    app_id,
+                ),
+            )
+            return True
+
+    def list_public_apps(self, tag: Optional[str] = None, search: Optional[str] = None,
+                         sort: str = "downloads", limit: int = 60) -> List[dict]:
+        """Market listing: public apps only, with visit/download stats.
+        sort: downloads | visits | newest."""
+        with self._lock:
+            self._flush_visits_locked()
+            rows = self._conn.execute("SELECT * FROM apps WHERE visibility = 'public'").fetchall()
+            items = []
+            for row in rows:
+                snapshot = self._app_row_to_snapshot(row)
+                visits = self._conn.execute("SELECT * FROM visits WHERE app_id = ?", (row["app_id"],)).fetchone()
+                stats = self._visit_row_to_stats(visits)
+                snapshot["visit_count"] = stats["total"]
+                snapshot["download_count"] = sum(int(v or 0) for v in (stats.get("downloads") or {}).values())
+                snapshot["created_at"] = row["created_at"]
+                items.append(snapshot)
+        needle = (search or "").strip().lower()
+        if needle:
+            items = [i for i in items if needle in (i["name"] or "").lower() or needle in (i["target_url"] or "").lower()]
+        if tag:
+            items = [i for i in items if tag in (i.get("tags") or [])]
+        sort_key = {
+            "downloads": lambda i: (i["download_count"], i["visit_count"]),
+            "visits": lambda i: (i["visit_count"], i["download_count"]),
+            "newest": lambda i: i.get("created_at") or "",
+        }.get(sort, "downloads")
+        if sort == "newest":
+            items.sort(key=sort_key, reverse=True)
+        else:
+            items.sort(key=sort_key, reverse=True)
+        return items[:limit]
 
     def list_expired_apps(self, cutoff_iso: str) -> List[dict]:
         cutoff = _parse_utc(cutoff_iso)

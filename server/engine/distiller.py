@@ -118,6 +118,8 @@ class Distiller:
             "android_version_code": version_code,
             "android_version_name": version_name,
             "android_package_prefix": package_prefix,
+            "visibility": self._visibility(options),
+            "tags": self._tags(options),
             "_custom_icon_data_url": self._custom_icon_data_url(options),
             "custom_icon_uploaded": bool(self._custom_icon_data_url(options)),
             "edit_token": self._edit_token(app_id),
@@ -193,6 +195,25 @@ class Distiller:
     def _custom_icon_data_url(self, options):
         raw = options.get("custom-icon-data-url") or options.get("custom_icon_data_url") or ""
         return str(raw).strip()
+
+    def _visibility(self, options):
+        raw = str(options.get("visibility") or "private").strip().lower()
+        return raw if raw in ("public", "private") else "private"
+
+    def _tags(self, options):
+        raw = options.get("tags")
+        if isinstance(raw, str):
+            raw = [part.strip() for part in raw.split(",")]
+        if not isinstance(raw, (list, tuple)):
+            return []
+        cleaned = []
+        seen = set()
+        for tag in raw:
+            value = re.sub(r"\s+", " ", str(tag or "").strip())[:24]
+            if value and value.lower() not in seen:
+                seen.add(value.lower())
+                cleaned.append(value)
+        return cleaned[:5]
 
     def _feature_options(self, options):
         raw = options or {}
@@ -784,6 +805,14 @@ class Distiller:
         dl_i18n = self._download_page_translations()
         dl_i18n_json = json.dumps(dl_i18n, ensure_ascii=False)
         safe_name = (r["name"] or "").replace("\\", "\\\\").replace('"', '\\"')
+        tags = [str(tag).strip() for tag in (r.get("tags") or []) if str(tag).strip()][:5]
+        tags_row = (
+            '<div class="meta-row tags-row">' + "".join(
+                f'<span class="meta-chip meta-chip-tag">{tag.replace("<", "&lt;").replace(">", "&gt;")}</span>'
+                for tag in tags
+            ) + "</div>"
+            if tags else ""
+        )
         html = f"""{self.DOWNLOAD_PAGE_MARKER}
 <!DOCTYPE html>
 <html lang="en">
@@ -832,6 +861,8 @@ a{{color:inherit;text-decoration:none}}
 .title{{max-width:14ch;font-family:'Spectral','Noto Serif SC','Songti SC',serif;font-size:clamp(2.2rem,4.2vw,3.4rem);font-weight:600;line-height:1.1;letter-spacing:0}}
 .meta-row{{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}}
 .meta-chip{{display:inline-flex;align-items:center;padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:transparent;font-size:.86rem;color:var(--ink-soft)}}
+.meta-chip-tag{{border-color:rgba(201,121,83,.4);background:rgba(201,121,83,.1);color:#8a4b2d;font-weight:700}}
+.tags-row{{margin-top:14px}}
 .desc{{max-width:30rem;margin-top:20px;font-size:1rem;line-height:1.78;color:var(--ink-soft)}}
 .source{{margin-top:16px;font-size:.9rem;color:rgba(24,20,18,.48);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}}
 .hero-panel{{display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-radius:16px;background:var(--surface-strong);overflow:hidden}}
@@ -903,6 +934,7 @@ a{{color:inherit;text-decoration:none}}
     <section class="hero-copy">
       <div class="eyebrow" data-i18n="eyebrow">INSTALLATION / DOWNLOAD</div>
       <h1 class="title">{r['name']}</h1>
+      {tags_row}
       <div class="meta-row">
         <span class="meta-chip" data-i18n="chipPlatforms">5 platforms ready</span>
         <span class="meta-chip" data-i18n="chipIcons">Real icons built in</span>

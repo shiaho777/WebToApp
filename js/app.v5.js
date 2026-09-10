@@ -104,6 +104,14 @@
   const historyImportBtn = document.getElementById('history-import-btn');
   const historyImportInput = document.getElementById('history-import-input');
   const historyManageBtn = document.getElementById('history-manage-btn');
+  const visibilityPrivateBtn = document.getElementById('visibility-private-btn');
+  const visibilityPublicBtn = document.getElementById('visibility-public-btn');
+  const tagsPicker = document.getElementById('tags-picker');
+  const tagCustomInput = document.getElementById('tag-custom-input');
+  const marketList = document.getElementById('market-list');
+  const marketEmpty = document.getElementById('market-empty');
+  const marketSearchInput = document.getElementById('market-search');
+  const marketSortSelect = document.getElementById('market-sort');
   const historySelectBar = document.getElementById('history-select-bar');
   const historySelectAll = document.getElementById('history-select-all');
   const historySelectCount = document.getElementById('history-select-count');
@@ -129,6 +137,9 @@
   let lastHistoryItems = [];
   let historySelectMode = false;
   const historySelected = new Set();
+  let currentVisibility = 'private';
+  const selectedTags = new Set();
+  const editTokens = {};
   let restoreIconButtonLabel = '';
   let deviceFingerprint = '';
   const DEVICE_STORAGE_KEY = 'webtoapp-device-fingerprint-v1';
@@ -497,6 +508,9 @@
       const htmlBadge = isHtmlApp
         ? `<span class="history-badge-html">${escapeHtml(t('history.badgeHtml'))}</span>`
         : '';
+      const isPublic = item.visibility === 'public';
+      const visibilityBtnLabel = isPublic ? t('history.visibilityPublic') : t('history.visibilityPrivate');
+      const visibilityBtn = `<button class="history-visibility${isPublic ? ' is-public' : ''}" type="button" data-visibility-toggle="${escapeHtml(item.app_id || '')}" title="${escapeHtml(t('history.visibilityHint'))}">${escapeHtml(visibilityBtnLabel)}</button>`;
       card.className = 'history-card';
       card.classList.toggle('selected', historySelected.has(item.app_id || ''));
       card._historyItem = item;
@@ -540,6 +554,7 @@
           </div>
         </div>
         <div class="history-actions">
+          ${visibilityBtn}
           <button class="history-action primary" type="button" data-open="${escapeHtml(publicPath)}">${escapeHtml(t('history.openPage'))}</button>
           <button class="history-action" type="button" data-regenerate="${escapeHtml(item.app_id || '')}">${escapeHtml(t('history.regenerate'))}</button>
           <button class="history-action" type="button" data-edit="${escapeHtml(item.app_id || '')}">${escapeHtml(t('history.editForm'))}</button>
@@ -566,6 +581,80 @@
     }
   }
 
+  // --- Public market ---
+  let marketSearchTimer = null;
+
+  function renderMarket(items) {
+    const list = Array.isArray(items) ? items : [];
+    marketList.innerHTML = '';
+    marketEmpty.classList.toggle('hidden', list.length > 0);
+    const fragment = document.createDocumentFragment();
+    list.forEach((item) => {
+      const publicPath = getAbsoluteUrl(item.public_path || `/a/${item.app_id}`);
+      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 5) : [];
+      const tagChips = tags.map((tag) => `<span class="market-tag">${escapeHtml(tag)}</span>`).join('');
+      const iconHtml = item.icon_url
+        ? `<img class="market-card-icon" src="${escapeHtml(item.icon_url)}" alt="" loading="lazy">`
+        : `<div class="market-card-icon" aria-hidden="true"></div>`;
+      const card = document.createElement('article');
+      card.className = 'market-card';
+      card.innerHTML = `
+        <div class="market-card-top">
+          ${iconHtml}
+          <div style="min-width:0">
+            <div class="market-card-name">${escapeHtml(item.name || item.app_id)}</div>
+            <div class="market-card-url">${escapeHtml(item.target_url || '')}</div>
+          </div>
+        </div>
+        ${tagChips ? `<div class="market-card-tags">${tagChips}</div>` : ''}
+        <div class="market-card-meta">
+          <span>${escapeHtml(t('market.visits', { n: Number(item.visit_count || 0).toLocaleString(locale()) }))}</span>
+          <span>${escapeHtml(t('market.downloads', { n: Number(item.download_count || 0).toLocaleString(locale()) }))}</span>
+        </div>
+        <button class="market-card-open" type="button" data-open="${escapeHtml(publicPath)}">${escapeHtml(t('market.open'))}</button>
+      `;
+      fragment.appendChild(card);
+    });
+    marketList.appendChild(fragment);
+  }
+
+  async function loadMarket() {
+    const activeTab = document.querySelector('.market-tab.active');
+    const tag = activeTab ? activeTab.dataset.marketTag : '';
+    const params = new URLSearchParams();
+    if (tag) params.set('tag', tag);
+    if (marketSearchInput.value.trim()) params.set('search', marketSearchInput.value.trim());
+    params.set('sort', marketSortSelect.value || 'downloads');
+    try {
+      const res = await fetch(`/api/market?${params.toString()}`);
+      if (!res.ok) throw new Error('market failed');
+      const data = await res.json();
+      renderMarket(data.items || []);
+    } catch (_err) {
+      renderMarket([]);
+    }
+  }
+
+  marketList.addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-open]');
+    if (btn) window.open(btn.dataset.open, '_blank', 'noopener,noreferrer');
+  });
+
+  document.querySelectorAll('.market-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.market-tab').forEach((el) => el.classList.remove('active'));
+      tab.classList.add('active');
+      loadMarket();
+    });
+  });
+
+  marketSearchInput.addEventListener('input', () => {
+    if (marketSearchTimer) clearTimeout(marketSearchTimer);
+    marketSearchTimer = setTimeout(loadMarket, 250);
+  });
+
+  marketSortSelect.addEventListener('change', loadMarket);
+
   async function recoverHistoryFromPageContext() {
     const candidates = new Set();
     const currentLink = appLink && appLink.value ? appLink.value : '';
@@ -591,6 +680,7 @@
       recoverHistoryFromPageContext();
     }
   });
+  loadMarket();
 
   async function applyHistoryItemToForm(item) {
     const recipe = item.recipe || {};
@@ -657,6 +747,8 @@
     options['android-package-prefix'] = packagePrefix;
     if (customIconDataUrl) options['custom-icon-data-url'] = customIconDataUrl;
     Object.assign(options, collectFeatureOptions());
+    if (selectedTags.size > 0) options['tags'] = Array.from(selectedTags);
+    options['visibility'] = currentVisibility;
 
     let submitRes;
     if (inputMode === 'html') {
@@ -740,6 +832,7 @@
     }
     if (!data) throw new Error(t('err.generateTimeout'));
 
+    if (data.app_id && data.edit_token) editTokens[data.app_id] = data.edit_token;
     const installLink = `${location.origin}${data.url}`;
     appLink.value = installLink;
     previewUrl.textContent = installLink;
@@ -842,6 +935,49 @@
   urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && inputMode === 'url') startDistill(); });
   modeUrlBtn.addEventListener('click', () => setInputMode('url'));
   modeHtmlBtn.addEventListener('click', () => setInputMode('html'));
+
+  // --- Visibility + tags (build form) ---
+  function setVisibility(value) {
+    currentVisibility = value;
+    visibilityPrivateBtn.classList.toggle('active', value === 'private');
+    visibilityPublicBtn.classList.toggle('active', value === 'public');
+  }
+
+  function refreshTagChips() {
+    tagsPicker.querySelectorAll('.tag-chip').forEach((chip) => {
+      chip.classList.toggle('active', selectedTags.has(chip.dataset.tag));
+    });
+  }
+
+  visibilityPrivateBtn.addEventListener('click', () => setVisibility('private'));
+  visibilityPublicBtn.addEventListener('click', () => setVisibility('public'));
+
+  tagsPicker.addEventListener('click', (event) => {
+    const chip = event.target.closest('.tag-chip');
+    if (!chip) return;
+    const tag = chip.dataset.tag;
+    if (selectedTags.has(tag)) selectedTags.delete(tag); else selectedTags.add(tag);
+    refreshTagChips();
+  });
+
+  tagCustomInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const value = event.target.value.trim().replace(/\s+/g, ' ').slice(0, 24);
+    if (!value || selectedTags.has(value)) { event.target.value = ''; return; }
+    if (selectedTags.size >= 5) return;
+    selectedTags.add(value);
+    event.target.value = '';
+    if (!tagsPicker.querySelector(`.tag-chip[data-tag="${CSS.escape(value)}"]`)) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tag-chip';
+      btn.dataset.tag = value;
+      btn.textContent = value;
+      tagsPicker.querySelector('.tags-builtins').appendChild(btn);
+    }
+    refreshTagChips();
+  });
   htmlFileInput.addEventListener('change', () => {
     const file = htmlFileInput.files && htmlFileInput.files[0];
     if (!file) return;
@@ -1146,6 +1282,11 @@
   // --- Generate App ---
 
   generateBtn.addEventListener('click', async () => {
+    if (selectedTags.size === 0) {
+      alert(t('err.tagsRequired'));
+      tagsPicker.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
     generateBtn.textContent = t('config.generating');
     generateBtn.disabled = true;
 
@@ -1193,8 +1334,33 @@
       renderHistory(lastHistoryItems);
       return;
     }
-    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate]');
+    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate], [data-visibility-toggle]');
     if (!target) return;
+    if (target.dataset.visibilityToggle) {
+      const appId = target.dataset.visibilityToggle;
+      const current = item && item.visibility === 'public' ? 'public' : 'private';
+      const next = current === 'public' ? 'private' : 'public';
+      try {
+        target.disabled = true;
+        const res = await fetch(`/api/history/${encodeURIComponent(appId)}/visibility`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Device-Fingerprint': deviceFingerprint },
+          body: JSON.stringify({ visibility: next, edit_token: editTokens[appId] || '' }),
+        });
+        if (!res.ok) {
+          const detail = await res.json().catch(() => ({}));
+          throw new Error(detail.detail || 'visibility failed');
+        }
+        const data = await res.json();
+        renderHistory((data.history && data.history.items) || []);
+        loadMarket();
+      } catch (err) {
+        alert(err.message || t('err.visibilityRetry'));
+      } finally {
+        target.disabled = false;
+      }
+      return;
+    }
     if (target.dataset.open) {
       window.open(target.dataset.open, '_blank', 'noopener,noreferrer');
       return;
