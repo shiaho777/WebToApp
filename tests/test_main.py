@@ -275,3 +275,41 @@ class MarketAndVisibilityTests(unittest.TestCase):
             cookies={"webtoapp_device_fingerprint": "someone-else"},
         )
         self.assertEqual(resp.status_code, 400)
+
+
+class DownloadPageNoAttachTests(unittest.TestCase):
+    """GET /a/<id> must count a visit but never attach the app to the
+    visitor's history — market visitors were inheriting other people's
+    public apps (issue #67), which also granted false ownership."""
+
+    def setUp(self):
+        self.client = TestClient(main.app)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.apps_dir = Path(self._tmp.name)
+        self.original_apps_dir = main.APPS_DIR
+        self.original_store = main.history_store
+        main.APPS_DIR = self.apps_dir
+        from server.history_store import HistoryStore
+        main.history_store = HistoryStore(self.apps_dir / "_history.json")
+
+    def tearDown(self):
+        main.APPS_DIR = self.original_apps_dir
+        main.history_store = self.original_store
+        self._tmp.cleanup()
+
+    def test_visit_does_not_attach_to_history(self):
+        app_id = "pubapp1"
+        app_dir = self.apps_dir / app_id
+        app_dir.mkdir(parents=True)
+        (app_dir / "recipe.json").write_text(json.dumps({
+            "id": app_id, "name": "Foreign App", "url": "https://foreign.test",
+            "color": "#7c3aed", "visibility": "public", "tags": ["tools"],
+        }))
+        cookies = {"webtoapp_device_fingerprint": "visitor-fp"}
+        for _ in range(2):
+            resp = self.client.get(f"/a/{app_id}", cookies=cookies)
+            self.assertEqual(resp.status_code, 200)
+        items = main.history_store.list_history("visitor-fp", self.apps_dir)
+        self.assertEqual(items, [])
+        # Visits are still counted (market stats rely on them).
+        self.assertFalse(main.history_store.device_owns_app("visitor-fp", app_id))
