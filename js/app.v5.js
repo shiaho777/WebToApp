@@ -140,7 +140,7 @@
   let historyExpanded = false;
   const HISTORY_PREVIEW_COUNT = 5;
   const historySelected = new Set();
-  let currentVisibility = 'private';
+  let currentVisibility = 'public';
   const selectedTags = new Set();
   const editTokens = {};
   let restoreIconButtonLabel = '';
