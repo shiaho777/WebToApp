@@ -117,6 +117,7 @@
   const historySelectCount = document.getElementById('history-select-count');
   const historyDeleteSelectedBtn = document.getElementById('history-delete-selected-btn');
   const historyCancelSelectBtn = document.getElementById('history-cancel-select-btn');
+  const historyToggleBtn = document.getElementById('history-toggle-btn');
   const modeUrlBtn = document.getElementById('mode-url-btn');
   const modeHtmlBtn = document.getElementById('mode-html-btn');
   const urlInputWrap = document.getElementById('url-input-wrap');
@@ -136,6 +137,8 @@
   let restoreIconFileName = '';
   let lastHistoryItems = [];
   let historySelectMode = false;
+  let historyExpanded = false;
+  const HISTORY_PREVIEW_COUNT = 5;
   const historySelected = new Set();
   let currentVisibility = 'private';
   const selectedTags = new Set();
@@ -489,10 +492,14 @@
     historyEmpty.classList.toggle('hidden', list.length > 0);
     historyList.classList.toggle('selecting', historySelectMode);
     updateHistorySelectBar();
+    updateHistoryToggle(list.length);
     if (!list.length) return;
 
+    // Collapsed by default to keep the page short; selection mode always
+    // renders everything so bulk clean-up can reach every entry.
+    const visibleList = (historySelectMode || historyExpanded) ? list : list.slice(0, HISTORY_PREVIEW_COUNT);
     const fragment = document.createDocumentFragment();
-    list.forEach((item) => {
+    visibleList.forEach((item) => {
       const card = document.createElement('article');
       const publicPath = getAbsoluteUrl(item.public_path || `/a/${item.app_id}`);
       const targetUrl = item.target_url || '';
@@ -1405,6 +1412,19 @@
     historyDeleteSelectedBtn.disabled = historySelected.size === 0;
     historySelectAll.checked = total > 0 && historySelected.size === total;
   }
+
+  function updateHistoryToggle(total) {
+    const show = total > HISTORY_PREVIEW_COUNT && !historySelectMode;
+    historyToggleBtn.classList.toggle('hidden', !show);
+    historyToggleBtn.textContent = historyExpanded
+      ? t('history.showLess')
+      : t('history.showAll', { n: String(total) });
+  }
+
+  historyToggleBtn.addEventListener('click', () => {
+    historyExpanded = !historyExpanded;
+    renderHistory(lastHistoryItems);
+  });
 
   function setHistorySelectMode(on) {
     historySelectMode = on;

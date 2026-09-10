@@ -1221,6 +1221,14 @@ section {
   margin: 0;
 }
 
+.history-toggle-btn {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 240px;
+  margin: 18px auto 0;
+}
+
 .history-list {
   display: flex;
   flex-direction: column;
