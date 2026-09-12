@@ -234,3 +234,41 @@ class DistillerDesktopWindowTests(unittest.TestCase):
         self.assertEqual(
             distiller._desktop_window_flags({"windows-window-width": 1280}, "windows"), ""
         )
+
+
+class DistillerIconFallbackTests(unittest.TestCase):
+    def test_blocked_page_keeps_service_fallbacks_within_limit(self):
+        # Simulate a host the server cannot reach (e.g. foreign site behind
+        # the GFW): the page fetch returns nothing, so the candidate list
+        # falls back to well-known paths plus icon services. The services
+        # must survive the candidate-limit truncation or such sites never
+        # get an icon at all (issue #71).
+        distiller = Distiller()
+
+        def fake_fetch(url, timeout=8, use_cache=False):
+            return None
+
+        with patch.object(distiller, "_fetch_url_bytes", side_effect=fake_fetch):
+            candidates = distiller._collect_icon_candidates("https://example.com")
+        limit = distiller and 10  # matches the new default in config.icon_candidate_limit
+        head = candidates[:10]
+        self.assertIn("https://favicon.im/example.com", head)
+        self.assertIn("https://favicon.yandex.net/favicon/example.com", head)
+        self.assertIn("https://icons.duckduckgo.com/ip3/example.com.ico", head)
+        self.assertIn("https://www.google.com/s2/favicons?domain=example.com&sz=256", head)
+
+    def test_service_fallbacks_rank_below_page_icons(self):
+        # Reachable page with a declared icon: service mirrors must rank
+        # below the site's own candidates so we never prefer a third-party
+        # proxy over the real thing.
+        page_html = b'<link href="/apple-touch-icon.png" sizes="180x180" rel="apple-touch-icon">'
+        distiller = Distiller()
+
+        def fake_fetch(url, timeout=8, use_cache=False):
+            if url == "https://example.com":
+                return page_html
+            return None
+
+        with patch.object(distiller, "_fetch_url_bytes", side_effect=fake_fetch):
+            candidates = distiller._collect_icon_candidates("https://example.com")
+        self.assertEqual(candidates[0], "https://example.com/apple-touch-icon.png")
