@@ -138,10 +138,13 @@ def icon_fetch_timeout() -> float:
 
 
 def icon_candidate_limit() -> int:
+    # Default 10: a blocked-page host yields 6 well-known paths + 4 service
+    # fallbacks; a smaller limit truncates the services out of the race and
+    # foreign sites end up icon-less (see #71).
     try:
-        return max(2, min(12, int(os.environ.get("ICON_CANDIDATE_LIMIT", "6").strip() or "6")))
+        return max(2, min(14, int(os.environ.get("ICON_CANDIDATE_LIMIT", "10").strip() or "10")))
     except ValueError:
-        return 6
+        return 10
 
 
 def recipe_cache_size() -> int:

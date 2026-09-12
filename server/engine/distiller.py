@@ -562,10 +562,12 @@ class Distiller:
                 (200, "/favicon.ico"),
             ]:
                 scored.append((prio, base + path))
-        # Google s2 is the last-resort fallback and unreachable from CN
-        # networks (its 4 s connect timeout would stall every icon fetch).
-        # Try DuckDuckGo's icon service FIRST (anycast, works globally) and
-        # keep Google behind it for non-CN hosts as a second fallback.
+        # Third-party icon services as last-resort fallbacks. DuckDuckGo and
+        # Google s2 are both unreachable from CN networks, so two CN-reachable
+        # mirrors sit ahead of them — without these, foreign sites whose pages
+        # the CN server cannot fetch end up with no icon at all (#71).
+        scored.append((175, f"https://favicon.im/{parsed.netloc}"))
+        scored.append((165, f"https://favicon.yandex.net/favicon/{parsed.netloc}"))
         scored.append((150, f"https://icons.duckduckgo.com/ip3/{parsed.netloc}.ico"))
         scored.append((100, f"https://www.google.com/s2/favicons?domain={parsed.netloc}&sz=256"))
         seen = set()
