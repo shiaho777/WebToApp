@@ -16,6 +16,7 @@ Fallback strategy:
 3. If all else fails, emit the legacy ZIP fallback package.
 """
 
+import html
 import json
 import os
 import re
@@ -27,6 +28,7 @@ import tempfile
 import zipfile
 import zlib
 from pathlib import Path
+from urllib.parse import urlparse
 
 from server import config
 from server.engine import apk_v2_signer
@@ -1721,38 +1723,46 @@ class ApkBuilder:
         return None
 
     def build_fallback(self, output, url, name, icon_png=None, color="#000000"):
+        # All user-controlled values get context-appropriate encoding before
+        # they land in the package — same hardening as the generated pages.
+        name_esc = html.escape(str(name or ""), quote=True)
+        color_safe = str(color or "") if re.fullmatch(r"#[0-9A-Fa-f]{3,8}", str(color or "")) else "#000000"
+        parsed = urlparse(str(url or "").strip())
+        url_safe = str(url).strip() if parsed.scheme.lower() in ("http", "https") and parsed.netloc else "about:blank"
+        url_esc = html.escape(url_safe, quote=True)
+        dir_name = re.sub(r'[\\/:*?"<>|$`\'\[\]\x00-\x1f]', "_", str(name or "")).strip(" .")[:80] or "app"
         manifest = {
             "name": name,
             "short_name": name[:12],
-            "start_url": url,
+            "start_url": url_safe,
             "display": "fullscreen",
-            "background_color": color,
-            "theme_color": color,
+            "background_color": color_safe,
+            "theme_color": color_safe,
             "icons": [{"src": "icon.png", "sizes": "256x256", "type": "image/png"}] if icon_png else [],
         }
-        html = f"""<!DOCTYPE html>
+        html_doc = f"""<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="{color}">
+<meta name="theme-color" content="{color_safe}">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>{name}</title><link rel="manifest" href="manifest.json">
+<title>{name_esc}</title><link rel="manifest" href="manifest.json">
 <style>*{{margin:0}}html,body,iframe{{width:100%;height:100%;border:0;overflow:hidden}}</style>
 </head><body>
-<iframe src="{url}" allow="fullscreen"></iframe>
+<iframe src="{url_esc}" allow="fullscreen"></iframe>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');</script>
 </body></html>"""
         sw = "self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))});"
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as z:
-            z.writestr(f"{name}/index.html", html)
-            z.writestr(f"{name}/manifest.json", json.dumps(manifest, ensure_ascii=False))
-            z.writestr(f"{name}/sw.js", sw)
+            z.writestr(f"{dir_name}/index.html", html_doc)
+            z.writestr(f"{dir_name}/manifest.json", json.dumps(manifest, ensure_ascii=False))
+            z.writestr(f"{dir_name}/sw.js", sw)
             if icon_png:
-                z.writestr(f"{name}/icon.png", icon_png)
+                z.writestr(f"{dir_name}/icon.png", icon_png)
             z.writestr(
-                f"{name}/README.txt",
+                f"{dir_name}/README.txt",
                 f"【{name} — Android 安装指南】\n\n"
                 f"方法一：将此文件夹部署到任意 HTTPS 服务器，用 Chrome 打开后点击「添加到主屏幕」\n"
-                f"方法二：直接在浏览器中访问 {url}\n",
+                f"方法二：直接在浏览器中访问 {url_safe}\n",
             )
 
     def _config_json(self, url: str, feature_options: dict) -> str:

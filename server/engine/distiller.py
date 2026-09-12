@@ -140,6 +140,51 @@ def _csp_meta(script_body: str, extra: str = "") -> str:
     return f'<meta http-equiv="Content-Security-Policy" content="{policy}">'
 
 
+# --- build-artifact contexts (name/url flow into zip entries, batch files,
+# plist XML, shell scripts — each needs its own escaping) ---
+
+def _safe_fs_name(value, default="app") -> str:
+    """Name for archive entries and generated files: strips separators,
+    traversal, drive letters and shell/cmd metacharacters."""
+    v = re.sub(r'[\\/:*?"<>|$`\'\[\]\x00-\x1f]', "_", str(value or "")).strip(" .")
+    if not v or v in (".", ".."):
+        v = default
+    return v[:80]
+
+
+def _xml_esc(value) -> str:
+    """Text-node escaping for plist/mobileconfig XML."""
+    return html.escape(str(value or ""), quote=False)
+
+
+def _bat_line(value) -> str:
+    """Unquoted batch text (e.g. title): cmd metacharacters neutralized."""
+    return re.sub(r'[\x00-\x1f&|<>%^"\']', "_", str(value or ""))[:120]
+
+
+def _bat_set(value) -> str:
+    """Value inside set "X=...": % doubles (batch expansion), " and ! die,
+    newlines flatten — & | < > ^ are already inert inside the quotes."""
+    v = str(value or "").replace("\r", " ").replace("\n", " ").replace('"', "").replace("!", "")
+    return v.replace("%", "%%")
+
+
+def _sh_dq(value) -> str:
+    """Value inside shell double quotes (possibly nested in a single-quoted
+    arg): $ ` " \\ ! ' and newlines die."""
+    return re.sub(r"[\x00-\x1f\"'$`\\!]", "", str(value or ""))
+
+
+def _desk_line(value) -> str:
+    """Single-line value for .desktop entries — control characters removed."""
+    return re.sub(r"[\x00-\x1f]", "", str(value or ""))
+
+
+def _bundle_id_part(value, default="app") -> str:
+    v = re.sub(r"[^A-Za-z0-9-]", "", str(value or ""))
+    return v or default
+
+
 class Distiller:
     DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v4-i18n -->"
 
@@ -1624,33 +1669,36 @@ iframe{{position:absolute;inset:0;width:100%;height:100%;border:none;overflow:hi
     # ===== Windows — .bat + .ico =====
     def _build_windows(self, dl: Path, r: dict, icon_png, launch_url):
         win_flags = self._desktop_window_flags(r.get("options") or {}, "windows")
+        name_fs = _safe_fs_name(r.get("name"))
+        vbs_name = _bat_line(r.get("name"))
         bat = f"""@echo off
-title {r['name']}
-set "URL={launch_url}"
+title {_bat_line(r.get("name"))}
+set "URL={_bat_set(launch_url)}"
 (where msedge >nul 2>&1) && (start "" msedge --app="%URL%" --new-window{win_flags} & exit /b)
 (where chrome >nul 2>&1) && (start "" chrome --app="%URL%" --new-window{win_flags} & exit /b)
 start "" "%URL%"
 """
         # VBS shortcut creator — auto-creates a desktop shortcut with the app icon
         vbs = f"""Set ws = CreateObject("WScript.Shell")
-Set sc = ws.CreateShortcut(ws.SpecialFolders("Desktop") & "\\{r['name']}.lnk")
-sc.TargetPath = ws.CurrentDirectory & "\\{r['name']}.bat"
+Set sc = ws.CreateShortcut(ws.SpecialFolders("Desktop") & "\\{name_fs}.lnk")
+sc.TargetPath = ws.CurrentDirectory & "\\{name_fs}.bat"
 sc.WorkingDirectory = ws.CurrentDirectory
 sc.IconLocation = ws.CurrentDirectory & "\\icon.ico"
-sc.Description = "{r['name']} - WebToApp"
+sc.Description = "{vbs_name} - WebToApp"
 sc.Save
 WScript.Echo "桌面快捷方式已创建！"
 """
         with zipfile.ZipFile(dl / "windows.zip", 'w', zipfile.ZIP_DEFLATED) as z:
-            z.writestr(f"{r['name']}/{r['name']}.bat", bat)
-            z.writestr(f"{r['name']}/创建桌面快捷方式.vbs", vbs)
+            z.writestr(f"{name_fs}/{name_fs}.bat", bat)
+            z.writestr(f"{name_fs}/创建桌面快捷方式.vbs", vbs)
             if icon_png:
-                z.writestr(f"{r['name']}/icon.ico", self._png_to_ico(icon_png))
-                z.writestr(f"{r['name']}/icon.png", icon_png)
+                z.writestr(f"{name_fs}/icon.ico", self._png_to_ico(icon_png))
+                z.writestr(f"{name_fs}/icon.png", icon_png)
 
     # ===== macOS — .app bundle + .icns =====
     def _build_macos(self, dl: Path, r: dict, icon_png, launch_url):
         n = r['name']
+        n_fs = _safe_fs_name(n)
         # Launch chain, best experience first:
         #   1. The compiled WKWebView helper (Contents/MacOS/wta_webview) — a
         #      native window running inside our bundle identity, so the menu
@@ -1699,8 +1747,8 @@ open "$WTA_URL"
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>launcher</string>
-<key>CFBundleName</key><string>{n}</string>
-<key>CFBundleIdentifier</key><string>com.webtoapp.{r['id']}</string>
+<key>CFBundleName</key><string>{_xml_esc(n)}</string>
+<key>CFBundleIdentifier</key><string>com.webtoapp.{_bundle_id_part(r['id'])}</string>
 <key>CFBundleVersion</key><string>1.0</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
@@ -1709,29 +1757,31 @@ open "$WTA_URL"
 </dict></plist>"""
         helper_path = _MACOS_TEMPLATE_DIR / _MACOS_HELPER_NAME
         with zipfile.ZipFile(dl / "macos.zip", 'w', zipfile.ZIP_DEFLATED) as z:
-            info = zipfile.ZipInfo(f"{n}.app/Contents/MacOS/launcher")
+            info = zipfile.ZipInfo(f"{n_fs}.app/Contents/MacOS/launcher")
             info.external_attr = 0o755 << 16
             z.writestr(info, launcher)
             if helper_path.exists():
-                helper_info = zipfile.ZipInfo(f"{n}.app/Contents/MacOS/{_MACOS_HELPER_NAME}")
+                helper_info = zipfile.ZipInfo(f"{n_fs}.app/Contents/MacOS/{_MACOS_HELPER_NAME}")
                 helper_info.external_attr = 0o755 << 16
                 z.writestr(helper_info, helper_path.read_bytes())
-            z.writestr(f"{n}.app/Contents/Resources/app.js", _MACOS_WEBVIEW_APP_JS)
-            z.writestr(f"{n}.app/Contents/Info.plist", plist)
+            z.writestr(f"{n_fs}.app/Contents/Resources/app.js", _MACOS_WEBVIEW_APP_JS)
+            z.writestr(f"{n_fs}.app/Contents/Info.plist", plist)
             if icon_png:
-                z.writestr(f"{n}.app/Contents/Resources/AppIcon.icns", self._png_to_icns(icon_png))
+                z.writestr(f"{n_fs}.app/Contents/Resources/AppIcon.icns", self._png_to_icns(icon_png))
 
     # ===== Linux — .desktop + icon.png =====
     def _build_linux(self, dl: Path, r: dict, icon_png, launch_url):
         n = r['name']
+        n_fs = _safe_fs_name(n)
         linux_flags = self._desktop_window_flags(r.get("options") or {}, "linux")
         # Icon path: relative to install location
-        icon_line = f"Icon=$HOME/.local/share/icons/{n}.png" if icon_png else "Icon=web-browser"
+        icon_line = f"Icon=$HOME/.local/share/icons/{n_fs}.png" if icon_png else "Icon=web-browser"
+        exec_url = _sh_dq(launch_url)
         desktop = f"""[Desktop Entry]
 Type=Application
-Name={n}
+Name={_desk_line(n)}
 Comment=Distilled by WebToApp
-Exec=bash -c 'URL="{launch_url}"; for b in google-chrome chromium-browser microsoft-edge firefox; do command -v "$b" >/dev/null && exec "$b" --app="$URL"{linux_flags}; done; xdg-open "$URL"'
+Exec=bash -c 'URL="{exec_url}"; for b in google-chrome chromium-browser microsoft-edge firefox; do command -v "$b" >/dev/null && exec "$b" --app="$URL"{linux_flags}; done; xdg-open "$URL"'
 {icon_line}
 Terminal=false
 Categories=Network;WebBrowser;
@@ -1741,16 +1791,16 @@ Categories=Network;WebBrowser;
 DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$HOME/.local/share/icons"
 mkdir -p "$HOME/.local/share/applications"
-cp "$DIR/icon.png" "$HOME/.local/share/icons/{n}.png" 2>/dev/null
-cp "$DIR/{n}.desktop" "$HOME/.local/share/applications/"
-echo "✓ {n} 已安装到应用菜单"
+cp "$DIR/icon.png" "$HOME/.local/share/icons/{n_fs}.png" 2>/dev/null
+cp "$DIR/{n_fs}.desktop" "$HOME/.local/share/applications/"
+echo "✓ {n_fs} 已安装到应用菜单"
 """
         tar_path = dl / "linux.tar.gz"
         with tarfile.open(tar_path, 'w:gz') as t:
-            self._tar_add(t, f"{n}/{n}.desktop", desktop, 0o755)
-            self._tar_add(t, f"{n}/install.sh", install_sh, 0o755)
+            self._tar_add(t, f"{n_fs}/{n_fs}.desktop", desktop, 0o755)
+            self._tar_add(t, f"{n_fs}/install.sh", install_sh, 0o755)
             if icon_png:
-                info = tarfile.TarInfo(name=f"{n}/icon.png")
+                info = tarfile.TarInfo(name=f"{n_fs}/icon.png")
                 info.size = len(icon_png)
                 info.mode = 0o644
                 t.addfile(info, io.BytesIO(icon_png))
@@ -1774,6 +1824,9 @@ echo "✓ {n} 已安装到应用菜单"
         # iOS stays on the lightweight launch route so the server only handles
         # the initial open and target hot-swap, not the full browsing session.
         web_clip_url = f"{base_url}/a/{r['id']}/launch" if base_url else r['url']
+        name_xml = _xml_esc(r['name'])
+        clip_url_xml = _xml_esc(_safe_url(web_clip_url))
+        id_part = _bundle_id_part(r['id'])
         # A home-screen Web Clip must be FullScreen to launch as a standalone
         # app (no Safari chrome / address bar). Without it, iOS treats the clip
         # as a plain Safari bookmark and taps open the browser — exactly the
@@ -1794,17 +1847,17 @@ echo "✓ {n} 已安装到应用菜单"
 <key>FullScreen</key>{full_screen_tag}
 <key>IgnoreManifestScope</key><true/>
 <key>IsRemovable</key><true/>
-<key>Label</key><string>{r['name']}</string>
+<key>Label</key><string>{name_xml}</string>
 {icon_tag}
-<key>PayloadDisplayName</key><string>{r['name']}</string>
-<key>PayloadIdentifier</key><string>com.webtoapp.{r['id']}.clip</string>
+<key>PayloadDisplayName</key><string>{name_xml}</string>
+<key>PayloadIdentifier</key><string>com.webtoapp.{id_part}.clip</string>
 <key>PayloadType</key><string>com.apple.webClip.managed</string>
 <key>PayloadUUID</key><string>{uid1}</string>
 <key>PayloadVersion</key><integer>1</integer>
-<key>URL</key><string>{web_clip_url}</string>
+<key>URL</key><string>{clip_url_xml}</string>
 </dict></array>
-<key>PayloadDisplayName</key><string>{r['name']}</string>
-<key>PayloadIdentifier</key><string>com.webtoapp.{r['id']}</string>
+<key>PayloadDisplayName</key><string>{name_xml}</string>
+<key>PayloadIdentifier</key><string>com.webtoapp.{id_part}</string>
 <key>PayloadRemovalDisallowed</key><false/>
 <key>PayloadType</key><string>Configuration</string>
 <key>PayloadUUID</key><string>{uid2}</string>
