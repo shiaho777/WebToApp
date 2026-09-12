@@ -142,7 +142,14 @@
   const historySelected = new Set();
   let currentVisibility = 'public';
   const selectedTags = new Set();
-  const editTokens = {};
+  // edit_token is the only proof of app ownership — visibility/URL edits
+  // require it server-side, so persist it across reloads like the fingerprint.
+  const EDIT_TOKENS_KEY = 'webtoapp-edit-tokens-v1';
+  let editTokens = {};
+  try { editTokens = JSON.parse(localStorage.getItem(EDIT_TOKENS_KEY) || '{}') || {}; } catch (e) { editTokens = {}; }
+  function saveEditTokens() {
+    try { localStorage.setItem(EDIT_TOKENS_KEY, JSON.stringify(editTokens)); } catch (e) {}
+  }
   let restoreIconButtonLabel = '';
   let deviceFingerprint = '';
   const DEVICE_STORAGE_KEY = 'webtoapp-device-fingerprint-v1';
@@ -839,7 +846,7 @@
     }
     if (!data) throw new Error(t('err.generateTimeout'));
 
-    if (data.app_id && data.edit_token) editTokens[data.app_id] = data.edit_token;
+    if (data.app_id && data.edit_token) { editTokens[data.app_id] = data.edit_token; saveEditTokens(); }
     const installLink = `${location.origin}${data.url}`;
     appLink.value = installLink;
     previewUrl.textContent = installLink;

@@ -78,19 +78,47 @@ def _is_sensitive_path(raw_path: str) -> bool:
     )
 
 
+# App ids are minted server-side (md5[:8]) and become directory names under
+# generated/. Allowlist the shape so a crafted id can never traverse out of
+# the apps dir or smuggle markup into generated pages.
+_APP_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{4,64}")
+_HISTORY_RESERVED = {"import", "export", "delete-bulk", "attach"}
+
+
+def _path_app_id(raw_path: str) -> Optional[str]:
+    """The app_id addressed by the request path, or None for paths without one."""
+    parts = str(raw_path or "").split("/")
+    if len(parts) >= 3 and parts[1] == "a":
+        return parts[2]
+    if len(parts) >= 4 and parts[1] == "api" and parts[2] == "app":
+        return parts[3]
+    if len(parts) >= 4 and parts[1] == "api" and parts[2] == "history":
+        seg = parts[3]
+        if seg == "attach":
+            return parts[4] if len(parts) >= 5 else ""
+        return None if seg in _HISTORY_RESERVED or not seg else seg
+    return None
+
+
 @app.middleware("http")
 async def block_sensitive_paths(request: Request, call_next):
     """Hard 404 for sensitive paths before they hit the static file mount.
 
     The frontend is served via ``StaticFiles(directory=ROOT)``, which would
     otherwise expose ``certs/`` (signing keystores + private keys) and the
-    server source to anyone who guesses the path.
+    server source to anyone who guesses the path. The same gate rejects
+    malformed app ids on every route that maps one onto the apps dir —
+    ``/a/{id}``, ``/api/app/{id}/...`` and ``/api/history/{id}`` — so a path
+    segment like ``..`` can never reach the filesystem layer.
 
     We return a Response directly rather than raising HTTPException: user
     middleware runs outside Starlette's ExceptionMiddleware, so a raised
     HTTPException here would surface as a 500 instead of a 404.
     """
     if _is_sensitive_path(request.url.path):
+        return PlainTextResponse("Not found", status_code=404)
+    app_id = _path_app_id(request.url.path)
+    if app_id is not None and not _APP_ID_PATTERN.fullmatch(app_id):
         return PlainTextResponse("Not found", status_code=404)
     return await call_next(request)
 
@@ -506,6 +534,13 @@ def _import_recipe_from_payload(item: dict, base_url: str = "") -> dict:
         target_url = str(recipe.get("url") or snapshot.get("target_url") or "").strip()
     if not app_id or not target_url:
         raise ValueError("invalid history item")
+    # app_id becomes a directory name under APPS_DIR and appears inside
+    # generated URLs — allowlist it instead of sanitizing.
+    if not _APP_ID_PATTERN.fullmatch(app_id):
+        raise ValueError("invalid app id")
+    parsed_url = urlparse(target_url)
+    if parsed_url.scheme.lower() not in ("http", "https") or not parsed_url.netloc:
+        raise ValueError("invalid target url")
     normalized = {
         "id": app_id,
         "url": target_url,
@@ -622,6 +657,9 @@ distill_queue = DistillTaskQueue(worker_count=DISTILL_WORKER_COUNT, store=task_s
 # Cheap anti-abuse safety net for the build endpoint: ~10 submissions / minute
 # per source IP. The real quota lives on device fingerprint (see config.daily_build_quota_per_device).
 distill_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
+# History import can rebuild unknown app ids inline (bypassing the task
+# queue), so it needs the same submission cap plus an item-count limit.
+import_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
 retention_task = None
 
 
@@ -795,6 +833,9 @@ async def distill_app(req: DistillRequest, request: Request):
         raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
     device_fingerprint = _device_fingerprint(request)
     _enforce_daily_quota(device_fingerprint)
+    parsed_target = urlparse(str(req.url or "").strip())
+    if parsed_target.scheme.lower() not in ("http", "https") or not parsed_target.netloc:
+        raise HTTPException(status_code=422, detail="URL must be an absolute http(s) URL")
     task = await distill_queue.submit(
         {
             "url": str(req.url),
@@ -1205,12 +1246,20 @@ async def export_history(request: Request):
     return payload
 
 
+HISTORY_IMPORT_MAX_ITEMS = 50
+
+
 @app.post("/api/history/import")
 async def import_history(payload: HistoryImportPayload, request: Request):
     device_fingerprint = _device_fingerprint(request)
     if not device_fingerprint:
         raise HTTPException(400, "Missing device fingerprint")
+    if not await import_rate_limiter.allow(_client_ip(request)):
+        raise HTTPException(429, "提交太频繁，请稍后再试。")
+    if len(payload.items) > HISTORY_IMPORT_MAX_ITEMS:
+        raise HTTPException(400, "Too many items")
     base_url = _resolve_base_url(request)
+    apps_root = APPS_DIR.resolve()
     imported = 0
     restored = 0
     skipped = 0
@@ -1219,7 +1268,9 @@ async def import_history(payload: HistoryImportPayload, request: Request):
         try:
             recipe = _import_recipe_from_payload(item, base_url)
             app_id = recipe["id"]
-            app_dir = APPS_DIR / app_id
+            app_dir = (APPS_DIR / app_id).resolve()
+            if app_dir.parent != apps_root:
+                raise ValueError("invalid app id")
             recipe_path = app_dir / "recipe.json"
             effective_recipe = recipe
             should_restore = not recipe_path.exists()
@@ -1303,9 +1354,8 @@ def set_history_visibility(app_id: str, payload: VisibilityPayload, request: Req
     except Exception:
         raise HTTPException(500, "Corrupt recipe")
     expected = str(stored.get("edit_token") or "")
-    device_fingerprint = _device_fingerprint(request)
-    owner = device_fingerprint and history_store.device_owns_app(device_fingerprint, app_id)
-    if not (owner or (expected and payload.edit_token == expected)):
+    supplied = str(payload.edit_token or "")
+    if not expected or not supplied or not secrets.compare_digest(supplied, expected):
         raise HTTPException(403, "Not the app owner")
     if visibility == "public" and not (stored.get("tags") or []):
         raise HTTPException(400, "Public apps need at least one tag")

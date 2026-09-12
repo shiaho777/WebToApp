@@ -449,7 +449,7 @@ class BuildResponseAndImportTests(unittest.TestCase):
     def test_import_recipe_url_mode_unchanged(self):
         from server import main
 
-        item = {"app_id": "id1", "recipe": {"id": "id1", "url": "https://example.com", "name": "X"}}
+        item = {"app_id": "id1x", "recipe": {"id": "id1x", "url": "https://example.com", "name": "X"}}
         recipe = main._import_recipe_from_payload(item, base_url="https://new-server.test")
         self.assertEqual(recipe["url"], "https://example.com")
         self.assertEqual(recipe["source_type"], "url")

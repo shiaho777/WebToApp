@@ -3,6 +3,8 @@ Distillation Engine — Generates platform-specific app packages with icons.
 Each platform gets a real, installable, few-KB launcher with proper app icon.
 """
 
+import hashlib
+import html
 import json
 import re
 import shlex
@@ -93,6 +95,49 @@ ObjC.import('WebKit');
   app.run();
 })();
 """
+
+
+def _esc(value) -> str:
+    """HTML-escape a user-controlled value for text/attribute contexts."""
+    return html.escape(str(value or ""), quote=True)
+
+
+def _safe_url(value) -> str:
+    """Absolute http(s) URL only — anything else degrades to '#'."""
+    try:
+        parsed = urlparse(str(value or "").strip())
+    except Exception:
+        return "#"
+    if parsed.scheme.lower() in ("http", "https") and parsed.netloc:
+        return str(value).strip()
+    return "#"
+
+
+def _safe_color(value, default="#7c3aed") -> str:
+    v = str(value or "").strip()
+    return v if re.fullmatch(r"#[0-9A-Fa-f]{3,8}", v) else default
+
+
+def _js_literal(value) -> str:
+    """JSON-encoded JS string literal; '<' is escaped so the value can never
+    close the surrounding <script> tag."""
+    return json.dumps(str(value or ""), ensure_ascii=False).replace("<", "\\u003c")
+
+
+def _csp_meta(script_body: str, extra: str = "") -> str:
+    """Hash-pinned CSP meta tag: only the exact inline script body we emit may
+    execute — injected scripts, javascript: URLs and inline handlers die here."""
+    digest = base64.b64encode(hashlib.sha256(script_body.encode("utf-8")).digest()).decode("ascii")
+    policy = (
+        "default-src 'self'; img-src 'self' data: https:; "
+        "style-src 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        f"script-src 'sha256-{digest}'; connect-src 'self' http: https:; "
+        "object-src 'none'; base-uri 'none'; form-action 'none'"
+    )
+    if extra:
+        policy += "; " + extra
+    return f'<meta http-equiv="Content-Security-Policy" content="{policy}">'
 
 
 class Distiller:
@@ -737,13 +782,18 @@ class Distiller:
         (app_dir / "page.html").write_text(self.render_download_page(app_dir, r))
 
     def render_download_page(self, app_dir: Path, r: dict) -> str:
-        base = f"/a/{r['id']}"
-        parsed = urlparse(r["url"])
+        # Everything derived from the recipe is user-controlled and lands in
+        # HTML/JS contexts — encode it before interpolation.
+        base = f"/a/{_esc(r['id'])}"
+        name_esc = _esc(r.get("name"))
+        color_safe = _safe_color(r.get("color"))
+        url_esc = _esc(_safe_url(r.get("url")))
+        parsed = urlparse(str(r.get("url") or ""))
         is_html_app = r.get("source_type") == "html"
-        source_host = "HTML App" if is_html_app else (parsed.netloc.replace("www.", "") or r["url"])
+        source_host = _esc("HTML App" if is_html_app else (parsed.netloc.replace("www.", "") or r.get("url")))
         open_site_key = "openApp" if is_html_app else "openSite"
-        favicon = f"{base}/icon.png" if (app_dir / "icon.png").exists() \
-            else f"https://www.google.com/s2/favicons?domain={parsed.netloc}&sz=128"
+        favicon = _esc(f"{base}/icon.png" if (app_dir / "icon.png").exists()
+            else f"https://www.google.com/s2/favicons?domain={parsed.netloc}&sz=128")
         cfg = app_dir / "downloads" / "ios.mobileconfig"
         ios_signed = cfg.exists() and cfg.read_bytes()[:1] == b"\x30"
         ios_badge = (
@@ -805,25 +855,58 @@ class Distiller:
         )
         # ---- i18n: in-page translations (visitor can switch; default English) ----
         dl_i18n = self._download_page_translations()
-        dl_i18n_json = json.dumps(dl_i18n, ensure_ascii=False)
-        safe_name = (r["name"] or "").replace("\\", "\\\\").replace('"', '\\"')
+        dl_i18n_json = json.dumps(dl_i18n, ensure_ascii=False).replace("<", "\\u003c")
+        app_name_js = _js_literal(r.get("name"))
         tags = [str(tag).strip() for tag in (r.get("tags") or []) if str(tag).strip()][:5]
         tags_row = (
             '<div class="meta-row tags-row">' + "".join(
-                f'<span class="meta-chip meta-chip-tag">{tag.replace("<", "&lt;").replace(">", "&gt;")}</span>'
+                f'<span class="meta-chip meta-chip-tag">{_esc(tag)}</span>'
                 for tag in tags
             ) + "</div>"
             if tags else ""
         )
+        inline_js = f"""(function(){{
+  var T = {dl_i18n_json};
+  var APP_NAME = {app_name_js};
+  var SUPPORTED = ["en","zh","ja","ar","ru","es","pt","fr","de"];
+  var RTL = ["ar"];
+  var NAMES = {{en:"English",zh:"\\u4e2d\\u6587",ja:"\\u65e5\\u672c\\u8a9e",ar:"\\u0627\\u0644\\u0639\\u0631\\u0628\\u064a\\u0629",ru:"\\u0420\\u0443\\u0441\\u0441\\u043a\\u0438\\u0439",es:"Espa\\u00f1ol",pt:"Portugu\\u00eas",fr:"Fran\\u00e7ais",de:"Deutsch"}};
+  var KEY = "webtoapp-lang-v1";
+  function pick(){{
+    try{{ var s=localStorage.getItem(KEY); if(s&&SUPPORTED.indexOf(s)!==-1) return s; }}catch(e){{}}
+    return "en";
+  }}
+  var cur = pick();
+  function t(k){{ var tb=T[cur]||T.en||{{}}; return (tb[k]!=null)?tb[k]:((T.en||{{}})[k]!=null?T.en[k]:""); }}
+  function apply(){{
+    document.documentElement.lang = (cur==="zh")?"zh-CN":cur;
+    document.documentElement.dir = (RTL.indexOf(cur)!==-1)?"rtl":"ltr";
+    document.querySelectorAll("[data-i18n]").forEach(function(el){{
+      var v=t(el.getAttribute("data-i18n")); if(v) el.textContent=v;
+    }});
+    var titleT=t("pageTitle"); if(titleT) document.title=titleT.replace("{{name}}",APP_NAME);
+    try{{ localStorage.setItem(KEY,cur); }}catch(e){{}}
+  }}
+  var sel=document.getElementById("dl-lang");
+  SUPPORTED.forEach(function(l){{ var o=document.createElement("option"); o.value=l; o.textContent=NAMES[l]; sel.appendChild(o); }});
+  sel.value=cur;
+  sel.addEventListener("change",function(){{ cur=sel.value; apply(); }});
+  var ic=document.querySelector("img.icon");
+  if(ic)ic.addEventListener("error",function(){{ic.style.display="none";}});
+  apply();
+}})();"""
+        script_body = f"\n{inline_js}\n"
+        csp_meta = _csp_meta(script_body)
         html = f"""{self.DOWNLOAD_PAGE_MARKER}
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>{r['name']} — Download | WebToApp</title>
-<meta name="description" content="Download the installer or config profile of {r['name']} for your device. Works on iPhone, Android, Windows, macOS and Linux.">
-<meta name="theme-color" content="{r['color']}">
+{csp_meta}
+<title>{name_esc} — Download | WebToApp</title>
+<meta name="description" content="Download the installer or config profile of {name_esc} for your device. Works on iPhone, Android, Windows, macOS and Linux.">
+<meta name="theme-color" content="{color_safe}">
 <link rel="icon" href="/assets/site-logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -935,7 +1018,7 @@ a{{color:inherit;text-decoration:none}}
   <main class="hero">
     <section class="hero-copy">
       <div class="eyebrow" data-i18n="eyebrow">INSTALLATION / DOWNLOAD</div>
-      <h1 class="title">{r['name']}</h1>
+      <h1 class="title">{name_esc}</h1>
       {tags_row}
       <div class="meta-row">
         <span class="meta-chip" data-i18n="chipPlatforms">5 platforms ready</span>
@@ -949,14 +1032,14 @@ a{{color:inherit;text-decoration:none}}
     <section class="hero-panel">
       <div class="app-top">
         <div class="app-head">
-          <img src="{favicon}" alt="{r['name']}" class="icon" onerror="this.style.display='none'">
+          <img src="{favicon}" alt="{name_esc}" class="icon">
           <div>
-            <h2 class="app-title">{r['name']}</h2>
+            <h2 class="app-title">{name_esc}</h2>
             <p class="app-sub" data-i18n="appSub">The multi-platform installers and config profile generated for this site. You can send this page directly to users without explaining the download paths.</p>
           </div>
         </div>
         <div class="app-actions">
-          <a class="action primary" href="{r['url']}" target="_blank" rel="noopener noreferrer" data-i18n="{open_site_key}">Open original site</a>
+          <a class="action primary" href="{url_esc}" target="_blank" rel="noopener noreferrer" data-i18n="{open_site_key}">Open original site</a>
           <a class="action" href="{base}/download/ios" data-i18n="downloadIosProfile">Download iPhone profile</a>
         </div>
       </div>
@@ -984,36 +1067,7 @@ a{{color:inherit;text-decoration:none}}
     </section>
   </main>
 </div>
-<script>
-(function(){{
-  var T = {dl_i18n_json};
-  var APP_NAME = "{safe_name}";
-  var SUPPORTED = ["en","zh","ja","ar","ru","es","pt","fr","de"];
-  var RTL = ["ar"];
-  var NAMES = {{en:"English",zh:"\\u4e2d\\u6587",ja:"\\u65e5\\u672c\\u8a9e",ar:"\\u0627\\u0644\\u0639\\u0631\\u0628\\u064a\\u0629",ru:"\\u0420\\u0443\\u0441\\u0441\\u043a\\u0438\\u0439",es:"Espa\\u00f1ol",pt:"Portugu\\u00eas",fr:"Fran\\u00e7ais",de:"Deutsch"}};
-  var KEY = "webtoapp-lang-v1";
-  function pick(){{
-    try{{ var s=localStorage.getItem(KEY); if(s&&SUPPORTED.indexOf(s)!==-1) return s; }}catch(e){{}}
-    return "en";
-  }}
-  var cur = pick();
-  function t(k){{ var tb=T[cur]||T.en||{{}}; return (tb[k]!=null)?tb[k]:((T.en||{{}})[k]!=null?T.en[k]:""); }}
-  function apply(){{
-    document.documentElement.lang = (cur==="zh")?"zh-CN":cur;
-    document.documentElement.dir = (RTL.indexOf(cur)!==-1)?"rtl":"ltr";
-    document.querySelectorAll("[data-i18n]").forEach(function(el){{
-      var v=t(el.getAttribute("data-i18n")); if(v) el.textContent=v;
-    }});
-    var titleT=t("pageTitle"); if(titleT) document.title=titleT.replace("{{name}}",APP_NAME);
-    try{{ localStorage.setItem(KEY,cur); }}catch(e){{}}
-  }}
-  var sel=document.getElementById("dl-lang");
-  SUPPORTED.forEach(function(l){{ var o=document.createElement("option"); o.value=l; o.textContent=NAMES[l]; sel.appendChild(o); }});
-  sel.value=cur;
-  sel.addEventListener("change",function(){{ cur=sel.value; apply(); }});
-  apply();
-}})();
-</script>
+<script>{script_body}</script>
 </body>
 </html>"""
         return html
@@ -1427,74 +1481,24 @@ a{{color:inherit;text-decoration:none}}
 
         cache = f"distill-{r['id']}-v1"
         (app_dir / "sw.js").write_text(
-            f"const C='{cache}';"
+            f"const C={_js_literal(cache)};"
             "self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['.'])));self.skipWaiting()});"
             "self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim()});"
             "self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))});"
         )
 
+        name_esc = _esc(r.get("name"))
+        color_safe = _safe_color(r.get("color"))
+        launch_url_safe = _safe_url(launch_url)
+        launch_url_esc = _esc(launch_url_safe)
+        icon_url_esc = _esc(icon_url)
+        app_name_js = _js_literal(r.get("name"))
         pwa_i18n = self._pwa_translations()
-        pwa_i18n_json = json.dumps(pwa_i18n, ensure_ascii=False)
-        safe_name = (r["name"] or "").replace("\\", "\\\\").replace('"', '\\"')
-        pwa_html = f"""<!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<meta name="theme-color" content="{r['color']}">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="apple-touch-icon" href="{icon_url}">
-<title>{r['name']}</title>
-<link rel="manifest" href="manifest.json">
-<style>
-*{{margin:0;padding:0;box-sizing:border-box}}
-html,body{{width:100%;height:100%;overflow:hidden;background:{r['color']};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
-body{{position:relative}}
-.shell{{position:relative;width:100%;height:100%}}
-iframe{{position:absolute;inset:0;width:100%;height:100%;border:none;overflow:hidden;background:#fff}}
-.loading{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(9,9,11,.18),rgba(9,9,11,.34));z-index:3;transition:opacity .2s ease}}
-.loading.hidden{{opacity:0;pointer-events:none}}
-.loading-card{{display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 22px;border-radius:18px;background:rgba(9,9,11,.68);color:#fff;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px)}}
-.spinner{{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.22);border-top-color:#fff;animation:spin 1s linear infinite}}
-.loading-title{{font-size:14px;font-weight:600}}
-.loading-sub{{font-size:12px;color:rgba(255,255,255,.7)}}
-.notice{{position:absolute;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:4;padding:16px;border-radius:18px;background:rgba(9,9,11,.82);border:1px solid rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(16px);display:none}}
-.notice.show{{display:block}}
-.notice strong{{display:block;font-size:14px;margin-bottom:6px}}
-.notice p{{font-size:12px;line-height:1.55;color:rgba(255,255,255,.72)}}
-.notice-actions{{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}}
-.btn{{display:inline-flex;align-items:center;justify-content:center;min-width:112px;height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;text-decoration:none;font-size:12px;font-weight:600}}
-@keyframes spin{{to{{transform:rotate(360deg)}}}}
-</style>
-</head><body>
-<div class="shell">
-  <iframe
-    id="app-frame"
-    src="{launch_url}"
-    allow="fullscreen; clipboard-read; clipboard-write"
-    loading="eager"
-    referrerpolicy="no-referrer"
-    sandbox="allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-same-origin allow-scripts"
-  ></iframe>
-  <div id="loading" class="loading">
-    <div class="loading-card">
-      <div class="spinner"></div>
-      <div class="loading-title" id="loading-title"></div>
-      <div class="loading-sub" id="loading-sub"></div>
-    </div>
-  </div>
-  <div id="notice" class="notice">
-    <strong id="notice-title"></strong>
-    <p id="notice-body"></p>
-    <div class="notice-actions">
-      <button id="retry-btn" class="btn" type="button"></button>
-    </div>
-  </div>
-</div>
-<script>
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+        pwa_i18n_json = json.dumps(pwa_i18n, ensure_ascii=False).replace("<", "\\u003c")
+        pwa_inline_js = f"""if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 (function(){{
   var T = {pwa_i18n_json};
-  var APP_NAME = "{safe_name}";
+  var APP_NAME = {app_name_js};
   var SUPPORTED = ["en","zh","ja","ar","ru","es","pt","fr","de"];
   var RTL = ["ar"];
   var KEY = "webtoapp-lang-v1";
@@ -1515,7 +1519,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
   const loading = document.getElementById('loading');
   const notice = document.getElementById('notice');
   const retryBtn = document.getElementById('retry-btn');
-  const launchUrl = {json.dumps(launch_url)};
+  const launchUrl = {_js_literal(launch_url_safe)};
   let settled = false;
   let timer = null;
 
@@ -1555,8 +1559,65 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
   }});
 
   armFallback();
-}})();
-</script>
+}})();"""
+        pwa_script_body = f"\n{pwa_inline_js}\n"
+        pwa_csp = _csp_meta(pwa_script_body, extra="frame-src http: https:")
+        pwa_html = f"""<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+{pwa_csp}
+<meta name="theme-color" content="{color_safe}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="{icon_url_esc}">
+<title>{name_esc}</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+html,body{{width:100%;height:100%;overflow:hidden;background:{color_safe};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
+body{{position:relative}}
+.shell{{position:relative;width:100%;height:100%}}
+iframe{{position:absolute;inset:0;width:100%;height:100%;border:none;overflow:hidden;background:#fff}}
+.loading{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(9,9,11,.18),rgba(9,9,11,.34));z-index:3;transition:opacity .2s ease}}
+.loading.hidden{{opacity:0;pointer-events:none}}
+.loading-card{{display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 22px;border-radius:18px;background:rgba(9,9,11,.68);color:#fff;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px)}}
+.spinner{{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.22);border-top-color:#fff;animation:spin 1s linear infinite}}
+.loading-title{{font-size:14px;font-weight:600}}
+.loading-sub{{font-size:12px;color:rgba(255,255,255,.7)}}
+.notice{{position:absolute;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:4;padding:16px;border-radius:18px;background:rgba(9,9,11,.82);border:1px solid rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(16px);display:none}}
+.notice.show{{display:block}}
+.notice strong{{display:block;font-size:14px;margin-bottom:6px}}
+.notice p{{font-size:12px;line-height:1.55;color:rgba(255,255,255,.72)}}
+.notice-actions{{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}}
+.btn{{display:inline-flex;align-items:center;justify-content:center;min-width:112px;height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;text-decoration:none;font-size:12px;font-weight:600}}
+@keyframes spin{{to{{transform:rotate(360deg)}}}}
+</style>
+</head><body>
+<div class="shell">
+  <iframe
+    id="app-frame"
+    src="{launch_url_esc}"
+    allow="fullscreen; clipboard-read; clipboard-write"
+    loading="eager"
+    referrerpolicy="no-referrer"
+    sandbox="allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-same-origin allow-scripts"
+  ></iframe>
+  <div id="loading" class="loading">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-title" id="loading-title"></div>
+      <div class="loading-sub" id="loading-sub"></div>
+    </div>
+  </div>
+  <div id="notice" class="notice">
+    <strong id="notice-title"></strong>
+    <p id="notice-body"></p>
+    <div class="notice-actions">
+      <button id="retry-btn" class="btn" type="button"></button>
+    </div>
+  </div>
+</div>
+<script>{pwa_script_body}</script>
 </body></html>"""
         (app_dir / "pwa.html").write_text(pwa_html)
 

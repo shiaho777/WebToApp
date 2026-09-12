@@ -272,3 +272,72 @@ class DistillerIconFallbackTests(unittest.TestCase):
         with patch.object(distiller, "_fetch_url_bytes", side_effect=fake_fetch):
             candidates = distiller._collect_icon_candidates("https://example.com")
         self.assertEqual(candidates[0], "https://example.com/apple-touch-icon.png")
+
+
+class DownloadPageHardeningTests(unittest.TestCase):
+    """Generated page.html / pwa.html interpolate user-controlled recipe
+    fields — every interpolation must be output-encoded (issue #73)."""
+
+    def _page(self, **overrides):
+        import tempfile
+        from pathlib import Path
+
+        recipe = {
+            "id": "abcd1234", "name": "App", "url": "https://example.com",
+            "color": "#7c3aed", "display": "fullscreen", "orientation": "any",
+            "tags": [],
+        }
+        recipe.update(overrides)
+        with tempfile.TemporaryDirectory() as tmp:
+            return Distiller().render_download_page(Path(tmp), recipe)
+
+    def test_recipe_fields_are_escaped(self):
+        page = self._page(
+            name='<img src=x onerror=alert(1)>',
+            url='javascript:alert(document.domain)',
+            color='#123"><svg onload=alert(1)>',
+            tags=['<script>alert(1)</script>'],
+        )
+        self.assertIn('&lt;img src=x', page)
+        self.assertNotIn('<img src=x onerror', page)
+        self.assertNotIn('href="javascript:', page)
+        self.assertIn('href="#"', page)
+        # Bad color falls back to the default instead of breaking the attr.
+        self.assertIn('content="#7c3aed"', page)
+        self.assertIn('&lt;script&gt;', page)
+
+    def test_script_breakout_is_neutralized(self):
+        page = self._page(name='</script><script>alert(1)</script>')
+        self.assertNotIn('</script><script>', page)
+        self.assertIn('\\u003c', page)
+
+    def test_csp_hash_pins_inline_script(self):
+        import base64
+        import hashlib
+        import re as _re
+
+        page = self._page()
+        m = _re.search(r"script-src 'sha256-([A-Za-z0-9+/=]+)'", page)
+        self.assertIsNotNone(m)
+        body = _re.search(r"<script>(.*?)</script>", page, _re.S).group(1)
+        self.assertEqual(
+            base64.b64encode(hashlib.sha256(body.encode("utf-8")).digest()).decode("ascii"),
+            m.group(1),
+        )
+
+    def test_pwa_shell_escapes_fields(self):
+        import tempfile
+        from pathlib import Path
+
+        recipe = {
+            "id": "abcd1234", "name": 'x</title><img onerror=1>',
+            "url": "https://example.com", "color": 'red"><svg onload=1>',
+            "display": "standalone", "orientation": "any",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            Distiller()._write_pwa_files(Path(tmp), recipe, "javascript:alert(1)")
+            pwa = (Path(tmp) / "pwa.html").read_text()
+        self.assertIn('&lt;/title&gt;', pwa)
+        self.assertNotIn('src="javascript:', pwa)
+        self.assertIn('src="#"', pwa)
+        self.assertIn('sha256-', pwa)
