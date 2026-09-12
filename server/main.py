@@ -457,7 +457,9 @@ class VisibilityPayload(BaseModel):
 
 # --- API Routes ---
 @app.post("/api/analyze")
-async def analyze_url(req: AnalyzeRequest):
+async def analyze_url(req: AnalyzeRequest, request: Request):
+    if not await analyze_rate_limiter.allow(_client_ip(request)):
+        raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
     try:
         result = await analyzer.analyze(str(req.url))
         with _analyze_stats_lock:
@@ -660,6 +662,9 @@ distill_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_tt
 # History import can rebuild unknown app ids inline (bypassing the task
 # queue), so it needs the same submission cap plus an item-count limit.
 import_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
+# /api/analyze performs outbound fetches — cap it so the service can't be
+# used as a free probing oracle.
+analyze_rate_limiter = IPRateLimiter(max_requests=20, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
 retention_task = None
 
 
@@ -818,8 +823,19 @@ def _enforce_daily_quota(device_fingerprint: Optional[str]) -> None:
     quota = config.daily_build_quota_per_device()
     if quota <= 0 or not device_fingerprint:
         return
+    _raise_if_over_quota(device_fingerprint, quota)
+
+
+def _quota_identity(request: Request, device_fingerprint: Optional[str]) -> str:
+    """What the daily quota charges against. Without a fingerprint cookie the
+    device key is absent and quota would silently skip — fall back to the
+    client IP so cookie-less build requests still count."""
+    return device_fingerprint or f"ip:{_client_ip(request)}"
+
+
+def _raise_if_over_quota(identity: str, quota: int) -> None:
     since_iso = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat().replace("+00:00", "Z")
-    used = history_store.count_recent_builds(device_fingerprint, since_iso)
+    used = history_store.count_recent_builds(identity, since_iso)
     if used >= quota:
         raise HTTPException(
             status_code=429,
@@ -832,7 +848,8 @@ async def distill_app(req: DistillRequest, request: Request):
     if not await distill_rate_limiter.allow(_client_ip(request)):
         raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
     device_fingerprint = _device_fingerprint(request)
-    _enforce_daily_quota(device_fingerprint)
+    identity = _quota_identity(request, device_fingerprint)
+    _enforce_daily_quota(identity)
     parsed_target = urlparse(str(req.url or "").strip())
     if parsed_target.scheme.lower() not in ("http", "https") or not parsed_target.netloc:
         raise HTTPException(status_code=422, detail="URL must be an absolute http(s) URL")
@@ -845,7 +862,7 @@ async def distill_app(req: DistillRequest, request: Request):
             "orientation": req.orientation,
             "options": req.options or {},
             "base_url": _resolve_base_url(request),
-            "device_fingerprint": device_fingerprint,
+            "device_fingerprint": identity,
         }
     )
     log_event(
@@ -970,7 +987,8 @@ async def distill_html_app(
     if not await distill_rate_limiter.allow(_client_ip(request)):
         raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
     device_fingerprint = _device_fingerprint(request)
-    _enforce_daily_quota(device_fingerprint)
+    identity = _quota_identity(request, device_fingerprint)
+    _enforce_daily_quota(identity)
     try:
         parsed_options = json.loads(options) if str(options).strip() else {}
         if not isinstance(parsed_options, dict):
@@ -997,7 +1015,7 @@ async def distill_html_app(
             "orientation": orientation,
             "options": parsed_options,
             "base_url": _resolve_base_url(request),
-            "device_fingerprint": device_fingerprint,
+            "device_fingerprint": identity,
         }
     )
     log_event(

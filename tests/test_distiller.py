@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from server.engine.distiller import Distiller, _MACOS_HELPER_NAME, _MACOS_TEMPLATE_DIR
+from server.engine.distiller import Distiller, _MACOS_HELPER_NAME, _MACOS_TEMPLATE_DIR, _safe_fs_name
 
 
 class DistillerIconCandidateTests(unittest.TestCase):
@@ -93,7 +93,8 @@ class DistillerMacosLauncherTests(unittest.TestCase):
         return entries, modes
 
     def _launcher(self, entries, name="My App"):
-        return entries[f"{name}.app/Contents/MacOS/launcher"].decode()
+        # Zip entry names are filesystem-sanitized at build time (issue #74).
+        return entries[f"{_safe_fs_name(name)}.app/Contents/MacOS/launcher"].decode()
 
     def test_launcher_tries_webview_then_browser_fallbacks(self):
         import shlex
@@ -125,6 +126,8 @@ class DistillerMacosLauncherTests(unittest.TestCase):
         tricky_url = "https://example.com/?q=it's&a=$b"
         entries, _ = self._build(name=tricky_name, url=tricky_url)
         launcher = self._launcher(entries, name=tricky_name)
+        # Entry dir is sanitized; env values keep the raw name via shlex.
+        self.assertTrue(all(k.startswith(f"{_safe_fs_name(tricky_name)}.app/") for k in entries))
         self.assertIn(f"export WTA_URL={shlex.quote(tricky_url)}", launcher)
         self.assertIn(f"export WTA_NAME={shlex.quote(tricky_name)}", launcher)
 
@@ -341,3 +344,107 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertNotIn('src="javascript:', pwa)
         self.assertIn('src="#"', pwa)
         self.assertIn('sha256-', pwa)
+
+
+class ArtifactSanitizationTests(unittest.TestCase):
+    """Recipe name/url land inside .bat/.desktop/install.sh/plist/zip+tar
+    entries — every artifact context is encoded (issue #73 follow-up)."""
+
+    def _windows_zip(self, name, url):
+        import tempfile
+        import zipfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        recipe = {"id": "abcd1234", "name": name, "options": {}}
+        with tempfile.TemporaryDirectory() as tmp:
+            distiller._build_windows(Path(tmp), recipe, None, url)
+            with zipfile.ZipFile(Path(tmp) / "windows.zip") as z:
+                return {i.filename: z.read(i.filename) for i in z.infolist()}
+
+    def test_zip_entries_cannot_traverse(self):
+        entries = self._windows_zip("../../evil", "https://x.test")
+        for entry in entries:
+            first = entry.split("/")[0]
+            self.assertNotEqual(first, "..")
+            self.assertFalse(entry.startswith("/"))
+            self.assertNotIn("\\", entry)
+
+    def test_bat_url_doubles_percent_and_drops_quote(self):
+        entries = self._windows_zip("My App", 'https://x.test/?a=%2F&b=1"x')
+        bat = entries["My App/My App.bat"].decode()
+        self.assertIn('set "URL=https://x.test/?a=%%2F&b=1x"', bat)
+
+    def test_bat_title_neutralizes_metachars(self):
+        entries = self._windows_zip('n"& calc.exe', "https://x.test")
+        bat = next(v.decode() for k, v in entries.items() if k.endswith(".bat"))
+        title = next(line for line in bat.splitlines() if line.startswith("title"))
+        self.assertNotIn("&", title)
+        self.assertNotIn('"', title)
+
+    def test_linux_artifacts_strip_shell_metas(self):
+        import tarfile
+        import tempfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        recipe = {"id": "abcd1234", "name": 'x"$(touch /tmp/pwned)`', "options": {}}
+        with tempfile.TemporaryDirectory() as tmp:
+            distiller._build_linux(Path(tmp), recipe, None, "https://x.test/")
+            with tarfile.open(Path(tmp) / "linux.tar.gz") as t:
+                names = t.getnames()
+                desktop = t.extractfile(next(n for n in names if n.endswith(".desktop"))).read().decode()
+                install = t.extractfile(next(n for n in names if n.endswith("install.sh"))).read().decode()
+        self.assertFalse(any("$" in n or "`" in n or '"' in n for n in names))
+        self.assertNotIn("$(touch", install)
+
+    def test_desktop_name_cannot_inject_keys(self):
+        import tarfile
+        import tempfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        recipe = {"id": "abcd1234", "name": "a\nExec=sh -c evil\nX", "options": {}}
+        with tempfile.TemporaryDirectory() as tmp:
+            distiller._build_linux(Path(tmp), recipe, None, "https://x.test/")
+            with tarfile.open(Path(tmp) / "linux.tar.gz") as t:
+                names = t.getnames()
+                desktop = t.extractfile(next(n for n in names if n.endswith(".desktop"))).read().decode()
+        self.assertEqual(desktop.count("\nExec="), 1)  # only the real Exec line
+        self.assertNotIn("\nExec=sh -c evil", desktop)
+
+    def test_mobileconfig_escapes_name_and_sanitizes_id(self):
+        import tempfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        recipe = {
+            "id": "ab..cd", "name": 'a</string></dict><key>Injected</key><true/>',
+            "url": "https://x.test", "color": "#7c3aed", "orientation": "any",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            distiller._build_ios(Path(tmp), recipe, None, base_url=None)
+            cfg = (Path(tmp) / "ios.mobileconfig").read_bytes()
+        self.assertNotIn(b"</dict><key>Injected</key>", cfg)
+        self.assertIn(b"&lt;/dict&gt;", cfg)
+        self.assertIn(b"com.webtoapp.abcd.clip", cfg)
+
+    def test_android_fallback_escapes_and_sanitizes(self):
+        import tempfile
+        import zipfile
+        from pathlib import Path
+        from server.engine.apk_builder import ApkBuilder
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "android.zip"
+            ApkBuilder().build_fallback(
+                str(out), 'javascript:alert(1)', '../../x<img onerror=1>', None, 'red"><svg>'
+            )
+            with zipfile.ZipFile(out) as z:
+                entries = {i.filename: z.read(i.filename) for i in z.infolist()}
+        for entry in entries:
+            self.assertNotEqual(entry.split("/")[0], "..")
+        index = next(v.decode() for k, v in entries.items() if k.endswith("index.html"))
+        self.assertNotIn("javascript:", index)
+        self.assertIn('src="about:blank"', index)
+        self.assertIn("&lt;img onerror=1&gt;", index)

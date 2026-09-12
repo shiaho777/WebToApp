@@ -2,7 +2,7 @@ import asyncio
 import ipaddress
 import socket
 from typing import Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
 
@@ -41,19 +41,55 @@ def _is_forbidden_ip(address: str) -> bool:
     )
 
 
-def validate_public_http_url(url: str) -> str:
-    normalized = _normalized_http_url(url)
-    parsed = urlparse(normalized)
+def _resolve_public_ips(parsed) -> list:
+    """Resolve the host and return its addresses, rejecting non-public ones."""
     infos = socket.getaddrinfo(parsed.hostname, _port_for(parsed), type=socket.SOCK_STREAM)
-    seen = set()
+    ips = []
     for info in infos:
         address = info[4][0]
-        seen.add(address)
         if _is_forbidden_ip(address):
             raise UnsafeOutboundTarget("URL resolves to a non-public address")
-    if not seen:
+        if address not in ips:
+            ips.append(address)
+    if not ips:
         raise UnsafeOutboundTarget("URL does not resolve to a public address")
+    return ips
+
+
+def validate_public_http_url(url: str) -> str:
+    normalized = _normalized_http_url(url)
+    _resolve_public_ips(urlparse(normalized))
     return normalized
+
+
+def _pinned_request(url: str, ip: str):
+    """Connection target for `url` pinned to a pre-validated `ip`.
+
+    Validation resolves the hostname; connecting to the *same* address (with
+    the logical Host header and TLS SNI preserved) closes the DNS-rebinding
+    window between "resolve & check" and "connect".
+    """
+    parsed = urlparse(url)
+    host_fmt = f"[{ip}]" if ":" in ip else ip
+    netloc = f"{host_fmt}:{parsed.port}" if parsed.port else host_fmt
+    pinned_url = urlunparse(parsed._replace(netloc=netloc))
+    host_header = parsed.hostname or ""
+    if parsed.port:
+        host_header = f"{host_header}:{parsed.port}"
+    extensions = {"sni_hostname": parsed.hostname} if parsed.scheme == "https" else None
+    return pinned_url, {"Host": host_header}, extensions
+
+
+def pinned_targets(url: str) -> list:
+    """Validated ``(pinned_url, headers, extensions)`` connect targets for `url`
+    — iterate until one connects. Each target is a pre-checked public IP."""
+    normalized = _normalized_http_url(url)
+    ips = _resolve_public_ips(urlparse(normalized))
+    return [_pinned_request(normalized, ip) for ip in ips[:3]]
+
+
+async def apinned_targets(url: str) -> list:
+    return await asyncio.to_thread(pinned_targets, url)
 
 
 async def avalidate_public_http_url(url: str) -> str:
@@ -119,15 +155,32 @@ def fetch_public_url_bytes(
         follow_redirects=False,
         timeout=httpx.Timeout(timeout, connect=min(float(timeout), 10.0)),
         headers=headers or None,
+        trust_env=False,
     )
     try:
         for _ in range(redirect_limit + 1):
-            with client.stream("GET", current_url) as resp:
+            targets = pinned_targets(current_url)
+            ctx = None
+            resp = None
+            last_err = None
+            for pinned_url, req_headers, ext in targets:
+                try:
+                    ctx = client.stream("GET", pinned_url, headers=req_headers, extensions=ext)
+                    resp = ctx.__enter__()
+                    break
+                except httpx.TransportError as exc:
+                    last_err = exc
+                    ctx = None
+            if resp is None:
+                raise last_err or httpx.TransportError(f"All resolved addresses failed for {current_url}")
+            try:
                 if resp.status_code in {301, 302, 303, 307, 308}:
                     current_url = redirect_target(current_url, resp.headers.get("location", ""))
                     continue
                 resp.raise_for_status()
                 return read_limited_response(resp, byte_limit)
+            finally:
+                ctx.__exit__(None, None, None)
         raise httpx.TooManyRedirects(f"Exceeded redirect limit for {url}")
     finally:
         client.close()

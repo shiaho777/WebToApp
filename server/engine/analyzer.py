@@ -13,7 +13,7 @@ from urllib.parse import urljoin, urlparse
 from server.engine.distiller import Distiller
 from server.engine.cache import analysis_cache, html_cache, icon_cache
 from server.htmlmeta import parse_html_metadata
-from server.net import aread_limited_response, avalidate_public_http_url, redirect_target
+from server.net import apinned_targets, aread_limited_response, avalidate_public_http_url, redirect_target
 from server import config
 
 
@@ -93,6 +93,7 @@ class SiteAnalyzer:
             follow_redirects=False,
             timeout=15.0,
             headers={"User-Agent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36"},
+            trust_env=False,
         )
         self.icon_distiller = Distiller()
 
@@ -172,7 +173,23 @@ class SiteAnalyzer:
             cached = html_cache.get(f"bytes:{current_url}")
             if cached is not None:
                 return current_url, cached.decode("utf-8", errors="ignore"), len(cached), cached, ""
-            async with self.client.stream("GET", current_url) as resp:
+            # Pin the connection to pre-validated IPs — closes the DNS-rebinding
+            # window between resolution-check and connect.
+            targets = await apinned_targets(current_url)
+            resp = None
+            ctx = None
+            last_err = None
+            for pinned_url, req_headers, ext in targets:
+                try:
+                    ctx = self.client.stream("GET", pinned_url, headers=req_headers, extensions=ext)
+                    resp = await ctx.__aenter__()
+                    break
+                except httpx.TransportError as exc:
+                    last_err = exc
+                    ctx = None
+            if resp is None:
+                raise last_err or httpx.TransportError(f"All resolved addresses failed for {current_url}")
+            try:
                 if resp.status_code in {301, 302, 303, 307, 308}:
                     location = resp.headers.get("location", "")
                     # Stop and report when the redirect targets an auth portal
@@ -187,6 +204,8 @@ class SiteAnalyzer:
                 raw = await aread_limited_response(resp, config.outbound_response_max_bytes())
                 encoding = getattr(resp, "encoding", None) or "utf-8"
                 return current_url, raw.decode(encoding, errors="ignore"), len(raw), raw, ""
+            finally:
+                await ctx.__aexit__(None, None, None)
         raise httpx.TooManyRedirects(f"Exceeded redirect limit for {url}")
 
     async def _analyze_html(self, url: str, html: str, content_length: int) -> dict:

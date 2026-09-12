@@ -48,7 +48,7 @@ class FakeAsyncClient:
         self.responses = list(responses)
         self.requests = []
 
-    def stream(self, method, url):
+    def stream(self, method, url, **kwargs):
         self.requests.append((method, url))
         return FakeAsyncStream(self.responses.pop(0))
 
@@ -123,6 +123,7 @@ def test_fetch_page_reads_network_response_and_encoding(monkeypatch, encoding):
     response = FakeAsyncResponse(200, encoding=encoding)
     monkeypatch.setattr(analyzer_module, "html_cache", cache)
     monkeypatch.setattr(analyzer_module, "avalidate_public_http_url", AsyncMock(return_value="https://page.example"))
+    monkeypatch.setattr(analyzer_module, "apinned_targets", AsyncMock(side_effect=lambda u: [(u, {}, None)]))
     monkeypatch.setattr(analyzer_module, "aread_limited_response", AsyncMock(return_value=b"caf\xe9"))
     monkeypatch.setattr(analyzer_module.config, "outbound_redirect_limit", lambda: 2)
     monkeypatch.setattr(analyzer_module.config, "outbound_response_max_bytes", lambda: 123)
@@ -143,6 +144,7 @@ def test_fetch_page_follows_redirect(monkeypatch):
     second = FakeAsyncResponse(200)
     monkeypatch.setattr(analyzer_module, "html_cache", DummyCache())
     monkeypatch.setattr(analyzer_module, "avalidate_public_http_url", AsyncMock(return_value="https://start.example"))
+    monkeypatch.setattr(analyzer_module, "apinned_targets", AsyncMock(side_effect=lambda u: [(u, {}, None)]))
     monkeypatch.setattr(analyzer_module, "aread_limited_response", AsyncMock(return_value=b"ok"))
     monkeypatch.setattr(analyzer_module.config, "outbound_redirect_limit", lambda: 1)
     monkeypatch.setattr(analyzer_module.config, "outbound_response_max_bytes", lambda: 100)
@@ -188,6 +190,7 @@ def test_fetch_page_stops_at_auth_wall(monkeypatch, location, headers, expected)
     first = FakeAsyncResponse(302, {"location": location, **headers} if location else headers)
     monkeypatch.setattr(analyzer_module, "html_cache", DummyCache())
     monkeypatch.setattr(analyzer_module, "avalidate_public_http_url", AsyncMock(return_value="https://start.example"))
+    monkeypatch.setattr(analyzer_module, "apinned_targets", AsyncMock(side_effect=lambda u: [(u, {}, None)]))
     monkeypatch.setattr(analyzer_module.config, "outbound_redirect_limit", lambda: 5)
     analyzer = SiteAnalyzer()
     analyzer.client = FakeAsyncClient([first])
@@ -201,6 +204,7 @@ def test_fetch_page_raises_after_redirect_limit(monkeypatch):
     response = FakeAsyncResponse(301, {"location": "https://elsewhere.example"})
     monkeypatch.setattr(analyzer_module, "html_cache", DummyCache())
     monkeypatch.setattr(analyzer_module, "avalidate_public_http_url", AsyncMock(return_value="https://start.example"))
+    monkeypatch.setattr(analyzer_module, "apinned_targets", AsyncMock(side_effect=lambda u: [(u, {}, None)]))
     monkeypatch.setattr(analyzer_module.config, "outbound_redirect_limit", lambda: 0)
     monkeypatch.setattr(analyzer_module.asyncio, "to_thread", AsyncMock(return_value="https://elsewhere.example"))
     analyzer = SiteAnalyzer()

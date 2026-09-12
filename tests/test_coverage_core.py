@@ -286,7 +286,7 @@ class _FakeClient:
         self.requests = []
         self.closed = False
 
-    def stream(self, method, url):
+    def stream(self, method, url, **kwargs):
         self.requests.append((method, url))
         return self.responses.pop(0)
 
@@ -304,6 +304,7 @@ def test_fetch_public_url_bytes_redirect_success_and_options(monkeypatch):
     constructor = Mock(return_value=client)
     monkeypatch.setattr(net.httpx, "Client", constructor)
     monkeypatch.setattr(net, "validate_public_http_url", lambda value: value)
+    monkeypatch.setattr(net, "pinned_targets", lambda value: [(value, {}, None)])
     monkeypatch.setattr(net, "redirect_target", lambda current, location: "https://example.com/next")
     assert net.fetch_public_url_bytes(
         "https://example.com/start",
@@ -322,6 +323,7 @@ def test_fetch_public_url_bytes_redirect_success_and_options(monkeypatch):
 
 def test_fetch_public_url_bytes_defaults_and_too_many_redirects(monkeypatch):
     monkeypatch.setattr(net, "validate_public_http_url", lambda value: value)
+    monkeypatch.setattr(net, "pinned_targets", lambda value: [(value, {}, None)])
     monkeypatch.setattr(net.config, "outbound_response_max_bytes", lambda: 5)
     monkeypatch.setattr(net.config, "outbound_redirect_limit", lambda: 1)
 
@@ -485,3 +487,38 @@ def test_recipe_store_popular_and_lookup():
     assert store.get_popular() is POPULAR_RECIPES
     assert store.get_by_id("gh-dark")["name"] == "GitHub 增强版"
     assert store.get_by_id("missing") is None
+
+
+def test_pinned_request_preserves_host_and_sni():
+    url, headers, ext = net._pinned_request("https://example.com:8443/p?q=1", "93.184.216.34")
+    assert url == "https://93.184.216.34:8443/p?q=1"
+    assert headers == {"Host": "example.com:8443"}
+    assert ext == {"sni_hostname": "example.com"}
+
+    url, headers, ext = net._pinned_request("http://example.com/a", "2001:db8::1")
+    assert url == "http://[2001:db8::1]/a"
+    assert headers == {"Host": "example.com"}
+    assert ext is None
+
+
+def test_pinned_targets_only_return_public_ips(monkeypatch):
+    def fake_getaddrinfo(host, port, type):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.35", port)),
+        ]
+
+    monkeypatch.setattr(net.socket, "getaddrinfo", fake_getaddrinfo)
+    targets = net.pinned_targets("https://example.com/x")
+    assert [t[0] for t in targets] == [
+        "https://93.184.216.34/x",
+        "https://93.184.216.35/x",
+    ]
+
+    monkeypatch.setattr(
+        net.socket,
+        "getaddrinfo",
+        lambda *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("169.254.169.254", 80))],
+    )
+    with pytest.raises(net.UnsafeOutboundTarget):
+        net.pinned_targets("http://example.com")

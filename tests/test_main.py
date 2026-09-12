@@ -449,3 +449,60 @@ class AppIdPathGuardTests(unittest.TestCase):
         # only indirectly — mainly we assert no 5xx).
         resp = self.client.get("/a/abcd1234")
         self.assertIn(resp.status_code, (200, 404))
+
+
+class QuotaAndAnalyzeLimitTests(unittest.TestCase):
+    """Cookie-less builds charge a quota bucket keyed on client IP, and
+    /api/analyze is rate-limited (issue #73 follow-ups)."""
+
+    def setUp(self):
+        self.client = TestClient(main.app)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.apps_dir = Path(self._tmp.name)
+        self.original_apps_dir = main.APPS_DIR
+        self.original_store = main.history_store
+        main.APPS_DIR = self.apps_dir
+        from server.history_store import HistoryStore
+        main.history_store = HistoryStore(self.apps_dir / "_history.json")
+        main.analyze_rate_limiter._buckets.clear()
+        main.distill_rate_limiter._buckets.clear()
+
+    def tearDown(self):
+        main.APPS_DIR = self.original_apps_dir
+        main.history_store = self.original_store
+        self._tmp.cleanup()
+
+    def test_quota_identity_falls_back_to_ip(self):
+        req = SimpleNamespace(
+            headers={}, client=SimpleNamespace(host="203.0.113.9"),
+            url=SimpleNamespace(scheme="https", netloc="service.test"),
+        )
+        self.assertEqual(main._quota_identity(req, None), "ip:203.0.113.9")
+        self.assertEqual(main._quota_identity(req, "fp1"), "fp1")
+
+    def test_cookieless_build_counts_against_ip_bucket(self):
+        # TestClient's peer ("testclient") normalizes to "unknown" — the IP
+        # bucket for cookie-less requests is therefore "ip:unknown".
+        original_quota = main.config.daily_build_quota_per_device
+        main.config.daily_build_quota_per_device = lambda: 1
+        try:
+            (self.apps_dir / "app00001").mkdir(parents=True)
+            main.history_store.record_build(
+                "ip:unknown",
+                {"id": "app00001", "name": "a", "url": "https://a.test"},
+                "/a/app00001", None,
+            )
+            resp = self.client.post("/api/distill", json={"url": "https://example.com"})
+            self.assertEqual(resp.status_code, 429)
+        finally:
+            main.config.daily_build_quota_per_device = original_quota
+
+    def test_analyze_is_rate_limited(self):
+        from unittest.mock import AsyncMock, patch
+        with patch.object(main.analyzer, "analyze", new=AsyncMock(return_value={"ok": True})):
+            codes = [
+                self.client.post("/api/analyze", json={"url": "https://example.com"}).status_code
+                for _ in range(main.analyze_rate_limiter.max_requests + 1)
+            ]
+        self.assertEqual(codes[-1], 429)
+        self.assertTrue(all(c == 200 for c in codes[:-1]))
