@@ -237,7 +237,7 @@ class MarketAndVisibilityTests(unittest.TestCase):
         item = self.client.get("/api/market").json()["items"][0]
         self.assertNotIn("edit_token", item.get("recipe") or {})
 
-    def test_visibility_toggle_requires_ownership(self):
+    def test_visibility_toggle_requires_edit_token(self):
         self._build("owned", "private", ["tools"])
         # Wrong token, wrong device -> 403
         resp = self.client.post(
@@ -246,10 +246,18 @@ class MarketAndVisibilityTests(unittest.TestCase):
             cookies={"webtoapp_device_fingerprint": "someone-else"},
         )
         self.assertEqual(resp.status_code, 403)
-        # Owner device -> 200 and app becomes public
+        # Owning device WITHOUT the token -> 403 too: device attachment is
+        # self-grantable via /api/history/attach, so it proves nothing.
         resp = self.client.post(
             "/api/history/owned/visibility",
             json={"visibility": "public", "edit_token": ""},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.status_code, 403)
+        # Correct token from any device -> 200 and app becomes public
+        resp = self.client.post(
+            "/api/history/owned/visibility",
+            json={"visibility": "public", "edit_token": "tok-owned"},
             cookies=self._cookies(),
         )
         self.assertEqual(resp.status_code, 200)
@@ -275,6 +283,23 @@ class MarketAndVisibilityTests(unittest.TestCase):
             cookies={"webtoapp_device_fingerprint": "someone-else"},
         )
         self.assertEqual(resp.status_code, 400)
+
+    def test_attach_alone_does_not_grant_visibility(self):
+        # The attach endpoint is intentionally open (it only re-links an app
+        # into the caller's own history). It must NOT suffice to flip a
+        # victim app's public/private state (issue #73).
+        self._build("victimapp", "private", ["tools"])
+        attacker = {"webtoapp_device_fingerprint": "attacker-fp"}
+        resp = self.client.post("/api/history/attach/victimapp", cookies=attacker)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(main.history_store.device_owns_app("attacker-fp", "victimapp"))
+        resp = self.client.post(
+            "/api/history/victimapp/visibility",
+            json={"visibility": "public", "edit_token": ""},
+            cookies=attacker,
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(self.client.get("/api/market").json()["items"], [])
 
 
 class DownloadPageNoAttachTests(unittest.TestCase):
@@ -313,3 +338,114 @@ class DownloadPageNoAttachTests(unittest.TestCase):
         self.assertEqual(items, [])
         # Visits are still counted (market stats rely on them).
         self.assertFalse(main.history_store.device_owns_app("visitor-fp", app_id))
+
+
+class HistoryImportHardeningTests(unittest.TestCase):
+    """POST /api/history/import — rate limit, item cap, app_id allowlist and
+    path containment (issue #73)."""
+
+    FP = "import-test-fp"
+
+    def setUp(self):
+        self.client = TestClient(main.app)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.apps_dir = Path(self._tmp.name)
+        self.original_apps_dir = main.APPS_DIR
+        self.original_store = main.history_store
+        main.APPS_DIR = self.apps_dir
+        from server.history_store import HistoryStore
+        main.history_store = HistoryStore(self.apps_dir / "_history.json")
+        main.import_rate_limiter._buckets.clear()
+
+    def tearDown(self):
+        main.APPS_DIR = self.original_apps_dir
+        main.history_store = self.original_store
+        main.import_rate_limiter._buckets.clear()
+        self._tmp.cleanup()
+
+    def _cookies(self):
+        return {"webtoapp_device_fingerprint": self.FP}
+
+    def test_rejects_traversal_app_id(self):
+        resp = self.client.post(
+            "/api/history/import",
+            json={"items": [{"app_id": "../escape", "recipe": {"url": "https://x.test"}}]},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["imported"], 0)
+        self.assertEqual(body["skipped"], 1)
+        self.assertFalse((self.apps_dir.parent / "escape").exists())
+
+    def test_rejects_non_http_target_url(self):
+        resp = self.client.post(
+            "/api/history/import",
+            json={"items": [{"app_id": "jsurl123", "recipe": {"url": "javascript:alert(1)"}}]},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.json()["skipped"], 1)
+
+    def test_caps_items_per_request(self):
+        items = [{"app_id": f"app{i:04d}"} for i in range(main.HISTORY_IMPORT_MAX_ITEMS + 1)]
+        resp = self.client.post(
+            "/api/history/import", json={"items": items}, cookies=self._cookies()
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_rate_limits_import_requests(self):
+        for _ in range(main.import_rate_limiter.max_requests):
+            resp = self.client.post(
+                "/api/history/import", json={"items": []}, cookies=self._cookies()
+            )
+            self.assertEqual(resp.status_code, 200)
+        resp = self.client.post(
+            "/api/history/import", json={"items": []}, cookies=self._cookies()
+        )
+        self.assertEqual(resp.status_code, 429)
+
+    def test_valid_import_relinks_without_overwriting_recipe(self):
+        app_id = "app12345"
+        (self.apps_dir / app_id).mkdir(parents=True)
+        (self.apps_dir / app_id / "recipe.json").write_text(json.dumps({
+            "id": app_id, "name": "A", "url": "https://a.test", "edit_token": "sekrit",
+        }))
+        resp = self.client.post(
+            "/api/history/import",
+            json={"items": [{"app_id": app_id, "recipe": {"url": "https://a.test", "name": "A"}}]},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.json()["imported"], 1)
+        stored = json.loads((self.apps_dir / app_id / "recipe.json").read_text())
+        self.assertEqual(stored["edit_token"], "sekrit")
+
+
+class AppIdPathGuardTests(unittest.TestCase):
+    """Every route mapping an app_id onto the apps dir rejects malformed ids
+    in middleware — traversal and markup characters can never reach the
+    filesystem layer (issue #73)."""
+
+    def setUp(self):
+        self.client = TestClient(main.app)
+
+    def test_malformed_app_ids_404(self):
+        # Avoid literal ".." segments — the HTTP client normalizes them away
+        # before the request reaches the app. Encoded/in-band bad ids survive
+        # transport and must die in the middleware guard.
+        for path in (
+            "/a/%2e%2e%2f%2e%2e%2fetc",  # encoded traversal
+            "/a/x",                      # below min length
+            "/a/abcd1234%22",            # quote char
+            "/a/%3Csvg%3E1234",
+            "/api/history/attach/%2e%2e",
+            "/api/app/%2e%2e/url",
+        ):
+            resp = self.client.get(path)
+            self.assertEqual(resp.status_code, 404, path)
+
+    def test_wellformed_app_id_reaches_route(self):
+        # A syntactically valid but nonexistent app id must pass the guard and
+        # 404 in the route itself (same status, proves the guard let it through
+        # only indirectly — mainly we assert no 5xx).
+        resp = self.client.get("/a/abcd1234")
+        self.assertIn(resp.status_code, (200, 404))
