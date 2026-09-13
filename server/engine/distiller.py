@@ -1055,6 +1055,14 @@ a{{color:inherit;text-decoration:none}}
 .plat-detail{{margin-top:4px;font-size:.86rem;color:rgba(24,20,18,.52);line-height:1.55}}
 .plat-badge{{display:inline-flex;align-items:center;justify-content:center;min-width:74px;height:38px;padding:0 14px;border-radius:8px;background:var(--accent);color:#fff8f2;font-size:.86rem;font-weight:700;white-space:nowrap}}
 .footnote{{margin-top:16px;font-size:.84rem;color:rgba(24,20,18,.48);line-height:1.7}}
+.fold{{margin-top:18px;border:1px solid rgba(30,25,20,.08);border-radius:12px;background:rgba(255,255,255,.5)}}
+.fold>summary{{display:flex;align-items:center;gap:10px;padding:13px 16px;font-size:.9rem;font-weight:700;cursor:pointer;list-style:none;color:var(--ink)}}
+.fold>summary::-webkit-details-marker{{display:none}}
+.fold>summary::after{{content:"";margin-left:auto;width:7px;height:7px;flex:none;border-right:2px solid rgba(30,25,20,.4);border-bottom:2px solid rgba(30,25,20,.4);transform:rotate(45deg);transition:transform .18s ease}}
+.fold[open]>summary::after{{transform:rotate(225deg)}}
+.fold-body{{padding:0 16px 14px;font-size:.86rem;line-height:1.7;color:rgba(24,20,18,.56)}}
+.fold-body p+p{{margin-top:8px}}
+.fold-body .ios-steps{{margin-top:10px}}
 @media (max-width:1080px){{
   .hero{{grid-template-columns:1fr}}
 }}
@@ -1131,13 +1139,14 @@ a{{color:inherit;text-decoration:none}}
       <h1 class="title">{name_esc}</h1>
       {desc_html}
       {tags_row}
-      <div class="meta-row">
-        <span class="meta-chip" data-i18n="chipPlatforms">5 platforms ready</span>
-        <span class="meta-chip" data-i18n="chipIcons">Real icons built in</span>
-        <span class="meta-chip" data-i18n="chipShare">Link is shareable</span>
-      </div>
-      <p class="desc" data-i18n="heroDesc">This is not an app store page, just this site's install entry. Pick your device, then download to install, unzip, or add to the iPhone home screen.</p>
       <p class="source">{source_host}</p>
+      <details class="fold">
+        <summary data-i18n="aboutTitle">About this page</summary>
+        <div class="fold-body">
+          <p data-i18n="heroDesc">This is not an app store page, just this site's install entry. Pick your device, then download to install, unzip, or add to the iPhone home screen.</p>
+          <p data-i18n="footnote">On iPhone install via Safari; on desktop just unzip after downloading. Android ships an installer, while macOS and Windows keep the app icon.</p>
+        </div>
+      </details>
       <section class="community-sec" id="community-sec">
         <div id="app-rating" class="app-rating"></div>
         <div class="creator-wrap"><div id="creator-card"></div></div>
@@ -1160,7 +1169,6 @@ a{{color:inherit;text-decoration:none}}
           <img src="{favicon}" alt="{name_esc}" class="icon">
           <div>
             <h2 class="app-title">{name_esc}</h2>
-            <p class="app-sub" data-i18n="appSub">The multi-platform installers and config profile generated for this site. You can send this page directly to users without explaining the download paths.</p>
           </div>
         </div>
         <div class="app-actions">
@@ -1170,24 +1178,22 @@ a{{color:inherit;text-decoration:none}}
       </div>
 
       <div class="platform-wrap">
-        <div class="ios-install">
-          <div class="ios-top">
-            <div class="ios-title" data-i18n="iosTitle">iPhone install guide</div>
-            {ios_badge}
-          </div>
-          <p class="ios-copy" data-i18n="iosCopy">iPhone and iPad don't need a separate page. Download the profile right in Safari, then finish installing in Settings and the icon appears on your home screen.</p>
-          <ol class="ios-steps">
-            <li data-i18n="iosStep1">In Safari, tap the iPhone install entry above or below</li>
-            <li data-i18n="iosStep2">Download the <code>.mobileconfig</code> profile</li>
-            <li data-i18n="iosStep3">Open "Profile Downloaded" in Settings and finish installing</li>
-            <li data-i18n="iosStep4">Return to the home screen and tap the icon to open</li>
-          </ol>
-        </div>
         <p class="section-label" data-i18n="chooseDevice">Choose your device</p>
         <div class="platforms">
 {platform_links}
         </div>
-        <p class="footnote" data-i18n="footnote">On iPhone install via Safari; on desktop just unzip after downloading. Android ships an installer, while macOS and Windows keep the app icon.</p>
+        <details class="fold ios-fold">
+          <summary><span data-i18n="iosTitle">iPhone install guide</span>{ios_badge}</summary>
+          <div class="fold-body">
+            <p class="ios-copy" data-i18n="iosCopy">iPhone and iPad don't need a separate page. Download the profile right in Safari, then finish installing in Settings and the icon appears on your home screen.</p>
+            <ol class="ios-steps">
+              <li data-i18n="iosStep1">In Safari, tap the iPhone install entry above or below</li>
+              <li data-i18n="iosStep2">Download the <code>.mobileconfig</code> profile</li>
+              <li data-i18n="iosStep3">Open "Profile Downloaded" in Settings and finish installing</li>
+              <li data-i18n="iosStep4">Return to the home screen and tap the icon to open</li>
+            </ol>
+          </div>
+        </details>
       </div>
     </section>
   </main>
@@ -1207,6 +1213,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — Download | WebToApp",
                 "navDownload": "Download",
                 "eyebrow": "INSTALLATION / DOWNLOAD",
+                "aboutTitle": "About this page",
                 "chipPlatforms": "5 platforms ready",
                 "chipIcons": "Real icons built in",
                 "chipShare": "Link is shareable",
@@ -1241,6 +1248,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — 下载安装 | WebToApp",
                 "navDownload": "下载",
                 "eyebrow": "INSTALLATION / 下载页",
+                "aboutTitle": "关于本页",
                 "chipPlatforms": "5 个平台已就绪",
                 "chipIcons": "真实图标已内置",
                 "chipShare": "链接可直接分享",
@@ -1275,6 +1283,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — ダウンロード | WebToApp",
                 "navDownload": "ダウンロード",
                 "eyebrow": "INSTALLATION / ダウンロード",
+                "aboutTitle": "このページについて",
                 "chipPlatforms": "5 プラットフォーム対応",
                 "chipIcons": "実アイコン内蔵",
                 "chipShare": "リンク共有可",
@@ -1309,6 +1318,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — تنزيل | WebToApp",
                 "navDownload": "تنزيل",
                 "eyebrow": "INSTALLATION / التثبيت",
+                "aboutTitle": "حول هذه الصفحة",
                 "chipPlatforms": "5 منصات جاهزة",
                 "chipIcons": "أيقونات حقيقية مدمجة",
                 "chipShare": "الرابط قابل للمشاركة",
@@ -1343,6 +1353,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — Скачать | WebToApp",
                 "navDownload": "Скачать",
                 "eyebrow": "INSTALLATION / УСТАНОВКА",
+                "aboutTitle": "Об этой странице",
                 "chipPlatforms": "5 платформ готовы",
                 "chipIcons": "Настоящие значки встроены",
                 "chipShare": "Ссылкой можно делиться",
@@ -1377,6 +1388,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — Descargar | WebToApp",
                 "navDownload": "Descargar",
                 "eyebrow": "INSTALLATION / INSTALACIÓN",
+                "aboutTitle": "Acerca de esta página",
                 "chipPlatforms": "5 plataformas listas",
                 "chipIcons": "Iconos reales incluidos",
                 "chipShare": "Enlace para compartir",
@@ -1411,6 +1423,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — Baixar | WebToApp",
                 "navDownload": "Baixar",
                 "eyebrow": "INSTALLATION / INSTALAÇÃO",
+                "aboutTitle": "Sobre esta página",
                 "chipPlatforms": "5 plataformas prontas",
                 "chipIcons": "Ícones reais incluídos",
                 "chipShare": "Link compartilhável",
@@ -1445,6 +1458,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — Télécharger | WebToApp",
                 "navDownload": "Télécharger",
                 "eyebrow": "INSTALLATION / INSTALLATION",
+                "aboutTitle": "À propos de cette page",
                 "chipPlatforms": "5 plateformes prêtes",
                 "chipIcons": "Vraies icônes intégrées",
                 "chipShare": "Lien partageable",
@@ -1479,6 +1493,7 @@ a{{color:inherit;text-decoration:none}}
                 "pageTitle": "{name} — Herunterladen | WebToApp",
                 "navDownload": "Herunterladen",
                 "eyebrow": "INSTALLATION / INSTALLATION",
+                "aboutTitle": "Über diese Seite",
                 "chipPlatforms": "5 Plattformen bereit",
                 "chipIcons": "Echte Icons integriert",
                 "chipShare": "Link teilbar",

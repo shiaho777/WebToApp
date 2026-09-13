@@ -523,3 +523,26 @@ class AppDescriptionTests(unittest.TestCase):
             description='<img src=x onerror=alert(1)>')
         self.assertNotIn('<img src=x', page)
         self.assertIn("&lt;img src=x", page)
+
+
+class DownloadPageLayoutTests(unittest.TestCase):
+    """Verbose prose is folded into <details>; key info stays visible."""
+
+    def _page(self):
+        return DownloadPageHardeningTests()._page(description="A demo app")
+
+    def test_prose_is_collapsed_not_inline(self):
+        page = self._page()
+        body = page[page.find("<body>"):]
+        self.assertIn('<details class="fold">', body)
+        self.assertIn('data-i18n="aboutTitle"', body)
+        self.assertIn('ios-fold', body)
+        self.assertNotIn('class="desc"', body)
+        self.assertNotIn('class="footnote"', body)
+        self.assertNotIn('app-sub', body)
+
+    def test_platforms_render_before_ios_fold(self):
+        page = self._page()
+        body = page[page.find("<body>"):]
+        self.assertLess(body.find('class="platforms"'), body.find('ios-fold'))
+        self.assertLess(body.find('id="community-sec"'), body.find('class="hero-panel"'))
