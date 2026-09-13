@@ -734,7 +734,6 @@
     }
   });
   loadMarket();
-  initProfile();
 
   // --- User profile (fingerprint identity → sequential user_num) ---
   const PROFILE_CACHE_KEY = 'webtoapp-profile-v1';
@@ -914,6 +913,10 @@
     const u = new URLSearchParams(window.location.search).get('u');
     if (u && /^\d+$/.test(u)) openProfile(Number(u));
   }
+
+  // Called after the declarations above — the const/let bindings must be
+  // initialized before initProfile touches them (TDZ otherwise).
+  initProfile();
 
   async function applyHistoryItemToForm(item) {
     const recipe = item.recipe || {};

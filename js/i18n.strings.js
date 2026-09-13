@@ -1980,7 +1980,6 @@
     'err.importFormat': 'Import fehlgeschlagen, bitte Dateiformat prüfen',
     'err.removeRetry': 'Entfernen fehlgeschlagen, bitte erneut versuchen',
   });
-})();
 
   // ---------- Community / profile (issue #81) ----------
   R('en', {
@@ -2208,3 +2207,4 @@
     'profile.publicView': 'Öffentliche Seite',
     'market.ratings': '{n} Bewertungen'
   });
+})();
