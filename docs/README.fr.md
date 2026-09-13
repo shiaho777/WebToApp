@@ -19,8 +19,6 @@ Un lien entre, des produits finis sortent pour **iPhone / iPad · Android · Win
 
 ---
 
-<p align="center"><img src="assets/fig-stats.svg" alt="WebToApp en un coup d'œil : 5 plateformes, 9 langues, 336 tests" width="760"></p>
-
 ## Ce que vous obtenez
 
 Entrez une URL — ou envoyez votre propre `.html` / `.zip` — et quelques secondes plus tard vous obtenez un résultat installable couvrant toutes les plateformes. Chaque artefact est une fine coque native pointant vers votre site : les paquets se mesurent en **kilooctets, pas en mégaoctets**, et se téléchargent presque instantanément.

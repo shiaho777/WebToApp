@@ -19,8 +19,6 @@ Ein Link geht rein, fertige Produkte für **iPhone / iPad · Android · Windows 
 
 ---
 
-<p align="center"><img src="assets/fig-stats.svg" alt="WebToApp auf einen Blick: 5 Plattformen, 9 Sprachen, 336 Tests" width="760"></p>
-
 ## Was du bekommst
 
 URL eingeben — oder eigenes `.html` / `.zip` hochladen — und Sekunden später hast du ein installierbares Ergebnis für alle Plattformen. Jedes Artefakt ist eine dünne native Hülle, die auf deine Seite zeigt: Die Pakete werden in **Kilobyte statt Megabyte** gemessen und laden fast sofort.
