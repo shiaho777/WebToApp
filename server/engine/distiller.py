@@ -919,6 +919,14 @@ class Distiller:
   var KEY = "webtoapp-lang-v1";
   function pick(){{
     try{{ var s=localStorage.getItem(KEY); if(s&&SUPPORTED.indexOf(s)!==-1) return s; }}catch(e){{}}
+    try{{
+      var ls=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||navigator.userLanguage||""];
+      for(var i=0;i<ls.length;i++){{
+        var tg=String(ls[i]||"").toLowerCase(); if(!tg) continue;
+        if(SUPPORTED.indexOf(tg)!==-1) return tg;
+        var bs=tg.split("-")[0]; if(SUPPORTED.indexOf(bs)!==-1) return bs;
+      }}
+    }}catch(e){{}}
     return "en";
   }}
   var cur = pick();
@@ -1549,6 +1557,14 @@ a{{color:inherit;text-decoration:none}}
   var KEY = "webtoapp-lang-v1";
   var cur = (function(){{
     try{{ var s=localStorage.getItem(KEY); if(s&&SUPPORTED.indexOf(s)!==-1) return s; }}catch(e){{}}
+    try{{
+      var ls=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||navigator.userLanguage||""];
+      for(var i=0;i<ls.length;i++){{
+        var tg=String(ls[i]||"").toLowerCase(); if(!tg) continue;
+        if(SUPPORTED.indexOf(tg)!==-1) return tg;
+        var bs=tg.split("-")[0]; if(SUPPORTED.indexOf(bs)!==-1) return bs;
+      }}
+    }}catch(e){{}}
     return "en";
   }})();
   function t(k){{ var tb=T[cur]||T.en||{{}}; return (tb[k]!=null)?tb[k]:((T.en||{{}})[k]!=null?T.en[k]:""); }}

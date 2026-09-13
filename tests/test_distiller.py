@@ -345,6 +345,24 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertIn('src="#"', pwa)
         self.assertIn('sha256-', pwa)
 
+    def test_pages_detect_browser_language(self):
+        # First visit should follow navigator.languages, not hardcode English.
+        import tempfile
+        from pathlib import Path
+
+        page = self._page()
+        self.assertIn("navigator.languages", page)
+        self.assertIn('tg.split("-")[0]', page)
+
+        recipe = {
+            "id": "abcd1234", "name": "App", "url": "https://example.com",
+            "color": "#7c3aed", "display": "standalone", "orientation": "any",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            Distiller()._write_pwa_files(Path(tmp), recipe, "https://example.com")
+            pwa = (Path(tmp) / "pwa.html").read_text()
+        self.assertIn("navigator.languages", pwa)
+
 
 class ArtifactSanitizationTests(unittest.TestCase):
     """Recipe name/url land inside .bat/.desktop/install.sh/plist/zip+tar

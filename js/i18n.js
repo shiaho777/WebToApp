@@ -41,7 +41,23 @@
       var saved = window.localStorage.getItem(STORE_KEY);
       if (saved && SUPPORTED.indexOf(saved) !== -1) return saved;
     } catch (_e) { /* ignore */ }
-    // Otherwise default to English, regardless of the browser language.
+    // First visit: follow the browser/OS language preference list in order,
+    // matching an exact tag first then the base subtag ('zh-TW' -> 'zh').
+    var prefs = [];
+    try {
+      if (navigator.languages && navigator.languages.length) {
+        prefs = navigator.languages;
+      } else if (navigator.language || navigator.userLanguage) {
+        prefs = [navigator.language || navigator.userLanguage];
+      }
+    } catch (_e) { /* ignore */ }
+    for (var i = 0; i < prefs.length; i++) {
+      var tag = String(prefs[i] || '').toLowerCase();
+      if (!tag) continue;
+      if (SUPPORTED.indexOf(tag) !== -1) return tag;
+      var base = tag.split('-')[0];
+      if (SUPPORTED.indexOf(base) !== -1) return base;
+    }
     return 'en';
   }
 
