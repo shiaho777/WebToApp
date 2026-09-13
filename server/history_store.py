@@ -683,9 +683,11 @@ class HistoryStore:
             return True
 
     def list_public_apps(self, tag: Optional[str] = None, search: Optional[str] = None,
-                         sort: str = "downloads", limit: int = 60) -> List[dict]:
+                         sort: str = "downloads", limit: int = 60,
+                         apps_dir: Optional[Path] = None) -> List[dict]:
         """Market listing: public apps only, with visit/download stats.
-        sort: downloads | visits | newest."""
+        sort: downloads | visits | newest. ``apps_dir`` enables per-app
+        icon.png probing so cards get icon_url like the device history list."""
         with self._lock:
             self._flush_visits_locked()
             rows = self._conn.execute("SELECT * FROM apps WHERE visibility = 'public'").fetchall()
@@ -697,6 +699,9 @@ class HistoryStore:
                 snapshot["visit_count"] = stats["total"]
                 snapshot["download_count"] = sum(int(v or 0) for v in (stats.get("downloads") or {}).values())
                 snapshot["created_at"] = row["created_at"]
+                if apps_dir is not None:
+                    icon_path = Path(apps_dir) / row["app_id"] / "icon.png"
+                    snapshot["icon_url"] = f"/a/{row['app_id']}/icon.png" if icon_path.exists() else None
                 items.append(snapshot)
         needle = (search or "").strip().lower()
         if needle:
