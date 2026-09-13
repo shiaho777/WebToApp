@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260913-lang2">
-  <script src="js/i18n.js?v=20260913-lang2"></script>
-  <script src="js/i18n.strings.js?v=20260913-lang2"></script>
+  <link rel="stylesheet" href="css/style.css?v=20260913-comm1">
+  <script src="js/i18n.js?v=20260913-comm1"></script>
+  <script src="js/i18n.strings.js?v=20260913-comm1"></script>
 </head>
 <body>
   <header id="nav">
@@ -25,6 +25,10 @@
       <span>WebToApp</span>
     </a>
     <div class="nav-actions">
+      <button id="profile-btn" class="profile-btn" type="button" data-i18n-aria-label="profile.open" aria-label="My page" title="My page">
+        <img id="profile-btn-avatar" class="profile-btn-avatar hidden" alt="">
+        <svg id="profile-btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>
+      </button>
       <div class="lang-switcher">
         <label id="lang-label" class="sr-only" for="lang-select" data-i18n="nav.langLabel">Language</label>
         <select id="lang-select" aria-labelledby="lang-label"></select>
@@ -471,6 +475,50 @@
 
   </main>
 
-  <script src="js/app.v5.js?v=20260913-lang2"></script>
+  <!-- ===== USER PROFILE ===== -->
+  <div id="profile-modal" class="profile-modal hidden" role="dialog" aria-modal="true" aria-labelledby="profile-name-view">
+    <div class="profile-card">
+      <button id="profile-close" class="profile-close" type="button" data-i18n-aria-label="profile.close" aria-label="Close">×</button>
+      <div class="profile-head">
+        <div class="profile-avatar-wrap">
+          <img id="profile-avatar" class="profile-avatar hidden" alt="">
+          <span id="profile-avatar-fallback" class="profile-avatar profile-avatar-fallback" aria-hidden="true"></span>
+          <button id="avatar-upload-btn" class="avatar-upload-btn hidden" type="button" data-i18n="profile.uploadAvatar">Change</button>
+          <input id="avatar-file" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp">
+        </div>
+        <div class="profile-id-block">
+          <div class="profile-name-row">
+            <span id="profile-name-view" class="profile-name-view"></span>
+            <span id="profile-num" class="profile-num"></span>
+          </div>
+          <div id="profile-joined" class="profile-joined"></div>
+        </div>
+      </div>
+      <div id="profile-bio-view" class="profile-bio"></div>
+      <p id="profile-msg" class="profile-msg" role="status"></p>
+
+      <form id="profile-edit" class="profile-edit hidden">
+        <label class="profile-field">
+          <span data-i18n="profile.name">Display name</span>
+          <input id="profile-name-input" type="text" maxlength="20" data-i18n-placeholder="profile.nameHint" placeholder="2-20 chars, letters/数字/_-">
+        </label>
+        <label class="profile-field">
+          <span data-i18n="profile.bio">Bio (Markdown supported)</span>
+          <textarea id="profile-bio-input" rows="4" maxlength="2000" data-i18n-placeholder="profile.bioHint" placeholder="Tell people who you are…"></textarea>
+        </label>
+        <div class="profile-edit-actions">
+          <button type="submit" class="profile-save" data-i18n="profile.save">Save</button>
+          <button type="button" id="profile-edit-cancel" class="profile-cancel" data-i18n="profile.cancel">Cancel</button>
+        </div>
+      </form>
+      <button id="profile-edit-btn" class="profile-edit-btn hidden" type="button" data-i18n="profile.edit">Edit profile</button>
+
+      <div class="section-label" id="profile-apps-label" data-i18n="profile.appsLabel">Apps</div>
+      <div id="profile-apps" class="profile-apps"></div>
+    </div>
+  </div>
+
+  <script src="js/mdmini.js?v=20260913-comm1"></script>
+  <script src="js/app.v5.js?v=20260913-comm1"></script>
 </body>
 </html>

@@ -363,6 +363,24 @@ class DownloadPageHardeningTests(unittest.TestCase):
             pwa = (Path(tmp) / "pwa.html").read_text()
         self.assertIn("navigator.languages", pwa)
 
+    def test_page_mounts_community_scripts(self):
+        # Download pages load the shared community component: mount point,
+        # WTA_APP_ID bootstrap before the script, and 'self' in the CSP so
+        # the external scripts run under the hash-pinned policy (issue #81).
+        page = self._page()
+        self.assertIn('id="community-sec"', page)
+        self.assertIn('id="creator-card"', page)
+        self.assertIn('id="comment-form"', page)
+        self.assertIn("window.WTA_APP_ID", page)
+        self.assertIn('/js/community.js', page)
+        self.assertIn('/js/mdmini.js', page)
+        import re as _re
+        script_src = _re.search(r"script-src ([^;]+)", page).group(1)
+        self.assertIn("'self'", script_src)
+        self.assertIn("sha256-", script_src)
+        # WTA_APP_ID must be assigned before community.js executes.
+        self.assertLess(page.index("window.WTA_APP_ID"), page.index("/js/community.js"))
+
 
 class ArtifactSanitizationTests(unittest.TestCase):
     """Recipe name/url land inside .bat/.desktop/install.sh/plist/zip+tar

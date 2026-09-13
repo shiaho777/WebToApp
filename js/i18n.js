@@ -138,7 +138,10 @@
     locale: locale,
     setLanguage: setLanguage,
     applyTranslations: applyTranslations,
-    register: function (lang, tableObj) { TRANSLATIONS[lang] = tableObj; },
+    register: function (lang, tableObj) {
+      // Merge, not replace — feature blocks may register the same lang twice.
+      TRANSLATIONS[lang] = Object.assign(TRANSLATIONS[lang] || {}, tableObj);
+    },
     supported: SUPPORTED.slice(),
     rtl: RTL.slice(),
     nativeNames: NATIVE_NAMES,

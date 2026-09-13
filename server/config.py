@@ -334,3 +334,9 @@ def launch_cache_max_age() -> int:
         return max(0, int(os.environ.get("LAUNCH_CACHE_MAX_AGE", "60").strip() or "60"))
     except ValueError:
         return 60
+
+
+def admin_token() -> str:
+    """Bearer/X-Admin-Token for moderation endpoints (comment deletion).
+    Empty = admin operations disabled."""
+    return os.environ.get("ADMIN_TOKEN", "").strip()

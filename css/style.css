@@ -2290,3 +2290,359 @@ section {
     flex: 1;
   }
 }
+
+/* --- user profile button + modal --- */
+.profile-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  color: var(--ink, #1e1914);
+  border: 1px solid rgba(30, 25, 20, 0.16);
+  background-color: rgba(255, 251, 246, 0.72);
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.profile-btn:hover {
+  border-color: rgba(30, 25, 20, 0.32);
+  color: var(--accent, #c97953);
+}
+
+.profile-btn-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(30, 25, 20, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.profile-card {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 26px;
+  border-radius: 16px;
+  border: 1px solid rgba(30, 25, 20, 0.1);
+  background: var(--paper, #f7f3ec);
+  box-shadow: 0 18px 60px rgba(30, 25, 20, 0.25);
+}
+
+.profile-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: none;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: rgba(30, 25, 20, 0.5);
+  cursor: pointer;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(30, 25, 20, 0.16);
+}
+
+.profile-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #efe5d6;
+  color: #8a7a64;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.avatar-upload-btn {
+  border: 1px solid rgba(30, 25, 20, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 251, 246, 0.8);
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.profile-id-block {
+  min-width: 0;
+}
+
+.profile-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profile-name-view {
+  font-size: 1.3rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-num {
+  color: rgba(30, 25, 20, 0.5);
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.profile-joined {
+  margin-top: 4px;
+  color: rgba(30, 25, 20, 0.5);
+  font-size: 0.78rem;
+}
+
+.profile-bio {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(30, 25, 20, 0.72);
+  word-break: break-word;
+}
+
+.profile-bio code {
+  background: rgba(30, 25, 20, 0.07);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.profile-bio a {
+  color: var(--accent, #c97953);
+}
+
+.profile-msg {
+  min-height: 1.1em;
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--accent, #c97953);
+}
+
+.profile-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(30, 25, 20, 0.68);
+}
+
+.profile-field input,
+.profile-field textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 9px 12px;
+  border: 1px solid rgba(30, 25, 20, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink);
+}
+
+.profile-edit-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.profile-save {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-deep, #1e1914);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-cancel,
+.profile-edit-btn {
+  padding: 8px 16px;
+  border: 1px solid rgba(30, 25, 20, 0.16);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.profile-edit-btn {
+  margin-top: 12px;
+}
+
+#profile-apps-label {
+  margin-top: 22px;
+}
+
+.profile-apps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.profile-app {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(30, 25, 20, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.profile-app img {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.profile-app-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: #e7ddcf;
+  flex-shrink: 0;
+}
+
+.profile-app-vis {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(30, 25, 20, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.profile-apps-empty {
+  color: rgba(30, 25, 20, 0.5);
+  font-size: 0.86rem;
+}
+
+/* --- market card creator + rating --- */
+.market-card-creator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.market-creator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.market-creator:hover .market-creator-name {
+  color: var(--accent, #c97953);
+}
+
+.market-creator-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(30, 25, 20, 0.1);
+  flex-shrink: 0;
+}
+
+.avatar-fallback.market-creator-avatar,
+.market-creator-avatar.avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #efe5d6;
+  color: #8a7a64;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.market-creator-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-creator-num {
+  font-size: 0.78rem;
+  color: rgba(30, 25, 20, 0.5);
+  font-weight: 600;
+}
+
+.market-card-date {
+  margin-left: auto;
+  font-size: 0.76rem;
+  color: rgba(30, 25, 20, 0.45);
+  flex-shrink: 0;
+}
+
+.market-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(30, 25, 20, 0.72);
+  font-weight: 600;
+}
+
+.market-star {
+  color: #e8a33d;
+}
+
+.market-rating-cnt {
+  color: rgba(30, 25, 20, 0.45);
+  font-weight: 400;
+}

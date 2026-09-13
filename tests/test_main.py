@@ -514,3 +514,216 @@ class QuotaAndAnalyzeLimitTests(unittest.TestCase):
             ]
         self.assertEqual(codes[-1], 429)
         self.assertTrue(all(c == 200 for c in codes[:-1]))
+
+
+class CommunityEndpointTests(unittest.TestCase):
+    """Profiles, creator attribution, comments + ratings endpoints (issue #81)."""
+
+    FP_A = "comm-fp-a"
+    FP_B = "comm-fp-b"
+
+    def setUp(self):
+        self.client = TestClient(main.app)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.apps_dir = Path(self._tmp.name)
+        self.original_apps_dir = main.APPS_DIR
+        self.original_store = main.history_store
+        self.original_community = main.community_store
+        self.original_avatars = main.AVATARS_DIR
+        main.APPS_DIR = self.apps_dir
+        from server.history_store import HistoryStore
+        from server.community_store import CommunityStore
+        main.history_store = HistoryStore(self.apps_dir / "_history.sqlite3")
+        main.community_store = CommunityStore(self.apps_dir / "_community.sqlite3")
+        main.AVATARS_DIR = self.apps_dir / "_avatars"
+        main.AVATARS_DIR.mkdir(exist_ok=True)
+
+    def tearDown(self):
+        main.APPS_DIR = self.original_apps_dir
+        main.history_store = self.original_store
+        main.community_store = self.original_community
+        main.AVATARS_DIR = self.original_avatars
+        self._tmp.cleanup()
+
+    def _cookies(self, fp):
+        return {"webtoapp_device_fingerprint": fp}
+
+    def _make_app(self, app_id, fp, visibility="public", name=None):
+        (self.apps_dir / app_id).mkdir(parents=True, exist_ok=True)
+        recipe = {
+            "id": app_id, "name": name or f"App {app_id}",
+            "url": f"https://{app_id}.test",
+            "visibility": visibility, "tags": ["tools"],
+            "edit_token": f"tok-{app_id}",
+        }
+        (self.apps_dir / app_id / "recipe.json").write_text(json.dumps(recipe))
+        main.history_store.record_build(fp, recipe, f"/a/{app_id}", None)
+        # Mirrors the record_build caller in /api/distill: every build
+        # attributes a creator, regardless of visibility.
+        main.community_store.ensure_user(fp)
+        main.community_store.set_creator(app_id, fp)
+
+    # ---------- profiles ----------
+
+    def test_me_requires_fingerprint_and_assigns_sequential_nums(self):
+        self.assertEqual(self.client.get("/api/me").status_code, 400)
+        a = self.client.get("/api/me", cookies=self._cookies(self.FP_A)).json()
+        b = self.client.get("/api/me", cookies=self._cookies(self.FP_B)).json()
+        self.assertEqual(a["profile"]["user_num"], 1)
+        self.assertEqual(b["profile"]["user_num"], 2)
+        # Second visit keeps the number.
+        again = self.client.get("/api/me", cookies=self._cookies(self.FP_A)).json()
+        self.assertEqual(again["profile"]["user_num"], 1)
+
+    def test_profile_update_validation_and_uniqueness(self):
+        resp = self.client.post(
+            "/api/me/profile",
+            json={"name": "bad name!", "bio_md": ""},
+            cookies=self._cookies(self.FP_A),
+        )
+        self.assertEqual(resp.status_code, 422)
+        resp = self.client.post(
+            "/api/me/profile",
+            json={"name": "Alice", "bio_md": "**hi**"},
+            cookies=self._cookies(self.FP_A),
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["profile"]["name"], "Alice")
+        resp = self.client.post(
+            "/api/me/profile",
+            json={"name": "ALICE", "bio_md": ""},
+            cookies=self._cookies(self.FP_B),
+        )
+        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(resp.json()["detail"], "name_taken")
+
+    def test_public_user_profile_and_apps(self):
+        self._make_app("pub1aaaa", self.FP_A, "public")
+        self._make_app("priv1aaa", self.FP_A, "private")
+        self.client.get("/api/me", cookies=self._cookies(self.FP_A))
+        resp = self.client.get("/api/users/1")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["profile"]["user_num"], 1)
+        ids = [a["app_id"] for a in data["apps"]]
+        self.assertEqual(ids, ["pub1aaaa"])  # private app hidden publicly
+        self.assertEqual(self.client.get("/api/users/999").status_code, 404)
+        self.assertEqual(self.client.get("/api/users/abc").status_code, 404)
+        # Own /api/me lists both apps including private.
+        mine = self.client.get("/api/me", cookies=self._cookies(self.FP_A)).json()
+        self.assertEqual(sorted(a["app_id"] for a in mine["apps"]),
+                         ["priv1aaa", "pub1aaaa"])
+
+    def test_avatar_upload_and_serve(self):
+        import io
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        buf = io.BytesIO()
+        Image.new("RGB", (64, 64), (200, 80, 60)).save(buf, format="PNG")
+        resp = self.client.post(
+            "/api/me/avatar",
+            files={"file": ("a.png", buf.getvalue(), "image/png")},
+            cookies=self._cookies(self.FP_A),
+        )
+        self.assertEqual(resp.status_code, 200)
+        url = resp.json()["avatar_url"]
+        self.assertTrue(url.startswith("/u/1/avatar.png"))
+        served = self.client.get(url.split("?")[0])
+        self.assertEqual(served.status_code, 200)
+        self.assertEqual(served.headers["content-type"], "image/png")
+        # Garbage is rejected.
+        bad = self.client.post(
+            "/api/me/avatar",
+            files={"file": ("a.png", b"not an image", "image/png")},
+            cookies=self._cookies(self.FP_A),
+        )
+        self.assertEqual(bad.status_code, 422)
+
+    # ---------- comments & ratings ----------
+
+    def test_comment_post_get_delete(self):
+        self._make_app("capp1", self.FP_A)
+        resp = self.client.post(
+            "/api/apps/capp1/comments",
+            json={"body": "nice <b>app</b>", "rating": 4},
+            cookies=self._cookies(self.FP_B),
+        )
+        self.assertEqual(resp.status_code, 200)
+        comment = resp.json()["comment"]
+        self.assertEqual(comment["rating"], 4)
+        self.assertTrue(comment["mine"])
+        community = self.client.get("/api/apps/capp1/community").json()
+        self.assertEqual(len(community["comments"]), 1)
+        self.assertEqual(community["rating_avg"], 4.0)
+        self.assertEqual(community["rating_count"], 1)
+        # Wrong fp cannot delete; author can.
+        denied = self.client.delete(
+            f"/api/comments/{comment['id']}", cookies=self._cookies(self.FP_A))
+        self.assertEqual(denied.status_code, 403)
+        ok = self.client.delete(
+            f"/api/comments/{comment['id']}", cookies=self._cookies(self.FP_B))
+        self.assertEqual(ok.status_code, 200)
+
+    def test_comment_admin_delete(self):
+        self._make_app("capp2", self.FP_A)
+        comment = self.client.post(
+            "/api/apps/capp2/comments",
+            json={"body": "spam", "rating": None},
+            cookies=self._cookies(self.FP_B),
+        ).json()["comment"]
+        import os
+        os.environ["ADMIN_TOKEN"] = "secret-tok"
+        try:
+            resp = self.client.delete(
+                f"/api/comments/{comment['id']}",
+                headers={"Authorization": "Bearer secret-tok"},
+            )
+            self.assertEqual(resp.status_code, 200)
+        finally:
+            del os.environ["ADMIN_TOKEN"]
+
+    def test_comment_validation_and_missing_fp(self):
+        self._make_app("capp3", self.FP_A)
+        self.assertEqual(
+            self.client.post("/api/apps/capp3/comments", json={"body": "hi"}).status_code, 400)
+        for payload, want in [
+            ({"body": ""}, 422),
+            ({"body": "ok", "rating": 0}, 422),
+            ({"body": "ok", "rating": 6}, 422),
+        ]:
+            resp = self.client.post(
+                "/api/apps/capp3/comments", json=payload,
+                cookies=self._cookies(self.FP_B))
+            self.assertEqual(resp.status_code, want, payload)
+        self.assertEqual(
+            self.client.get("/api/apps/nonexistent/community").status_code, 404)
+
+    # ---------- market decoration ----------
+
+    def test_market_items_carry_creator_and_rating(self):
+        self._make_app("mkt1", self.FP_A)
+        self.client.post(
+            "/api/me/profile", json={"name": "Maker", "bio_md": ""},
+            cookies=self._cookies(self.FP_A))
+        self.client.post(
+            "/api/apps/mkt1/comments", json={"body": "good", "rating": 5},
+            cookies=self._cookies(self.FP_B))
+        item = self.client.get("/api/market").json()["items"][0]
+        self.assertEqual(item["creator_num"], 1)
+        self.assertEqual(item["creator_name"], "Maker")
+        self.assertEqual(item["rating_avg"], 5.0)
+        self.assertEqual(item["rating_count"], 1)
+        # Search by #num and by creator name.
+        by_num = self.client.get("/api/market", params={"search": "#1"}).json()["items"]
+        self.assertEqual([i["app_id"] for i in by_num], ["mkt1"])
+        by_name = self.client.get("/api/market", params={"search": "maker"}).json()["items"]
+        self.assertEqual([i["app_id"] for i in by_name], ["mkt1"])
+
+    def test_community_endpoint_reports_creator_and_other_apps(self):
+        self._make_app("mine1", self.FP_A)
+        self._make_app("mine2", self.FP_A, "public", name="Second App")
+        data = self.client.get("/api/apps/mine2/community").json()
+        self.assertEqual(data["creator"]["user_num"], 1)
+        self.assertEqual([a["app_id"] for a in data["other_apps"]], ["mine1"])
