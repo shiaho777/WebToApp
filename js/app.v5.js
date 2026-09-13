@@ -646,7 +646,7 @@
       const createdStr = item.created_at ? new Date(item.created_at).toLocaleDateString(locale()) : '';
       const ratingHtml = item.rating_count
         ? `<span class="market-rating"><span class="market-star">★</span> ${Number(item.rating_avg).toFixed(1)}<span class="market-rating-cnt">(${item.rating_count})</span></span>`
-        : '';
+        : `<span class="market-rating"><span class="market-star market-star-off">★</span><span class="market-rating-cnt">${escapeHtml(t('market.noRatings'))}</span></span>`;
       const card = document.createElement('article');
       card.className = 'market-card';
       card.innerHTML = `

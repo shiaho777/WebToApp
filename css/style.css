@@ -2658,3 +2658,7 @@ section {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
+
+.market-star-off {
+  color: rgba(30, 25, 20, 0.22);
+}
