@@ -19,8 +19,6 @@ One link in, finished products out for **iPhone / iPad · Android · Windows · 
 
 ---
 
-<p align="center"><img src="docs/assets/fig-stats.svg" alt="WebToApp at a glance: 5 platforms, 9 languages, 336 tests" width="760"></p>
-
 ## What you get
 
 Enter a URL — or upload your own `.html` / `.zip` — and seconds later you get an installable result covering every major platform. Each artifact is a thin native shell pointing at your site, so packages are measured in **kilobytes, not megabytes**, and download almost instantly.
