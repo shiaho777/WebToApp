@@ -113,6 +113,7 @@
   const marketEmpty = document.getElementById('market-empty');
   const marketSearchInput = document.getElementById('market-search');
   const marketSortSelect = document.getElementById('market-sort');
+  const marketCount = document.getElementById('market-count');
   const profileBtn = document.getElementById('profile-btn');
   const profileBtnAvatar = document.getElementById('profile-btn-avatar');
   const profileBtnIcon = document.getElementById('profile-btn-icon');
@@ -644,7 +645,7 @@
              ${creatorAvatar}<span class="market-creator-name">${escapeHtml(item.creator_name || t('profile.anon'))}</span><span class="market-creator-num">#${item.creator_num}</span>
            </a>`
         : '';
-      const createdStr = item.created_at ? new Date(item.created_at).toLocaleDateString(locale()) : '';
+      const createdStr = relTime(item.created_at);
       const ratingHtml = item.rating_count
         ? `<span class="market-rating"><span class="market-star">★</span> ${Number(item.rating_avg).toFixed(1)}<span class="market-rating-cnt">(${item.rating_count})</span></span>`
         : `<span class="market-rating"><span class="market-star market-star-off">★</span><span class="market-rating-cnt">${escapeHtml(t('market.noRatings'))}</span></span>`;
@@ -673,6 +674,22 @@
     marketList.appendChild(fragment);
   }
 
+  function relTime(iso) {
+    const ts = Date.parse(iso || '');
+    if (!ts) return '';
+    const s = Math.max(0, (Date.now() - ts) / 1000);
+    if (s < 60) return t('time.justNow');
+    const m = Math.floor(s / 60);
+    if (m < 60) return t('time.minutesAgo', { n: m });
+    const h = Math.floor(m / 60);
+    if (h < 24) return t('time.hoursAgo', { n: h });
+    const d = Math.floor(h / 24);
+    if (d < 30) return t('time.daysAgo', { n: d });
+    const mo = Math.floor(d / 30.44);
+    if (mo < 12) return t('time.monthsAgo', { n: mo });
+    return t('time.yearsAgo', { n: Math.floor(mo / 12) });
+  }
+
   async function loadMarket() {
     const activeTab = document.querySelector('.market-tab.active');
     const tag = activeTab ? activeTab.dataset.marketTag : '';
@@ -684,8 +701,11 @@
       const res = await fetch(`/api/market?${params.toString()}`);
       if (!res.ok) throw new Error('market failed');
       const data = await res.json();
-      renderMarket(data.items || []);
+      const items = data.items || [];
+      marketCount.textContent = t('market.count', { n: data.total != null ? data.total : items.length });
+      renderMarket(items);
     } catch (_err) {
+      marketCount.textContent = '';
       renderMarket([]);
     }
   }
