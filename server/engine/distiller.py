@@ -214,6 +214,8 @@ class Distiller:
             "visibility": self._visibility(options),
             "tags": self._tags(options),
             "description": self._description(options),
+            "_about_text": self._about_text(options),
+            "_about_images": self._about_images(options),
             "_custom_icon_data_url": self._custom_icon_data_url(options),
             "custom_icon_uploaded": bool(self._custom_icon_data_url(options)),
             "edit_token": self._edit_token(app_id),
@@ -289,6 +291,113 @@ class Distiller:
     def _custom_icon_data_url(self, options):
         raw = options.get("custom-icon-data-url") or options.get("custom_icon_data_url") or ""
         return str(raw).strip()
+
+    ABOUT_MAX_TEXT = 2000
+    ABOUT_MAX_IMAGES = 3
+    ABOUT_RAW_IMAGES = 6
+    ABOUT_IMAGE_LIMIT = 800 * 1024
+    ABOUT_RAW_LIMIT = 10 * 1024 * 1024
+    ABOUT_MAX_PIXELS = 40_000_000  # decompression-bomb guard
+
+    def _about_text(self, options):
+        """None when the key is absent (rebuild keeps the stored text)."""
+        if "about-text" not in options and "about_text" not in options:
+            return None
+        raw = options.get("about-text") or options.get("about_text") or ""
+        return str(raw).replace("\r\n", "\n").replace("\r", "\n").strip()[: self.ABOUT_MAX_TEXT]
+
+    def _about_images(self, options):
+        """None when absent (rebuild keeps stored images); [] clears."""
+        if "about-images" not in options and "about_images" not in options:
+            return None
+        raw = options.get("about-images") or options.get("about_images") or []
+        if not isinstance(raw, (list, tuple)):
+            return []
+        # Bound the raw list so a huge array can't burn decode time; the
+        # real 3-image cap applies to *valid* images inside _resolve_about.
+        return [str(item) for item in raw][: self.ABOUT_RAW_IMAGES]
+
+    def _about_image_to_webp(self, data_url):
+        """Decode one data-URL image and re-encode as WebP capped at 800KB.
+
+        Pillow re-encodes raw pixels, so EXIF blobs, polyglot payloads and
+        scriptable wrappers die at the decode step. Oversized images are
+        downscaled/quality-stepped until they fit — near-lossless WebP q90
+        first, shrinking dimensions only while the output stays over the cap.
+        """
+        try:
+            header, _, b64 = str(data_url or "").partition(",")
+            if not header.lower().startswith("data:image/") or not b64:
+                return None
+            raw = base64.b64decode(b64, validate=True)
+        except Exception:
+            return None
+        if not raw or len(raw) > self.ABOUT_RAW_LIMIT:
+            return None
+        try:
+            with Image.open(io.BytesIO(raw)) as im:
+                im.load()
+        except (UnidentifiedImageError, OSError, ValueError):
+            return None
+        if im.width * im.height > self.ABOUT_MAX_PIXELS:
+            return None
+        im = ImageOps.exif_transpose(im)
+        has_alpha = im.mode in ("RGBA", "LA", "PA") or "transparency" in im.info
+        im = im.convert("RGBA" if has_alpha else "RGB")
+        side = 2048
+        quality = 90
+        while True:
+            work = im
+            if max(work.size) > side:
+                ratio = side / max(work.size)
+                work = im.resize(
+                    (max(1, round(im.width * ratio)), max(1, round(im.height * ratio))),
+                    Image.Resampling.LANCZOS,
+                )
+            out = io.BytesIO()
+            work.save(out, format="WEBP", quality=quality, method=6)
+            blob = out.getvalue()
+            if len(blob) <= self.ABOUT_IMAGE_LIMIT:
+                return blob
+            if side > 640:
+                side //= 2
+            elif quality > 60:
+                quality -= 15
+            else:
+                return None
+
+    def _resolve_about(self, app_dir, text_opt, images_opt):
+        """Merge this build's about options with whatever the stored recipe
+        already had. ``None`` = key absent → keep prior value; explicit
+        value (including empty) replaces it. Image files live next to
+        recipe.json under fixed server-generated names."""
+        prev = {}
+        rp = Path(app_dir) / "recipe.json"
+        if rp.exists():
+            try:
+                prev = (json.loads(rp.read_text()).get("about") or {})
+            except Exception:
+                prev = {}
+        text = prev.get("text", "") if text_opt is None else text_opt
+        images = [n for n in (prev.get("images") or [])
+                  if re.fullmatch(r"about-\d\.webp", str(n))]
+        if images_opt is not None:
+            for name in images:
+                try:
+                    (Path(app_dir) / name).unlink(missing_ok=True)
+                except Exception:
+                    pass
+            images = []
+            for data_url in images_opt:
+                if len(images) >= self.ABOUT_MAX_IMAGES:
+                    break
+                blob = self._about_image_to_webp(data_url)
+                if not blob:
+                    continue
+                name = f"about-{len(images) + 1}.webp"
+                (Path(app_dir) / name).write_bytes(blob)
+                images.append(name)
+        return {"text": str(text or "").strip(), "images": images}
 
     def _visibility(self, options):
         raw = str(options.get("visibility") or "private").strip().lower()
@@ -405,6 +514,11 @@ class Distiller:
 
         stored_recipe = dict(recipe)
         stored_recipe.pop("_custom_icon_data_url", None)
+        about_text_opt = stored_recipe.pop("_about_text", None)
+        about_images_opt = stored_recipe.pop("_about_images", None)
+        stored_recipe["about"] = self._resolve_about(
+            app_dir, about_text_opt, about_images_opt)
+        recipe["about"] = stored_recipe["about"]  # the render below reads the caller's dict
 
         report("fetching_icon")
         icon_png = self._fetch_icon(recipe)
@@ -909,6 +1023,31 @@ class Distiller:
         _app_desc = str(r.get("description") or "").strip()
         if _app_desc:
             desc_html = f'<p class="app-desc">{_esc(_app_desc)}</p>'
+        # Creator-authored about block replaces the boilerplate inside the
+        # fold whenever the recipe carries one — the position stays the
+        # same, the content becomes theirs.
+        about = r.get("about") if isinstance(r.get("about"), dict) else {}
+        about_text = str(about.get("text") or "").strip()
+        about_imgs = [str(n) for n in (about.get("images") or [])
+                      if re.fullmatch(r"about-\d\.webp", str(n))][: self.ABOUT_MAX_IMAGES]
+        if about_text or about_imgs:
+            about_fold_body = ""
+            if about_text:
+                paras = [p.strip() for p in re.split(r"\n\s*\n", about_text) if p.strip()]
+                about_fold_body += "".join(
+                    f'<p class="about-text">{_esc(p).replace(chr(10), "<br>")}</p>'
+                    for p in paras
+                )
+            if about_imgs:
+                about_fold_body += '<div class="about-imgs">' + "".join(
+                    f'<img src="{base}/about/{_esc(n)}" loading="lazy" decoding="async" alt="">'
+                    for n in about_imgs
+                ) + "</div>"
+        else:
+            about_fold_body = (
+                '<p data-i18n="heroDesc">This is not an app store page, just this site\'s install entry. Pick your device, then download to install, unzip, or add to the iPhone home screen.</p>'
+                '<p data-i18n="footnote">On iPhone install via Safari; on desktop just unzip after downloading. Android ships an installer, while macOS and Windows keep the app icon.</p>'
+            )
         inline_js = f"""window.WTA_APP_ID = {_js_literal(str(r.get('id') or ''))};
 (function(){{
   var T = {dl_i18n_json};
@@ -1049,6 +1188,9 @@ a{{color:inherit;text-decoration:none}}
 .fold-body{{padding:0 16px 14px;font-size:.86rem;line-height:1.7;color:rgba(24,20,18,.56)}}
 .fold-body p+p{{margin-top:8px}}
 .fold-body .ios-steps{{margin-top:10px}}
+.about-text{{white-space:pre-line;font-size:.92rem;color:var(--ink)}}
+.about-imgs{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}}
+.about-imgs img{{width:100%;display:block;border-radius:10px;border:1px solid rgba(30,25,20,.08)}}
 @media (max-width:1080px){{
   .hero{{grid-template-columns:1fr}}
 }}
@@ -1129,8 +1271,7 @@ a{{color:inherit;text-decoration:none}}
       <details class="fold">
         <summary data-i18n="aboutTitle">About this page</summary>
         <div class="fold-body">
-          <p data-i18n="heroDesc">This is not an app store page, just this site's install entry. Pick your device, then download to install, unzip, or add to the iPhone home screen.</p>
-          <p data-i18n="footnote">On iPhone install via Safari; on desktop just unzip after downloading. Android ships an installer, while macOS and Windows keep the app icon.</p>
+          {about_fold_body}
         </div>
       </details>
       <section class="community-sec" id="community-sec">

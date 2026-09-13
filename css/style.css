@@ -2204,6 +2204,21 @@ section {
   font-size: 0.84rem;
 }
 
+.about-images-preview {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.about-images-preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(30, 25, 20, 0.12);
+}
+
 .market-count {
   display: inline-block;
   margin-top: 8px;
