@@ -640,7 +640,7 @@
         ? `<img class="market-creator-avatar" src="${escapeHtml(item.creator_avatar_url)}" alt="" loading="lazy">`
         : `<span class="market-creator-avatar avatar-fallback" aria-hidden="true">${escapeHtml((item.creator_name || '#').charAt(0).toUpperCase())}</span>`;
       const creatorHtml = item.creator_num
-        ? `<a class="market-creator" href="/?u=${encodeURIComponent(item.creator_num)}" target="_blank" rel="noopener noreferrer">
+        ? `<a class="market-creator" href="/?u=${encodeURIComponent(item.creator_num)}" data-user-num="${encodeURIComponent(item.creator_num)}">
              ${creatorAvatar}<span class="market-creator-name">${escapeHtml(item.creator_name || t('profile.anon'))}</span><span class="market-creator-num">#${item.creator_num}</span>
            </a>`
         : '';
@@ -691,6 +691,12 @@
   }
 
   marketList.addEventListener('click', (event) => {
+    const creatorLink = event.target.closest('a.market-creator');
+    if (creatorLink && creatorLink.dataset.userNum) {
+      event.preventDefault();
+      openProfileViaLink(Number(creatorLink.dataset.userNum));
+      return;
+    }
     const btn = event.target.closest('[data-open]');
     if (btn) window.open(btn.dataset.open, '_blank', 'noopener,noreferrer');
   });
@@ -819,6 +825,26 @@
     profileShowMessage('');
   }
 
+  function profileUrlFor(num) {
+    const sp = new URLSearchParams(window.location.search);
+    if (num == null) sp.delete('u');
+    else sp.set('u', String(num));
+    const q = sp.toString();
+    return window.location.pathname + (q ? `?${q}` : '');
+  }
+
+  function openProfileViaLink(num) {
+    history.pushState({}, '', profileUrlFor(num));
+    openProfile(num);
+  }
+
+  function closeProfileModal() {
+    profileModal.classList.add('hidden');
+    if (new URLSearchParams(window.location.search).has('u')) {
+      history.pushState({}, '', profileUrlFor(null));
+    }
+  }
+
   async function openProfile(num) {
     profileModal.classList.remove('hidden');
     profileShowMessage('');
@@ -854,9 +880,9 @@
       }
     }).catch(() => {});
     profileBtn.addEventListener('click', () => openProfile(null));
-    profileClose.addEventListener('click', () => profileModal.classList.add('hidden'));
+    profileClose.addEventListener('click', () => closeProfileModal());
     profileModal.addEventListener('click', (e) => {
-      if (e.target === profileModal) profileModal.classList.add('hidden');
+      if (e.target === profileModal) closeProfileModal();
     });
     profileEditBtn.addEventListener('click', () => {
       profileNameInput.value = profileNameView.textContent === t('profile.anon') ? '' : profileNameView.textContent;
@@ -914,6 +940,12 @@
     // ?u=N opens that user's public profile (linked from market/app pages).
     const u = new URLSearchParams(window.location.search).get('u');
     if (u && /^\d+$/.test(u)) openProfile(Number(u));
+    // Back/forward between profiles and the landing view stays in-page.
+    window.addEventListener('popstate', () => {
+      const pu = new URLSearchParams(window.location.search).get('u');
+      if (pu && /^\d+$/.test(pu)) openProfile(Number(pu));
+      else profileModal.classList.add('hidden');
+    });
   }
 
   // Called after the declarations above — the const/let bindings must be
