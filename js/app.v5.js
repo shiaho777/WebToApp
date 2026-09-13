@@ -123,6 +123,7 @@
   const avatarFile = document.getElementById('avatar-file');
   const profileNameView = document.getElementById('profile-name-view');
   const profileNumEl = document.getElementById('profile-num');
+  const profileVisBadge = document.getElementById('profile-vis-badge');
   const profileJoinedEl = document.getElementById('profile-joined');
   const profileBioView = document.getElementById('profile-bio-view');
   const profileMsg = document.getElementById('profile-msg');
@@ -767,14 +768,16 @@
     profileMsg.textContent = msg || '';
   }
 
-  function profileSetAvatar(url, name) {
+  function profileSetAvatar(url, name, num) {
     const has = !!url;
     profileAvatarImg.classList.toggle('hidden', !has);
     profileAvatarFallback.classList.toggle('hidden', has);
     if (has) {
       profileAvatarImg.src = url;
     } else {
-      profileAvatarFallback.textContent = (name || '#').charAt(0).toUpperCase();
+      // Show the sequential #N as the fallback identity — every user's page
+      // is visually distinct even when they never set a name or avatar.
+      profileAvatarFallback.textContent = num ? `#${num}` : (name || '#').charAt(0).toUpperCase();
     }
   }
 
@@ -803,7 +806,9 @@
     profileJoinedEl.textContent = profile.created_at
       ? t('profile.joined', { d: new Date(profile.created_at).toLocaleDateString(locale()) })
       : '';
-    profileSetAvatar(profile.avatar_url, name);
+    profileSetAvatar(profile.avatar_url, name, profile.user_num);
+    profileVisBadge.textContent = t('profile.publicView');
+    profileVisBadge.classList.toggle('hidden', mine);
     profileBioView.innerHTML = profile.bio_md ? window.wtaMd(profile.bio_md) : '';
     profileAppsLabel.textContent = t(mine ? 'profile.myApps' : 'profile.publicApps');
     profileRenderApps(apps, mine);
@@ -895,7 +900,7 @@
       const res = await fetch('/api/me/avatar', { method: 'POST', body: fd });
       if (res.ok) {
         const data = await res.json();
-        profileSetAvatar(data.avatar_url, profileNameView.textContent);
+        profileSetAvatar(data.avatar_url, profileNameView.textContent, profileSelfNum);
         const merged = profileCacheRead() || { user_num: profileSelfNum };
         merged.avatar_url = data.avatar_url;
         profileCacheWrite(merged);
