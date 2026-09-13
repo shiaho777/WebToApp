@@ -2005,7 +2005,8 @@
     'profile.name_taken': 'That name is taken',
     'profile.invalid_name': 'Name must be 2-20 chars: letters, digits, 中文, _ or -',
     'profile.publicView': 'Public page',
-    'market.ratings': '{n} ratings'
+    'market.ratings': '{n} ratings',
+    'market.noRatings': 'No ratings'
   });
   R('zh', {
     'profile.open': '我的主页',
@@ -2030,7 +2031,8 @@
     'profile.name_taken': '这个名字已被占用',
     'profile.invalid_name': '名称需 2-20 位：中英文、数字、_ 或 -',
     'profile.publicView': '公开主页',
-    'market.ratings': '{n} 条评分'
+    'market.ratings': '{n} 条评分',
+    'market.noRatings': '暂无评分'
   });
   R('ja', {
     'profile.open': 'マイページ',
@@ -2055,7 +2057,8 @@
     'profile.name_taken': 'その名前は使われています',
     'profile.invalid_name': '名前は2〜20文字：英数字・中文・_・-',
     'profile.publicView': '公開ページ',
-    'market.ratings': '{n} 件の評価'
+    'market.ratings': '{n} 件の評価',
+    'market.noRatings': '評価なし'
   });
   R('ar', {
     'profile.open': 'صفحتي',
@@ -2080,7 +2083,8 @@
     'profile.name_taken': 'هذا الاسم محجوز',
     'profile.invalid_name': 'الاسم 2-20 حرفاً: أحرف وأرقام و中文 و_ و-',
     'profile.publicView': 'صفحة عامة',
-    'market.ratings': '{n} تقييم'
+    'market.ratings': '{n} تقييم',
+    'market.noRatings': 'لا تقييمات'
   });
   R('ru', {
     'profile.open': 'Моя страница',
@@ -2105,7 +2109,8 @@
     'profile.name_taken': 'Имя уже занято',
     'profile.invalid_name': 'Имя: 2–20 символов, буквы/цифры/中文/_/-',
     'profile.publicView': 'Публичная страница',
-    'market.ratings': 'оценок: {n}'
+    'market.ratings': 'оценок: {n}',
+    'market.noRatings': 'Нет оценок'
   });
   R('es', {
     'profile.open': 'Mi página',
@@ -2130,7 +2135,8 @@
     'profile.name_taken': 'Ese nombre está en uso',
     'profile.invalid_name': '2-20 caracteres: letras, dígitos, 中文, _ o -',
     'profile.publicView': 'Página pública',
-    'market.ratings': '{n} valoraciones'
+    'market.ratings': '{n} valoraciones',
+    'market.noRatings': 'Sin valoraciones'
   });
   R('pt', {
     'profile.open': 'Minha página',
@@ -2155,7 +2161,8 @@
     'profile.name_taken': 'Nome já em uso',
     'profile.invalid_name': '2-20 caracteres: letras, dígitos, 中文, _ ou -',
     'profile.publicView': 'Página pública',
-    'market.ratings': '{n} avaliações'
+    'market.ratings': '{n} avaliações',
+    'market.noRatings': 'Sem avaliações'
   });
   R('fr', {
     'profile.open': 'Ma page',
@@ -2180,7 +2187,8 @@
     'profile.name_taken': 'Ce nom est déjà pris',
     'profile.invalid_name': '2-20 caractères : lettres, chiffres, 中文, _ ou -',
     'profile.publicView': 'Page publique',
-    'market.ratings': '{n} notes'
+    'market.ratings': '{n} notes',
+    'market.noRatings': 'Aucune note'
   });
   R('de', {
     'profile.open': 'Meine Seite',
@@ -2205,6 +2213,7 @@
     'profile.name_taken': 'Name bereits vergeben',
     'profile.invalid_name': '2-20 Zeichen: Buchstaben, Ziffern, 中文, _ oder -',
     'profile.publicView': 'Öffentliche Seite',
-    'market.ratings': '{n} Bewertungen'
+    'market.ratings': '{n} Bewertungen',
+    'market.noRatings': 'Keine Bewertungen'
   });
 })();
