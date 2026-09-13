@@ -1126,6 +1126,20 @@ a{{color:inherit;text-decoration:none}}
       </div>
       <p class="desc" data-i18n="heroDesc">This is not an app store page, just this site's install entry. Pick your device, then download to install, unzip, or add to the iPhone home screen.</p>
       <p class="source">{source_host}</p>
+      <section class="community-sec" id="community-sec">
+        <div id="app-rating" class="app-rating"></div>
+        <div class="creator-wrap"><div id="creator-card"></div></div>
+        <div id="creator-apps"></div>
+        <div class="comments-wrap">
+          <div class="section-label" id="comments-title"></div>
+          <form id="comment-form" class="comment-form">
+            <div id="rating-picker"></div>
+            <textarea id="comment-body" rows="3" maxlength="2000"></textarea>
+            <button type="submit"></button>
+          </form>
+          <div id="comments-list"></div>
+        </div>
+      </section>
     </section>
 
     <section class="hero-panel">
@@ -1162,20 +1176,6 @@ a{{color:inherit;text-decoration:none}}
 {platform_links}
         </div>
         <p class="footnote" data-i18n="footnote">On iPhone install via Safari; on desktop just unzip after downloading. Android ships an installer, while macOS and Windows keep the app icon.</p>
-      </div>
-    </section>
-    <section class="community-sec" id="community-sec">
-      <div id="app-rating" class="app-rating"></div>
-      <div class="creator-wrap"><div id="creator-card"></div></div>
-      <div id="creator-apps"></div>
-      <div class="comments-wrap">
-        <div class="section-label" id="comments-title"></div>
-        <form id="comment-form" class="comment-form">
-          <div id="rating-picker"></div>
-          <textarea id="comment-body" rows="3" maxlength="2000"></textarea>
-          <button type="submit"></button>
-        </form>
-        <div id="comments-list"></div>
       </div>
     </section>
   </main>
