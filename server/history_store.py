@@ -515,6 +515,7 @@ class HistoryStore:
             "color": row["color"] or "#7c3aed",
             "visibility": (row["visibility"] if "visibility" in keys else None) or "private",
             "tags": [str(tag) for tag in tags],
+            "description": str(recipe.get("description") or ""),
             "recipe": recipe,
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],

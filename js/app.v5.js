@@ -72,6 +72,7 @@
   const analysisBody = document.getElementById('analysis-body');
   const analysisStatus = document.getElementById('analysis-status');
   const appNameInput = document.getElementById('app-name');
+  const appDescInput = document.getElementById('app-desc');
   const appNameSourceNote = document.getElementById('app-name-source-note');
   const appColorInput = document.getElementById('app-color');
   const customIconInput = document.getElementById('custom-icon-input');
@@ -659,6 +660,7 @@
         </div>
         ${creatorHtml ? `<div class="market-card-creator">${creatorHtml}${createdStr ? `<span class="market-card-date">${escapeHtml(createdStr)}</span>` : ''}</div>` : (createdStr ? `<div class="market-card-creator"><span class="market-card-date">${escapeHtml(createdStr)}</span></div>` : '')}
         ${tagChips ? `<div class="market-card-tags">${tagChips}</div>` : ''}
+        ${item.description ? `<div class="market-card-desc">${escapeHtml(item.description)}</div>` : ''}
         <div class="market-card-meta">
           <span>${escapeHtml(t('market.visits', { n: Number(item.visit_count || 0).toLocaleString(locale()) }))}</span>
           <span>${escapeHtml(t('market.downloads', { n: Number(item.download_count || 0).toLocaleString(locale()) }))}</span>
@@ -924,6 +926,7 @@
     currentUrl = item.target_url || recipe.url || '';
     syncInputValue(urlInput, currentUrl);
     syncInputValue(appNameInput, item.name || recipe.name || '');
+    syncInputValue(appDescInput, recipe.description || '');
     updateAppNameSourceNote('', item.name || recipe.name || '');
     const color = item.color || recipe.color || '#7c3aed';
     syncInputValue(appColorInput, color);
@@ -985,6 +988,8 @@
     Object.assign(options, collectFeatureOptions());
     if (selectedTags.size > 0) options['tags'] = Array.from(selectedTags);
     options['visibility'] = currentVisibility;
+    const appDesc = (appDescInput.value || '').trim();
+    if (appDesc) options['description'] = appDesc;
 
     let submitRes;
     if (inputMode === 'html') {
