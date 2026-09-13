@@ -24,7 +24,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from server import config
 from server.engine.apk_builder import ApkBuilder
 from server.engine import mobileconfig_signer
-from server.engine.cache import html_cache, icon_cache
+from server.engine.cache import html_cache, icon_cache, icon_miss_cache
 from server.engine.storage import r2_storage
 from server import html_site
 from server.htmlmeta import parse_html_metadata
@@ -535,18 +535,16 @@ class Distiller:
         cache_key = f"icon:{host}"
         cached = icon_cache.get(cache_key)
         if cached is not None:
-            # b"" marks a known icon-less host (see the miss path below).
-            return cached or self._make_placeholder_png(recipe.get("color", "#7c3aed"))
+            return cached
+        if icon_miss_cache.get(cache_key) is not None:
+            # Recent sweep found nothing — skip re-fetching for ~60s.
+            return self._make_placeholder_png(recipe.get("color", "#7c3aed"))
         candidates = self._collect_icon_candidates(url)
         best = self._choose_best_icon(candidates)
         if best:
             icon_cache.set(cache_key, best)
             return best
-        # No icon anywhere (offline site, blocked fallbacks...). Cache the
-        # miss too so every later build of this host skips the same
-        # candidate sweep — on a CN host that sweep was ~2.3 s of serial
-        # 404s plus an unreachable Google s2 fallback.
-        icon_cache.set(cache_key, b"")
+        icon_miss_cache.set(cache_key, b"")
         return self._make_placeholder_png(recipe.get("color", "#7c3aed"))
 
     def _local_site_icon(self, recipe):
@@ -648,8 +646,11 @@ class Distiller:
         if not scored:
             for prio, path in [
                 (300, "/apple-touch-icon.png"),
+                (295, "/android-chrome-512x512.png"),
                 (290, "/apple-touch-icon-precomposed.png"),
+                (285, "/android-chrome-192x192.png"),
                 (280, "/favicon-192x192.png"),
+                (275, "/favicon-256x256.png"),
                 (270, "/favicon-96x96.png"),
                 (250, "/favicon.png"),
                 (200, "/favicon.ico"),
@@ -746,43 +747,28 @@ class Distiller:
         return int.from_bytes(png_data[16:20], "big")
 
     def _normalize_to_png(self, data):
-        """Accept a PNG or ICO blob; return PNG bytes or None.
-        Other formats (SVG, JPEG, BMP, ...) are skipped — keeping the converter dependency-free."""
-        if data[:4] == b"\x89PNG":
-            return data
-        if data[:4] == b"\x00\x00\x01\x00":  # ICO magic
-            return self._ico_to_png(data)
-        return None
-
-    def _ico_to_png(self, ico_data):
-        """Pick the largest entry from an ICO. Only Vista+ ICOs (with embedded PNG) succeed;
-        legacy BMP-encoded entries are skipped (BMP→PNG conversion is non-trivial)."""
-        if len(ico_data) < 6:
+        """Accept any raster image Pillow can decode — PNG, JPEG, WebP, GIF,
+        BMP and ICO (including legacy BMP-encoded entries, which used to be
+        dropped and are the most common favicon.ico format). Returns PNG
+        bytes, or None for undecodable input such as SVG."""
+        try:
+            with Image.open(io.BytesIO(data)) as image:
+                ico = getattr(image, "ico", None)
+                if ico is not None:
+                    # An ICO bundles several frames; decode the largest one.
+                    for size in sorted(ico.sizes(), key=lambda s: -(s[0] * s[1])):
+                        try:
+                            image.size = size
+                            image.load()
+                            break
+                        except Exception:
+                            continue
+                frame = ImageOps.exif_transpose(image).convert("RGBA")
+                out = io.BytesIO()
+                frame.save(out, format="PNG")
+                return out.getvalue()
+        except (UnidentifiedImageError, OSError, ValueError):
             return None
-        count = int.from_bytes(ico_data[4:6], "little")
-        if count == 0:
-            return None
-        entries = []
-        for i in range(count):
-            off = 6 + i * 16
-            if off + 16 > len(ico_data):
-                break
-            e = ico_data[off:off + 16]
-            w = e[0] or 256
-            h = e[1] or 256
-            size = int.from_bytes(e[8:12], "little")
-            offset = int.from_bytes(e[12:16], "little")
-            entries.append((w * h, size, offset))
-        if not entries:
-            return None
-        entries.sort(reverse=True)  # largest first
-        for _, size, offset in entries:
-            if offset + size > len(ico_data):
-                continue
-            blob = ico_data[offset:offset + size]
-            if blob[:4] == b"\x89PNG":
-                return blob
-        return None
 
     def _make_placeholder_png(self, hex_color: str, size: int = 128) -> bytes:
         """Generate a valid solid-color RGBA PNG. Used when favicon download fails.
