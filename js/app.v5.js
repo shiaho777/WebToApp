@@ -73,6 +73,11 @@
   const analysisStatus = document.getElementById('analysis-status');
   const appNameInput = document.getElementById('app-name');
   const appDescInput = document.getElementById('app-desc');
+  const aboutTextInput = document.getElementById('about-text');
+  const aboutImagesInput = document.getElementById('about-images-input');
+  const aboutImagesName = document.getElementById('about-images-name');
+  const aboutImagesPreview = document.getElementById('about-images-preview');
+  const aboutImagesClear = document.getElementById('about-images-clear');
   const appNameSourceNote = document.getElementById('app-name-source-note');
   const appColorInput = document.getElementById('app-color');
   const customIconInput = document.getElementById('custom-icon-input');
@@ -155,6 +160,9 @@
   let htmlFile = null;
   let pendingAutoScrollTimer = null;
   let customIconDataUrl = '';
+  // About-fold images: null = untouched (rebuilds keep stored images),
+  // [] = user cleared, [...] = replacement data URLs (max 3).
+  let aboutImageDataUrls = null;
   let detectedIconDataUrl = '';
   let restoreIconDataUrl = '';
   let restoreIconLabel = '';
@@ -979,6 +987,22 @@
     syncInputValue(urlInput, currentUrl);
     syncInputValue(appNameInput, item.name || recipe.name || '');
     syncInputValue(appDescInput, recipe.description || '');
+    const storedAbout = recipe.about || {};
+    syncInputValue(aboutTextInput, storedAbout.text || '');
+    // Stored about images can't be re-loaded into a file input; show them
+    // as previews and leave the untouched sentinel so the build keeps them.
+    const storedImgs = (storedAbout.images || []).filter((n) => /^about-\d\.webp$/.test(n));
+    if (storedImgs.length) {
+      aboutImageDataUrls = null;
+      aboutImagesPreview.innerHTML = storedImgs
+        .map((n) => `<img src="/a/${encodeURIComponent(item.app_id)}/about/${n}" alt="">`)
+        .join('');
+      aboutImagesName.textContent = t('config.aboutImagesCount', { n: storedImgs.length });
+    } else {
+      aboutImageDataUrls = null;
+      aboutImagesPreview.innerHTML = '';
+      aboutImagesName.textContent = t('config.noFileChosen');
+    }
     updateAppNameSourceNote('', item.name || recipe.name || '');
     const color = item.color || recipe.color || '#7c3aed';
     syncInputValue(appColorInput, color);
@@ -1042,6 +1066,8 @@
     options['visibility'] = currentVisibility;
     const appDesc = (appDescInput.value || '').trim();
     if (appDesc) options['description'] = appDesc;
+    options['about-text'] = aboutTextInput.value || '';
+    if (aboutImageDataUrls !== null) options['about-images'] = aboutImageDataUrls;
 
     let submitRes;
     if (inputMode === 'html') {
@@ -1196,6 +1222,64 @@
   });
   androidPackagePrefixInput.addEventListener('blur', () => {
     androidPackagePrefixInput.value = sanitizeAndroidPackagePrefix(androidPackagePrefixInput.value);
+  });
+
+  async function compressImageFile(file) {
+    // Anything already under the cap goes through untouched; larger files
+    // are downscaled through canvas until WebP q90 fits inside 800KB.
+    const LIMIT = 800 * 1024;
+    if (file.size <= LIMIT) return file;
+    const bmp = await createImageBitmap(file);
+    let scale = Math.min(1, 2048 / Math.max(bmp.width, bmp.height, 1));
+    while (scale > 0.04) {
+      const w = Math.max(1, Math.round(bmp.width * scale));
+      const h = Math.max(1, Math.round(bmp.height * scale));
+      const cv = document.createElement('canvas');
+      cv.width = w;
+      cv.height = h;
+      cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      let q = 0.9;
+      let blob = await new Promise((r) => cv.toBlob(r, 'image/webp', q));
+      while (blob && blob.size > LIMIT && q > 0.55) {
+        q -= 0.12;
+        blob = await new Promise((r) => cv.toBlob(r, 'image/webp', q));
+      }
+      if (blob && blob.size <= LIMIT) return blob;
+      scale *= 0.65;
+    }
+    return file;  // give up — the server-side pass will still re-encode
+  }
+
+  function renderAboutImagesPreview() {
+    const list = aboutImageDataUrls || [];
+    aboutImagesPreview.innerHTML = list
+      .map((d) => `<img src="${d}" alt="">`)
+      .join('');
+    aboutImagesName.textContent = list.length
+      ? t('config.aboutImagesCount', { n: list.length })
+      : t('config.noFileChosen');
+  }
+
+  aboutImagesInput.addEventListener('change', async () => {
+    const files = Array.from(aboutImagesInput.files || []).slice(0, 3);
+    aboutImageDataUrls = [];
+    try {
+      for (const file of files) {
+        const blob = await compressImageFile(file);
+        aboutImageDataUrls.push(await readFileAsDataUrl(blob));
+      }
+    } catch (_err) {
+      aboutImageDataUrls = null;
+      aboutImagesInput.value = '';
+      aboutImagesName.textContent = t('icon.readFailed');
+      return;
+    }
+    renderAboutImagesPreview();
+  });
+  aboutImagesClear.addEventListener('click', () => {
+    aboutImageDataUrls = [];
+    aboutImagesInput.value = '';
+    renderAboutImagesPreview();
   });
   [windowsWidthInput, windowsHeightInput, linuxWidthInput, linuxHeightInput].forEach((input) => {
     input.addEventListener('blur', () => {

@@ -592,3 +592,135 @@ class IconPipelineTests(unittest.TestCase):
                               side_effect=AssertionError("re-swept")):
                 second = d._fetch_icon(recipe)
             self.assertIsNotNone(second)
+
+
+def _png_bytes(size=(40, 30), fmt="PNG", color=(10, 120, 200, 255)):
+    import io
+    from PIL import Image
+    im = Image.new("RGBA", size, color)
+    buf = io.BytesIO()
+    im.save(buf, fmt)
+    return buf.getvalue()
+
+
+def _data_url(raw: bytes, mime="image/png") -> str:
+    import base64
+    return f"data:{mime};base64,{base64.b64encode(raw).decode()}"
+
+
+class DistillerAboutContentTests(unittest.TestCase):
+    """Creator-authored about-fold text + images (option _about_text /
+    _about_images → persisted recipe.about + about-N.webp files)."""
+
+    def _build(self, options, app_id="about01"):
+        import tempfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        recipe = distiller.create_recipe(
+            app_id=app_id,
+            url="https://example.com",
+            name="About App",
+            color="#123456",
+            display="browser",
+            orientation="any",
+            options=options,
+        )
+        tmp = tempfile.TemporaryDirectory()
+        app_dir = Path(tmp.name) / app_id
+        with patch.object(distiller, "_fetch_icon", return_value=distiller._make_placeholder_png("#123456")):
+            with patch.object(distiller, "_build_android", return_value={"apk": False, "fallback": True}):
+                with patch.object(distiller, "_build_ios", return_value={"signed": False, "dynamic_url": True}):
+                    distiller.write_app_files(app_dir, recipe, base_url="https://service.test")
+        page = (app_dir / "page.html").read_text()
+        return distiller, recipe, app_dir, page, tmp
+
+    def test_default_about_empty_for_old_recipes(self):
+        _d, recipe, _dir, page, tmp = self._build({})
+        self.addCleanup(tmp.cleanup)
+        self.assertEqual(recipe["about"], {"text": "", "images": []})
+        self.assertNotIn('<p class="about-text"', page)
+        self.assertNotIn('class="about-imgs"', page)
+
+    def test_text_escaped_and_paragraphs_split(self):
+        _d, recipe, _dir, page, tmp = self._build(
+            {"about-text": "Hello <script>x</script> world\n\nSecond para"}
+        )
+        self.addCleanup(tmp.cleanup)
+        self.assertIn('<p class="about-text">Hello &lt;script&gt;x&lt;/script&gt; world</p>', page)
+        self.assertIn('<p class="about-text">Second para</p>', page)
+        self.assertNotIn("<script>x</script>", page)
+        self.assertEqual(recipe["about"]["text"], "Hello <script>x</script> world\n\nSecond para")
+
+    def test_images_normalized_webp_and_referenced(self):
+        imgs = [_data_url(_png_bytes((64, 48))), _data_url(_png_bytes((1200, 900)))]
+        _d, recipe, app_dir, page, tmp = self._build({"about-images": imgs})
+        self.addCleanup(tmp.cleanup)
+        self.assertEqual(recipe["about"]["images"], ["about-1.webp", "about-2.webp"])
+        for i in (1, 2):
+            f = app_dir / f"about-{i}.webp"
+            self.assertTrue(f.exists())
+            self.assertLessEqual(f.stat().st_size, 800 * 1024)
+            self.assertTrue(f.read_bytes().startswith(b"RIFF"))
+        self.assertIn("/a/about01/about/about-1.webp", page)
+        self.assertIn('class="about-imgs"', page)
+
+    def test_invalid_dropped_and_capped_at_three(self):
+        import base64
+        imgs = [
+            "data:image/png;base64," + base64.b64encode(b"not an image").decode(),
+            _data_url(_png_bytes((32, 32))),
+            _data_url(_png_bytes((33, 33))),
+            _data_url(_png_bytes((34, 34))),
+            _data_url(_png_bytes((35, 35))),
+        ]
+        _d, recipe, app_dir, page, tmp = self._build({"about-images": imgs})
+        self.addCleanup(tmp.cleanup)
+        self.assertEqual(len(recipe["about"]["images"]), 3)
+        self.assertTrue((app_dir / "about-3.webp").exists())
+        self.assertFalse((app_dir / "about-4.webp").exists())
+
+    def test_oversized_pixel_image_rejected(self):
+        # 9MP image is fine — it gets downscaled, not dropped. Rejection is
+        # reserved for decompression-bomb territory (ABOUT_MAX_PIXELS).
+        _d, recipe, app_dir, page, tmp = self._build(
+            {"about-images": [_data_url(_png_bytes((3000, 3000)))]}
+        )
+        self.addCleanup(tmp.cleanup)
+        self.assertEqual(len(recipe["about"]["images"]), 1)
+        with patch.object(Distiller, "ABOUT_MAX_PIXELS", 1_000_000):
+            _d, recipe, _dir2, page2, tmp2 = self._build(
+                {"about-images": [_data_url(_png_bytes((3000, 3000)))]}, app_id="about02"
+            )
+            self.addCleanup(tmp2.cleanup)
+        self.assertEqual(recipe["about"]["images"], [])
+        self.assertNotIn('class="about-imgs"', page2)
+
+    def test_rebuild_keeps_stored_images_when_untouched(self):
+        imgs = [_data_url(_png_bytes((64, 48)))]
+        distiller, recipe, app_dir, page, tmp = self._build({"about-images": imgs})
+        self.addCleanup(tmp.cleanup)
+        stored = (app_dir / "about-1.webp").read_bytes()
+        # Rebuild with a history recipe: no _about_* keys, about already set.
+        recipe2 = dict(recipe)
+        recipe2.pop("_about_text", None)
+        recipe2.pop("_about_images", None)
+        with patch.object(distiller, "_fetch_icon", return_value=distiller._make_placeholder_png("#123456")):
+            with patch.object(distiller, "_build_android", return_value={"apk": False, "fallback": True}):
+                with patch.object(distiller, "_build_ios", return_value={"signed": False, "dynamic_url": True}):
+                    distiller.write_app_files(app_dir, recipe2, base_url="https://service.test")
+        self.assertEqual((app_dir / "about-1.webp").read_bytes(), stored)
+        self.assertIn("about-1.webp", (app_dir / "page.html").read_text())
+
+    def test_clear_images_with_empty_list(self):
+        imgs = [_data_url(_png_bytes((64, 48)))]
+        distiller, recipe, app_dir, page, tmp = self._build({"about-images": imgs})
+        self.addCleanup(tmp.cleanup)
+        recipe2 = dict(recipe)
+        recipe2["_about_images"] = []
+        with patch.object(distiller, "_fetch_icon", return_value=distiller._make_placeholder_png("#123456")):
+            with patch.object(distiller, "_build_android", return_value={"apk": False, "fallback": True}):
+                with patch.object(distiller, "_build_ios", return_value={"signed": False, "dynamic_url": True}):
+                    distiller.write_app_files(app_dir, recipe2, base_url="https://service.test")
+        self.assertFalse((app_dir / "about-1.webp").exists())
+        self.assertEqual(recipe2["about"]["images"], [])

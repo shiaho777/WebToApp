@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260914-reltime1">
-  <script src="js/i18n.js?v=20260914-reltime1"></script>
-  <script src="js/i18n.strings.js?v=20260914-reltime1"></script>
+  <link rel="stylesheet" href="css/style.css?v=20260915-about1">
+  <script src="js/i18n.js?v=20260915-about1"></script>
+  <script src="js/i18n.strings.js?v=20260915-about1"></script>
 </head>
 <body>
   <header id="nav">
@@ -145,6 +145,21 @@
                 <span data-i18n="config.appDesc">App description (optional)</span>
                 <input id="app-desc" type="text" maxlength="80" data-i18n-placeholder="config.appDescPlaceholder" placeholder="One line shown on the market card and app page">
               </label>
+              <label class="field field-full">
+                <span data-i18n="config.aboutLabel">About section (optional)</span>
+                <textarea id="about-text" rows="3" maxlength="2000" data-i18n-placeholder="config.aboutPlaceholder" placeholder="Intro shown inside the About fold on the app page"></textarea>
+              </label>
+              <div class="field field-full">
+                <span data-i18n="config.aboutImagesLabel">About images (optional)</span>
+                <div class="file-picker-row">
+                  <input id="about-images-input" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
+                  <label for="about-images-input" class="file-picker-btn" data-i18n="config.chooseFile">Choose file</label>
+                  <span id="about-images-name" class="file-picker-name" data-i18n="config.noFileChosen">No file chosen</span>
+                  <button id="about-images-clear" class="icon-upload-clear" type="button" data-i18n="config.aboutImagesClear">Clear</button>
+                </div>
+                <div id="about-images-preview" class="about-images-preview"></div>
+                <small class="field-note" data-i18n="config.aboutImagesNote">Up to 3 images; anything over 800KB is auto-compressed near-losslessly.</small>
+              </div>
               <label class="field">
                 <span data-i18n="config.themeColor">Theme color</span>
                 <div class="color-wrap">
@@ -525,7 +540,7 @@
     </div>
   </div>
 
-  <script src="js/mdmini.js?v=20260914-reltime1"></script>
-  <script src="js/app.v5.js?v=20260914-reltime1"></script>
+  <script src="js/mdmini.js?v=20260915-about1"></script>
+  <script src="js/app.v5.js?v=20260915-about1"></script>
 </body>
 </html>

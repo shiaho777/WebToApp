@@ -513,6 +513,8 @@ def _resolve_base_url(request: Request) -> str:
 def _public_recipe(recipe: dict) -> dict:
     safe = dict(recipe)
     safe.pop("_custom_icon_data_url", None)
+    safe.pop("_about_text", None)
+    safe.pop("_about_images", None)
     safe.pop("edit_token", None)
     return safe
 
@@ -1792,6 +1794,18 @@ async def serve_icon(app_id: str):
     if not icon.exists():
         raise HTTPException(404)
     return FileResponse(icon, media_type="image/png")
+
+
+@app.get("/a/{app_id}/about/{img_name}")
+async def serve_about_image(app_id: str, img_name: str):
+    """Creator-uploaded about-fold images. Names are server-generated
+    (about-N.webp); anything else is rejected before touching the FS."""
+    if not re.fullmatch(r"about-[1-3]\.webp", img_name or ""):
+        raise HTTPException(404)
+    img = APPS_DIR / app_id / img_name
+    if not img.exists():
+        raise HTTPException(404)
+    return FileResponse(img, media_type="image/webp")
 
 
 @app.api_route("/a/{app_id}/proxy", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])

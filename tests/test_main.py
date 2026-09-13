@@ -759,3 +759,51 @@ class CommunityEndpointTests(unittest.TestCase):
         data = self.client.get("/api/apps/mine2/community").json()
         self.assertEqual(data["creator"]["user_num"], 1)
         self.assertEqual([a["app_id"] for a in data["other_apps"]], ["mine1"])
+
+
+class AboutImageRouteTests(unittest.TestCase):
+    """GET /a/{app_id}/about/{name} — serves only server-generated about-N.webp
+    files from inside the app's own directory."""
+
+    def setUp(self):
+        self.client = TestClient(main.app)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.apps_dir = Path(self._tmp.name)
+        self.original_apps_dir = main.APPS_DIR
+        main.APPS_DIR = self.apps_dir
+        app_dir = self.apps_dir / "aboutapp"
+        app_dir.mkdir(parents=True)
+        (app_dir / "recipe.json").write_text(json.dumps({"id": "aboutapp"}))
+        (app_dir / "about-1.webp").write_bytes(b"RIFFfake-webp")
+        (app_dir / "secret.txt").write_bytes(b"nope")
+
+    def tearDown(self):
+        main.APPS_DIR = self.original_apps_dir
+        self._tmp.cleanup()
+
+    def test_serves_about_image_with_cache_headers(self):
+        resp = self.client.get("/a/aboutapp/about/about-1.webp")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content, b"RIFFfake-webp")
+        self.assertEqual(resp.headers["content-type"], "image/webp")
+        self.assertIn("max-age=86400", resp.headers.get("cache-control", ""))
+
+    def test_rejects_non_generated_names_and_missing_app(self):
+        self.assertEqual(self.client.get("/a/aboutapp/about/evil.png").status_code, 404)
+        self.assertEqual(self.client.get("/a/aboutapp/about/secret.txt").status_code, 404)
+        self.assertEqual(self.client.get("/a/nosuchid/about/about-1.webp").status_code, 404)
+        self.assertEqual(self.client.get("/a/aboutapp/about/about-9.webp").status_code, 404)
+
+
+class PublicRecipeScrubTests(unittest.TestCase):
+    def test_transient_about_keys_never_leak(self):
+        safe = main._public_recipe({
+            "id": "x", "name": "X",
+            "_about_text": "hi", "_about_images": ["data:image/png;base64,AA=="],
+            "_custom_icon_data_url": "data:image/png;base64,BB==",
+            "edit_token": "secret",
+            "about": {"text": "hi", "images": ["about-1.webp"]},
+        })
+        for k in ("_about_text", "_about_images", "_custom_icon_data_url", "edit_token"):
+            self.assertNotIn(k, safe)
+        self.assertEqual(safe["about"]["images"], ["about-1.webp"])
