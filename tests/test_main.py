@@ -254,6 +254,40 @@ class MarketAndVisibilityTests(unittest.TestCase):
         self.assertEqual(items["descapp"]["description"], "A tiny RSS reader")
         self.assertEqual(items["nodesc"]["description"], "")
 
+    def test_history_delete_purges_orphaned_public_app(self):
+        self._build("goneapp", "public", ["tools"])
+        ids = [i["app_id"] for i in self.client.get("/api/market").json()["items"]]
+        self.assertIn("goneapp", ids)
+        resp = self.client.delete("/api/history/goneapp", cookies=self._cookies())
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["purged"])
+        self.assertFalse((self.apps_dir / "goneapp").exists())
+        ids = [i["app_id"] for i in self.client.get("/api/market").json()["items"]]
+        self.assertNotIn("goneapp", ids)
+
+    def test_history_delete_keeps_app_owned_by_another_device(self):
+        self._build("shared", "public", ["tools"])
+        main.history_store.attach_app("other-device-fp", "shared")
+        resp = self.client.delete("/api/history/shared", cookies=self._cookies())
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.json()["purged"])
+        self.assertTrue((self.apps_dir / "shared").exists())
+        ids = [i["app_id"] for i in self.client.get("/api/market").json()["items"]]
+        self.assertIn("shared", ids)
+
+    def test_history_bulk_delete_purges_and_reports(self):
+        self._build("bulkapp1", "public", ["tools"])
+        self._build("bulkapp2", "public", ["tools"])
+        resp = self.client.post("/api/history/delete-bulk",
+                                json={"app_ids": ["bulkapp1", "bulkapp2", "notmine"]},
+                                cookies=self._cookies())
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(sorted(body["removed"]), ["bulkapp1", "bulkapp2"])
+        self.assertEqual(sorted(body["purged"]), ["bulkapp1", "bulkapp2"])
+        self.assertFalse((self.apps_dir / "bulkapp1").exists())
+        self.assertEqual(self.client.get("/api/market").json()["items"], [])
+
     def test_visibility_toggle_requires_edit_token(self):
         self._build("owned", "private", ["tools"])
         # Wrong token, wrong device -> 403

@@ -1358,6 +1358,44 @@ async def import_history(payload: HistoryImportPayload, request: Request):
     }
 
 
+def _purge_app_fully(app_ids) -> List[str]:
+    """Hard-delete apps that no device references anymore: generated files,
+    history/community rows, recipe cache, keystores and R2 copies. Deleting
+    a history entry must also unlist the app from the market — otherwise a
+    public app stays visible forever (orphaned)."""
+    purged = []
+    for app_id in app_ids:
+        app_id = str(app_id or "").strip()
+        if not app_id or not _APP_ID_PATTERN.fullmatch(app_id):
+            continue
+        if not history_store.is_app_orphaned(app_id):
+            continue
+        app_dir = APPS_DIR / app_id
+        try:
+            if app_dir.exists():
+                shutil.rmtree(app_dir)
+        except Exception:
+            continue
+        purged.append(app_id)
+    if not purged:
+        return []
+    history_store.purge_apps(purged)
+    community_store.purge_apps(purged)
+    with _recipe_cache_lock:
+        for app_id in purged:
+            _recipe_cache.pop(app_id, None)
+    _purge_keystores_for_apps(purged)
+    _purge_orphan_keystores()
+    if r2_storage.configured:
+        for app_id in purged:
+            try:
+                r2_storage.delete_app(app_id)
+            except Exception:  # noqa: BLE001
+                pass
+    log_event("apps_purged_on_history_delete", count=len(purged), app_ids=purged[:20])
+    return purged
+
+
 @app.delete("/api/history/{app_id}")
 async def delete_history_item(app_id: str, request: Request):
     device_fingerprint = _device_fingerprint(request)
@@ -1366,7 +1404,9 @@ async def delete_history_item(app_id: str, request: Request):
     removed = history_store.remove_from_device(device_fingerprint, app_id)
     if not removed:
         raise HTTPException(404, "History item not found")
-    return {"removed": True, "app_id": app_id, "history": _history_payload(request)}
+    purged = _purge_app_fully([app_id])
+    return {"removed": True, "app_id": app_id, "purged": app_id in purged,
+            "history": _history_payload(request)}
 
 
 HISTORY_BULK_DELETE_MAX = 500
@@ -1595,7 +1635,8 @@ def delete_history_bulk(payload: HistoryBulkDeletePayload, request: Request):
     if len(app_ids) > HISTORY_BULK_DELETE_MAX:
         raise HTTPException(400, "Too many app ids")
     removed = history_store.remove_many_from_device(device_fingerprint, app_ids)
-    return {"removed": removed, "history": _history_payload(request)}
+    purged = _purge_app_fully(removed)
+    return {"removed": removed, "purged": purged, "history": _history_payload(request)}
 
 
 @app.on_event("shutdown")

@@ -676,6 +676,22 @@ class HistoryStore:
             self._set_device_app_ids_locked(device_fingerprint, filtered, _utc_now())
             return [app_id for app_id in wanted if app_id in removed_set]
 
+    def is_app_orphaned(self, app_id: str) -> bool:
+        """True when no device still references the app — it is then safe to
+        fully purge the app's rows and files."""
+        app_id = str(app_id or "").strip()
+        if not app_id:
+            return False
+        with self._lock:
+            self._flush_visits_locked()
+            for row in self._conn.execute("SELECT app_ids_json FROM devices").fetchall():
+                try:
+                    if app_id in (json.loads(row["app_ids_json"] or "[]") or []):
+                        return False
+                except Exception:
+                    continue
+        return True
+
     def device_owns_app(self, device_fingerprint: Optional[str], app_id: str) -> bool:
         if not device_fingerprint or not app_id:
             return False
