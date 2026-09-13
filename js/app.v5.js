@@ -1021,6 +1021,22 @@
       sanitizeAndroidPackagePrefix(item.android_package_prefix || recipe.android_package_prefix || 'com.webtoapp')
     );
     applyFeatureOptionsToForm(featureOptions);
+    // Rebuild tag/visibility state — a rebuild must keep the stored values
+    // or the user silently re-publishes untagged/private.
+    selectedTags.clear();
+    (recipe.tags || item.tags || []).forEach((tag) => {
+      if (!selectedTags.has(tag)) selectedTags.add(tag);
+      if (!tagsPicker.querySelector(`.tag-chip[data-tag="${CSS.escape(tag)}"]`)) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tag-chip';
+        btn.dataset.tag = tag;
+        btn.textContent = tag;
+        tagsPicker.querySelector('.tags-builtins').appendChild(btn);
+      }
+    });
+    refreshTagChips();
+    setVisibility(recipe.visibility || item.visibility || 'private');
     if (item.icon_url) {
       try {
         const iconRes = await fetch(item.icon_url);
