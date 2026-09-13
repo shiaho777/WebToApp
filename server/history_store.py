@@ -753,11 +753,8 @@ class HistoryStore:
             "downloads": lambda i: (i["download_count"], i["visit_count"]),
             "visits": lambda i: (i["visit_count"], i["download_count"]),
             "newest": lambda i: i.get("created_at") or "",
-        }.get(sort, "downloads")
-        if sort == "newest":
-            items.sort(key=sort_key, reverse=True)
-        else:
-            items.sort(key=sort_key, reverse=True)
+        }.get(sort) or (lambda i: i.get("created_at") or "")
+        items.sort(key=sort_key, reverse=True)
         return items[:limit]
 
     def list_expired_apps(self, cutoff_iso: str) -> List[dict]:
