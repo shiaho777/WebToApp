@@ -1349,7 +1349,7 @@ HISTORY_BULK_DELETE_MAX = 500
 def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort: str = "downloads"):
     if sort not in ("downloads", "visits", "newest"):
         sort = "downloads"
-    items = history_store.list_public_apps(tag=tag, search=search, sort=sort)
+    items = history_store.list_public_apps(tag=tag, search=search, sort=sort, apps_dir=APPS_DIR)
     for item in items:
         recipe = item.get("recipe") or {}
         recipe.pop("edit_token", None)

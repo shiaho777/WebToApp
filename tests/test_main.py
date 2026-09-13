@@ -237,6 +237,14 @@ class MarketAndVisibilityTests(unittest.TestCase):
         item = self.client.get("/api/market").json()["items"][0]
         self.assertNotIn("edit_token", item.get("recipe") or {})
 
+    def test_market_includes_icon_url_when_icon_exists(self):
+        self._build("iconapp", "public", ["tools"])
+        self._build("noicon", "public", ["tools"])
+        (self.apps_dir / "iconapp" / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        items = {i["app_id"]: i for i in self.client.get("/api/market").json()["items"]}
+        self.assertEqual(items["iconapp"]["icon_url"], "/a/iconapp/icon.png")
+        self.assertIsNone(items["noicon"]["icon_url"])
+
     def test_visibility_toggle_requires_edit_token(self):
         self._build("owned", "private", ["tools"])
         # Wrong token, wrong device -> 403
