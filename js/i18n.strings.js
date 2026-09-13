@@ -2005,6 +2005,7 @@
     'profile.avatarFailed': 'Avatar upload failed',
     'profile.name_taken': 'That name is taken',
     'profile.invalid_name': 'Name must be 2-20 chars: letters, digits, 中文, _ or -',
+    'profile.publicView': 'Public page',
     'market.ratings': '{n} ratings'
   });
   R('zh', {
@@ -2029,6 +2030,7 @@
     'profile.avatarFailed': '头像上传失败',
     'profile.name_taken': '这个名字已被占用',
     'profile.invalid_name': '名称需 2-20 位：中英文、数字、_ 或 -',
+    'profile.publicView': '公开主页',
     'market.ratings': '{n} 条评分'
   });
   R('ja', {
@@ -2053,6 +2055,7 @@
     'profile.avatarFailed': 'アバターのアップロードに失敗',
     'profile.name_taken': 'その名前は使われています',
     'profile.invalid_name': '名前は2〜20文字：英数字・中文・_・-',
+    'profile.publicView': '公開ページ',
     'market.ratings': '{n} 件の評価'
   });
   R('ar', {
@@ -2077,6 +2080,7 @@
     'profile.avatarFailed': 'فشل رفع الصورة',
     'profile.name_taken': 'هذا الاسم محجوز',
     'profile.invalid_name': 'الاسم 2-20 حرفاً: أحرف وأرقام و中文 و_ و-',
+    'profile.publicView': 'صفحة عامة',
     'market.ratings': '{n} تقييم'
   });
   R('ru', {
@@ -2101,6 +2105,7 @@
     'profile.avatarFailed': 'Не удалось загрузить аватар',
     'profile.name_taken': 'Имя уже занято',
     'profile.invalid_name': 'Имя: 2–20 символов, буквы/цифры/中文/_/-',
+    'profile.publicView': 'Публичная страница',
     'market.ratings': 'оценок: {n}'
   });
   R('es', {
@@ -2125,6 +2130,7 @@
     'profile.avatarFailed': 'Error al subir el avatar',
     'profile.name_taken': 'Ese nombre está en uso',
     'profile.invalid_name': '2-20 caracteres: letras, dígitos, 中文, _ o -',
+    'profile.publicView': 'Página pública',
     'market.ratings': '{n} valoraciones'
   });
   R('pt', {
@@ -2149,6 +2155,7 @@
     'profile.avatarFailed': 'Falha ao enviar avatar',
     'profile.name_taken': 'Nome já em uso',
     'profile.invalid_name': '2-20 caracteres: letras, dígitos, 中文, _ ou -',
+    'profile.publicView': 'Página pública',
     'market.ratings': '{n} avaliações'
   });
   R('fr', {
@@ -2173,6 +2180,7 @@
     'profile.avatarFailed': 'Échec de l’envoi de l’avatar',
     'profile.name_taken': 'Ce nom est déjà pris',
     'profile.invalid_name': '2-20 caractères : lettres, chiffres, 中文, _ ou -',
+    'profile.publicView': 'Page publique',
     'market.ratings': '{n} notes'
   });
   R('de', {
@@ -2197,5 +2205,6 @@
     'profile.avatarFailed': 'Avatar-Upload fehlgeschlagen',
     'profile.name_taken': 'Name bereits vergeben',
     'profile.invalid_name': '2-20 Zeichen: Buchstaben, Ziffern, 中文, _ oder -',
+    'profile.publicView': 'Öffentliche Seite',
     'market.ratings': '{n} Bewertungen'
   });

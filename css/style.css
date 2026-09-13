@@ -2647,3 +2647,14 @@ section {
   color: rgba(30, 25, 20, 0.45);
   font-weight: 400;
 }
+
+.profile-vis-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(201, 121, 83, 0.14);
+  color: var(--accent-deep, #8a4b2d);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
