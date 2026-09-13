@@ -736,9 +736,32 @@
   initProfile();
 
   // --- User profile (fingerprint identity → sequential user_num) ---
+  const PROFILE_CACHE_KEY = 'webtoapp-profile-v1';
   let profileSelfNum = null;
   let profileViewingSelf = true;
   let profileViewedNum = null;
+
+  function profileCacheRead() {
+    try { return JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY)) || null; } catch (_e) { return null; }
+  }
+
+  function profileCacheWrite(profile) {
+    try {
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
+        user_num: profile.user_num, name: profile.name || '', avatar_url: profile.avatar_url || null,
+      }));
+    } catch (_e) { /* ignore */ }
+  }
+
+  function paintNavAvatar(profile) {
+    if (!profile) return;
+    profileSelfNum = profile.user_num;
+    if (profile.avatar_url) {
+      profileBtnAvatar.src = profile.avatar_url;
+      profileBtnAvatar.classList.remove('hidden');
+      profileBtnIcon.classList.add('hidden');
+    }
+  }
 
   function profileShowMessage(msg) {
     profileMsg.textContent = msg || '';
@@ -800,13 +823,11 @@
       const res = await fetch(mine ? '/api/me' : `/api/users/${encodeURIComponent(num)}`);
       if (!res.ok) throw new Error('load failed');
       const data = await res.json();
-      if (mine && data.profile) profileSelfNum = data.profile.user_num;
-      profileRender(data.profile, data.apps, mine);
-      if (mine && data.profile && data.profile.avatar_url) {
-        profileBtnAvatar.src = data.profile.avatar_url;
-        profileBtnAvatar.classList.remove('hidden');
-        profileBtnIcon.classList.add('hidden');
+      if (mine && data.profile) {
+        profileCacheWrite(data.profile);
+        paintNavAvatar(data.profile);
       }
+      profileRender(data.profile, data.apps, mine);
     } catch (_err) {
       profileNameView.textContent = '—';
       profileAppsEl.innerHTML = '';
@@ -815,6 +836,17 @@
   }
 
   function initProfile() {
+    // Paint the cached avatar instantly, then refresh in the background —
+    // otherwise the nav button shows the generic icon on every page load
+    // until the user opens the panel.
+    const cachedProfile = profileCacheRead();
+    if (cachedProfile) paintNavAvatar(cachedProfile);
+    fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (d && d.profile) {
+        profileCacheWrite(d.profile);
+        paintNavAvatar(d.profile);
+      }
+    }).catch(() => {});
     profileBtn.addEventListener('click', () => openProfile(null));
     profileClose.addEventListener('click', () => profileModal.classList.add('hidden'));
     profileModal.addEventListener('click', (e) => {
@@ -864,9 +896,10 @@
       if (res.ok) {
         const data = await res.json();
         profileSetAvatar(data.avatar_url, profileNameView.textContent);
-        profileBtnAvatar.src = data.avatar_url;
-        profileBtnAvatar.classList.remove('hidden');
-        profileBtnIcon.classList.add('hidden');
+        const merged = profileCacheRead() || { user_num: profileSelfNum };
+        merged.avatar_url = data.avatar_url;
+        profileCacheWrite(merged);
+        paintNavAvatar(merged);
       } else {
         profileShowMessage(t('profile.avatarFailed'));
       }
