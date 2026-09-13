@@ -37,6 +37,7 @@ from server.engine.recipe import RecipeStore
 from server.engine import mobileconfig_signer
 from server.engine.cache import analysis_cache, html_cache, icon_cache
 from server.engine.storage import r2_storage
+from server.community_store import CommunityStore, MAX_BIO_LEN, MAX_COMMENT_LEN
 from server.history_store import HistoryStore
 from server.logging_util import log_event, setup_logging
 from server.task_store import TaskStore
@@ -90,7 +91,7 @@ def _path_app_id(raw_path: str) -> Optional[str]:
     parts = str(raw_path or "").split("/")
     if len(parts) >= 3 and parts[1] == "a":
         return parts[2]
-    if len(parts) >= 4 and parts[1] == "api" and parts[2] == "app":
+    if len(parts) >= 4 and parts[1] == "api" and parts[2] in ("app", "apps"):
         return parts[3]
     if len(parts) >= 4 and parts[1] == "api" and parts[2] == "history":
         seg = parts[3]
@@ -155,6 +156,12 @@ APPS_DIR = ROOT / "generated"
 APPS_DIR.mkdir(exist_ok=True)
 history_store = HistoryStore(APPS_DIR / "_history.json")
 task_store = TaskStore(APPS_DIR / "_tasks.sqlite3")
+community_store = CommunityStore(APPS_DIR / "_community.sqlite3")
+AVATARS_DIR = APPS_DIR / "_avatars"
+AVATARS_DIR.mkdir(exist_ok=True)
+# One-time backfill: existing device fingerprints get sequential user_nums
+# in first-seen order, and apps they already hold get creator attribution.
+community_store.backfill_devices(history_store.device_rows())
 setup_logging()
 _analyze_stats = {"total": 0, "cache_hits": 0, "total_ms": 0}
 _analyze_stats_lock = threading.Lock()
@@ -450,6 +457,16 @@ class HistoryBulkDeletePayload(BaseModel):
     app_ids: List[str] = []
 
 
+class ProfileUpdatePayload(BaseModel):
+    name: str = ""
+    bio_md: str = ""
+
+
+class CommentPayload(BaseModel):
+    body: str = ""
+    rating: Optional[int] = None
+
+
 class VisibilityPayload(BaseModel):
     visibility: str
     edit_token: str = ""
@@ -603,6 +620,12 @@ def _build_distill_response(payload: dict, progress_cb=None) -> dict:
         f"/a/{app_id}",
         build_meta.get("runtime_url"),
     )
+    _creator_fp = payload.get("device_fingerprint")
+    # Quota fallback may have stored "ip:<addr>" as the identity — that is a
+    # bucket key, not a person; only real fingerprints get creator credit.
+    if _creator_fp and not str(_creator_fp).startswith("ip:"):
+        community_store.ensure_user(_creator_fp)
+        community_store.set_creator(app_id, _creator_fp)
     return {
         "app_id": app_id,
         "url": f"/a/{app_id}",
@@ -665,6 +688,8 @@ import_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl
 # /api/analyze performs outbound fetches — cap it so the service can't be
 # used as a free probing oracle.
 analyze_rate_limiter = IPRateLimiter(max_requests=20, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
+# Comments are unauthenticated (fingerprint identity) — cap writes.
+comment_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
 retention_task = None
 
 
@@ -1349,12 +1374,171 @@ HISTORY_BULK_DELETE_MAX = 500
 def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort: str = "downloads"):
     if sort not in ("downloads", "visits", "newest"):
         sort = "downloads"
-    items = history_store.list_public_apps(tag=tag, search=search, sort=sort, apps_dir=APPS_DIR)
+    # Pull the full public set first; creator/rating decoration and the
+    # search filter (which also matches creator name / numeric id) run after.
+    items = history_store.list_public_apps(tag=tag, sort=sort, limit=1000, apps_dir=APPS_DIR)
+    app_ids = [item["app_id"] for item in items]
+    creators = community_store.creator_nums_map(app_ids)
+    ratings = community_store.rating_stats_map(app_ids)
     for item in items:
         recipe = item.get("recipe") or {}
         recipe.pop("edit_token", None)
         item["recipe"] = recipe
+        creator = creators.get(item["app_id"])
+        item["creator_num"] = creator["user_num"] if creator else None
+        item["creator_name"] = (creator or {}).get("name") or ""
+        item["creator_avatar_url"] = (creator or {}).get("avatar_url")
+        stats = ratings.get(item["app_id"]) or {"avg": None, "count": 0}
+        item["rating_avg"] = stats["avg"]
+        item["rating_count"] = stats["count"]
+    needle = (search or "").strip().lower()
+    if needle:
+        num_needle = needle.lstrip("#")
+        def _market_hit(it: dict) -> bool:
+            if needle in (it.get("name") or "").lower() or needle in (it.get("target_url") or "").lower():
+                return True
+            if needle and needle in (it.get("creator_name") or "").lower():
+                return True
+            if num_needle.isdigit() and it.get("creator_num") == int(num_needle):
+                return True
+            return False
+        items = [it for it in items if _market_hit(it)]
+    items = items[:60]
     return {"items": items, "sort": sort}
+
+
+# --- Community: profiles, creator attribution, comments + ratings ---
+
+def _require_fingerprint(request: Request) -> str:
+    fp = _device_fingerprint(request)
+    if not fp:
+        raise HTTPException(400, "missing_device_fingerprint")
+    return fp
+
+
+def _admin_authorized(request: Request) -> bool:
+    token = config.admin_token()
+    if not token:
+        return False
+    supplied = str(request.headers.get("x-admin-token", "") or "")
+    if not supplied:
+        auth = str(request.headers.get("authorization", "") or "")
+        if auth.lower().startswith("bearer "):
+            supplied = auth[7:].strip()
+    return bool(supplied) and secrets.compare_digest(supplied, token)
+
+
+@app.get("/api/me")
+def my_profile(request: Request):
+    fp = _require_fingerprint(request)
+    profile = community_store.ensure_user(fp)
+    apps = history_store.list_history(fp, APPS_DIR)
+    return {"profile": profile, "apps": apps}
+
+
+@app.post("/api/me/profile")
+def update_my_profile(payload: ProfileUpdatePayload, request: Request):
+    fp = _require_fingerprint(request)
+    try:
+        profile = community_store.update_profile(fp, name=payload.name, bio_md=payload.bio_md)
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(409 if code == "name_taken" else 422, code)
+    return {"profile": profile}
+
+
+@app.post("/api/me/avatar")
+async def upload_my_avatar(request: Request, file: UploadFile = File(...)):
+    fp = _require_fingerprint(request)
+    raw = await file.read(3 * 1024 * 1024 + 1)
+    if len(raw) > 3 * 1024 * 1024:
+        raise HTTPException(413, "avatar_too_large")
+    png = distiller._normalize_uploaded_icon(raw)
+    if not png:
+        raise HTTPException(422, "avatar_bad_image")
+    profile = community_store.ensure_user(fp)
+    (AVATARS_DIR / f"u{profile['user_num']}.png").write_bytes(png)
+    version = community_store.bump_avatar(fp)
+    return {"avatar_url": f"/u/{profile['user_num']}/avatar.png?v={version}"}
+
+
+@app.get("/u/{user_num}/avatar.png")
+def user_avatar(user_num: str):
+    if not user_num.isdigit():
+        raise HTTPException(404)
+    path = AVATARS_DIR / f"u{int(user_num)}.png"
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="image/png")
+
+
+@app.get("/api/users/{user_num}")
+def public_user_profile(user_num: str):
+    if not user_num.isdigit():
+        raise HTTPException(404, "No such user")
+    profile = community_store.profile_by_num(int(user_num))
+    if not profile:
+        raise HTTPException(404, "No such user")
+    fp = community_store.fp_by_num(int(user_num))
+    app_ids = community_store.apps_by_creator(fp) if fp else []
+    apps = history_store.public_snapshots(app_ids, APPS_DIR)
+    return {"profile": profile, "apps": apps}
+
+
+@app.get("/api/apps/{app_id}/community")
+def app_community(app_id: str, request: Request):
+    if not (APPS_DIR / app_id / "recipe.json").exists():
+        raise HTTPException(404, "App not found")
+    creator_fp = community_store.creator_of(app_id)
+    creator = community_store.profile_by_fp(creator_fp)
+    other_apps = []
+    if creator_fp:
+        ids = [a for a in community_store.apps_by_creator(creator_fp) if a != app_id]
+        other_apps = history_store.public_snapshots(ids, APPS_DIR)[:12]
+    viewer_fp = _device_fingerprint(request)
+    comments = community_store.list_comments(app_id, viewer_fp=viewer_fp)
+    stats = community_store.rating_stats(app_id)
+    return {
+        "creator": creator,
+        "other_apps": other_apps,
+        "comments": comments,
+        "rating_avg": stats["avg"],
+        "rating_count": stats["count"],
+    }
+
+
+@app.post("/api/apps/{app_id}/comments")
+async def post_comment(app_id: str, payload: CommentPayload, request: Request):
+    if not await comment_rate_limiter.allow(_client_ip(request)):
+        raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
+    if not (APPS_DIR / app_id / "recipe.json").exists():
+        raise HTTPException(404, "App not found")
+    fp = _require_fingerprint(request)
+    rating = payload.rating
+    if rating is not None:
+        try:
+            rating = int(rating)
+        except (TypeError, ValueError):
+            raise HTTPException(422, "bad_rating")
+        if not (1 <= rating <= 5):
+            raise HTTPException(422, "bad_rating")
+    try:
+        comment = community_store.add_comment(app_id, fp, payload.body, rating)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    return {"comment": comment}
+
+
+@app.delete("/api/comments/{comment_id}")
+def delete_comment(comment_id: int, request: Request):
+    admin = _admin_authorized(request)
+    fp = _device_fingerprint(request)
+    result = community_store.delete_comment(comment_id, fp=fp, admin=admin)
+    if result == "not_found":
+        raise HTTPException(404, "Comment not found")
+    if result == "forbidden":
+        raise HTTPException(403, "Not your comment")
+    return {"deleted": True, "id": comment_id}
 
 
 @app.post("/api/history/{app_id}/visibility")

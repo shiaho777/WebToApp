@@ -606,6 +606,46 @@ class HistoryStore:
                     count += 1
             return count
 
+    def device_rows(self) -> List[tuple]:
+        """(device_id, created_at, [app_ids]) in first-seen order — feeds the
+        community store's one-time backfill of user numbers and creators."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT device_id, created_at, app_ids_json FROM devices ORDER BY created_at"
+            ).fetchall()
+            out = []
+            for row in rows:
+                try:
+                    app_ids = json.loads(row["app_ids_json"] or "[]")
+                except Exception:
+                    app_ids = []
+                out.append((row["device_id"], row["created_at"], app_ids))
+            return out
+
+    def public_snapshots(self, app_ids: List[str], apps_dir: Optional[Path] = None) -> List[dict]:
+        """Snapshots for the given app ids restricted to public apps — used by
+        the community endpoints for 'more from this creator'."""
+        ids = [str(a) for a in app_ids if a]
+        if not ids:
+            return []
+        placeholders = ",".join("?" for _ in ids)
+        with self._lock:
+            self._flush_visits_locked()
+            rows = self._conn.execute(
+                f"SELECT * FROM apps WHERE visibility = 'public' AND app_id IN ({placeholders})",
+                ids,
+            ).fetchall()
+            items = []
+            for row in rows:
+                snapshot = self._app_row_to_snapshot(row)
+                snapshot["created_at"] = row["created_at"]
+                if apps_dir is not None:
+                    icon_path = Path(apps_dir) / row["app_id"] / "icon.png"
+                    snapshot["icon_url"] = f"/a/{row['app_id']}/icon.png" if icon_path.exists() else None
+                items.append(snapshot)
+            items.sort(key=lambda i: i.get("created_at") or "", reverse=True)
+            return items
+
     def remove_from_device(self, device_fingerprint: Optional[str], app_id: str) -> bool:
         if not device_fingerprint or not app_id:
             return False

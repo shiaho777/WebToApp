@@ -124,15 +124,18 @@ def _js_literal(value) -> str:
     return json.dumps(str(value or ""), ensure_ascii=False).replace("<", "\\u003c")
 
 
-def _csp_meta(script_body: str, extra: str = "") -> str:
+def _csp_meta(script_body: str, extra: str = "", self_scripts: bool = False) -> str:
     """Hash-pinned CSP meta tag: only the exact inline script body we emit may
-    execute — injected scripts, javascript: URLs and inline handlers die here."""
+    execute — injected scripts, javascript: URLs and inline handlers die here.
+    ``self_scripts`` additionally allows same-origin <script src> files
+    (the download page loads /js/mdmini.js + /js/community.js)."""
     digest = base64.b64encode(hashlib.sha256(script_body.encode("utf-8")).digest()).decode("ascii")
+    script_src = f"script-src 'sha256-{digest}'" + (" 'self'" if self_scripts else "")
     policy = (
         "default-src 'self'; img-src 'self' data: https:; "
         "style-src 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        f"script-src 'sha256-{digest}'; connect-src 'self' http: https:; "
+        f"{script_src}; connect-src 'self' http: https:; "
         "object-src 'none'; base-uri 'none'; form-action 'none'"
     )
     if extra:
@@ -910,7 +913,8 @@ class Distiller:
             ) + "</div>"
             if tags else ""
         )
-        inline_js = f"""(function(){{
+        inline_js = f"""window.WTA_APP_ID = {_js_literal(str(r.get('id') or ''))};
+(function(){{
   var T = {dl_i18n_json};
   var APP_NAME = {app_name_js};
   var SUPPORTED = ["en","zh","ja","ar","ru","es","pt","fr","de"];
@@ -949,7 +953,7 @@ class Distiller:
   apply();
 }})();"""
         script_body = f"\n{inline_js}\n"
-        csp_meta = _csp_meta(script_body)
+        csp_meta = _csp_meta(script_body, self_scripts=True)
         html = f"""{self.DOWNLOAD_PAGE_MARKER}
 <!DOCTYPE html>
 <html lang="en">
@@ -1053,6 +1057,48 @@ a{{color:inherit;text-decoration:none}}
   .app-title{{font-size:1.35rem}}
   .title{{font-size:clamp(1.9rem,8vw,2.6rem)}}
 }}
+/* --- community: creator card / comments / ratings --- */
+.community-sec{{margin-top:26px;border-top:1px solid var(--line);padding-top:20px}}
+.app-rating{{display:flex;align-items:center;gap:8px;margin-bottom:16px}}
+.stars{{color:#ddd3c4;letter-spacing:2px;font-size:1rem}}
+.stars .on{{color:#e8a33d}}
+.rating-num{{font-weight:700}}
+.rating-cnt,.rating-none{{color:var(--ink-soft);font-size:.85rem}}
+.creator-wrap{{margin-bottom:18px}}
+#creator-card{{display:block}}
+.creator-head{{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}}
+.creator-avatar{{width:46px;height:46px;border-radius:50%;object-fit:cover;border:1px solid var(--line-strong)}}
+.avatar-fallback{{display:inline-flex;align-items:center;justify-content:center;background:#efe5d6;color:#8a7a64;font-weight:700;font-size:.95rem}}
+.creator-meta{{display:flex;flex-direction:column;min-width:0}}
+.creator-label{{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}}
+.creator-name{{font-weight:700;font-size:1.02rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.creator-num{{font-style:normal;color:var(--ink-soft);font-weight:500;font-size:.85rem}}
+.creator-bio{{margin-top:10px;font-size:.9rem;line-height:1.7;color:var(--ink-soft);max-width:34rem}}
+.creator-bio code{{background:rgba(30,25,20,.07);padding:1px 5px;border-radius:4px;font-size:.85em}}
+.creator-bio a{{color:var(--accent)}}
+.other-apps{{display:flex;flex-wrap:wrap;gap:8px}}
+.other-app{{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border:1px solid var(--line);border-radius:999px;background:var(--surface);text-decoration:none;color:var(--ink);font-size:.85rem;max-width:220px}}
+.other-app img{{width:22px;height:22px;border-radius:6px;object-fit:cover}}
+.other-app-dot{{width:22px;height:22px;border-radius:6px;background:#e7ddcf}}
+.other-app-name{{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.comments-wrap{{margin-top:20px}}
+.comment-form{{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}}
+.comment-form textarea{{font:inherit;font-size:.92rem;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);resize:vertical;min-height:64px}}
+.comment-form button[type=submit]{{align-self:flex-end;font:inherit;font-size:.88rem;font-weight:600;padding:8px 20px;border:none;border-radius:8px;background:var(--accent-deep);color:#fff;cursor:pointer}}
+.comment-form button[disabled]{{opacity:.5;cursor:default}}
+.picker-label{{font-size:.85rem;color:var(--ink-soft)}}
+.picker-label em{{font-style:normal;opacity:.7}}
+.pick-star{{background:none;border:none;font-size:1.25rem;color:#ddd3c4;cursor:pointer;padding:0 2px}}
+.pick-star.on{{color:#e8a33d}}
+.comment{{border-top:1px solid var(--line);padding:12px 0;position:relative}}
+.comment-head{{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}}
+.comment-avatar{{width:30px;height:30px;border-radius:50%;object-fit:cover;font-size:.7rem}}
+.comment-who{{display:flex;align-items:baseline;gap:6px;min-width:0}}
+.comment-who b{{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.comment-when{{margin-left:auto;font-size:.75rem;color:var(--ink-soft)}}
+.comment-body{{margin:6px 0 0 40px;font-size:.9rem;line-height:1.65;word-break:break-word}}
+.comment-del{{position:absolute;top:10px;right:0;background:none;border:none;color:var(--ink-soft);font-size:.75rem;cursor:pointer;text-decoration:underline}}
+.comments-empty{{color:var(--ink-soft);font-size:.9rem}}
 </style>
 </head>
 <body>
@@ -1118,9 +1164,25 @@ a{{color:inherit;text-decoration:none}}
         <p class="footnote" data-i18n="footnote">On iPhone install via Safari; on desktop just unzip after downloading. Android ships an installer, while macOS and Windows keep the app icon.</p>
       </div>
     </section>
+    <section class="community-sec" id="community-sec">
+      <div id="app-rating" class="app-rating"></div>
+      <div class="creator-wrap"><div id="creator-card"></div></div>
+      <div id="creator-apps"></div>
+      <div class="comments-wrap">
+        <div class="section-label" id="comments-title"></div>
+        <form id="comment-form" class="comment-form">
+          <div id="rating-picker"></div>
+          <textarea id="comment-body" rows="3" maxlength="2000"></textarea>
+          <button type="submit"></button>
+        </form>
+        <div id="comments-list"></div>
+      </div>
+    </section>
   </main>
 </div>
 <script>{script_body}</script>
+<script src="/js/mdmini.js"></script>
+<script src="/js/community.js"></script>
 </body>
 </html>"""
         return html

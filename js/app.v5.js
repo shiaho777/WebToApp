@@ -112,6 +112,27 @@
   const marketEmpty = document.getElementById('market-empty');
   const marketSearchInput = document.getElementById('market-search');
   const marketSortSelect = document.getElementById('market-sort');
+  const profileBtn = document.getElementById('profile-btn');
+  const profileBtnAvatar = document.getElementById('profile-btn-avatar');
+  const profileBtnIcon = document.getElementById('profile-btn-icon');
+  const profileModal = document.getElementById('profile-modal');
+  const profileClose = document.getElementById('profile-close');
+  const profileAvatarImg = document.getElementById('profile-avatar');
+  const profileAvatarFallback = document.getElementById('profile-avatar-fallback');
+  const avatarUploadBtn = document.getElementById('avatar-upload-btn');
+  const avatarFile = document.getElementById('avatar-file');
+  const profileNameView = document.getElementById('profile-name-view');
+  const profileNumEl = document.getElementById('profile-num');
+  const profileJoinedEl = document.getElementById('profile-joined');
+  const profileBioView = document.getElementById('profile-bio-view');
+  const profileMsg = document.getElementById('profile-msg');
+  const profileEditForm = document.getElementById('profile-edit');
+  const profileNameInput = document.getElementById('profile-name-input');
+  const profileBioInput = document.getElementById('profile-bio-input');
+  const profileEditCancel = document.getElementById('profile-edit-cancel');
+  const profileEditBtn = document.getElementById('profile-edit-btn');
+  const profileAppsLabel = document.getElementById('profile-apps-label');
+  const profileAppsEl = document.getElementById('profile-apps');
   const historySelectBar = document.getElementById('history-select-bar');
   const historySelectAll = document.getElementById('history-select-all');
   const historySelectCount = document.getElementById('history-select-count');
@@ -610,6 +631,18 @@
       const iconHtml = item.icon_url
         ? `<img class="market-card-icon" src="${escapeHtml(item.icon_url)}" alt="" loading="lazy">`
         : `<div class="market-card-icon" aria-hidden="true"></div>`;
+      const creatorAvatar = item.creator_avatar_url
+        ? `<img class="market-creator-avatar" src="${escapeHtml(item.creator_avatar_url)}" alt="" loading="lazy">`
+        : `<span class="market-creator-avatar avatar-fallback" aria-hidden="true">${escapeHtml((item.creator_name || '#').charAt(0).toUpperCase())}</span>`;
+      const creatorHtml = item.creator_num
+        ? `<a class="market-creator" href="/?u=${encodeURIComponent(item.creator_num)}" target="_blank" rel="noopener noreferrer">
+             ${creatorAvatar}<span class="market-creator-name">${escapeHtml(item.creator_name || t('profile.anon'))}</span><span class="market-creator-num">#${item.creator_num}</span>
+           </a>`
+        : '';
+      const createdStr = item.created_at ? new Date(item.created_at).toLocaleDateString(locale()) : '';
+      const ratingHtml = item.rating_count
+        ? `<span class="market-rating"><span class="market-star">★</span> ${Number(item.rating_avg).toFixed(1)}<span class="market-rating-cnt">(${item.rating_count})</span></span>`
+        : '';
       const card = document.createElement('article');
       card.className = 'market-card';
       card.innerHTML = `
@@ -620,10 +653,12 @@
             <div class="market-card-url">${escapeHtml(item.target_url || '')}</div>
           </div>
         </div>
+        ${creatorHtml ? `<div class="market-card-creator">${creatorHtml}${createdStr ? `<span class="market-card-date">${escapeHtml(createdStr)}</span>` : ''}</div>` : (createdStr ? `<div class="market-card-creator"><span class="market-card-date">${escapeHtml(createdStr)}</span></div>` : '')}
         ${tagChips ? `<div class="market-card-tags">${tagChips}</div>` : ''}
         <div class="market-card-meta">
           <span>${escapeHtml(t('market.visits', { n: Number(item.visit_count || 0).toLocaleString(locale()) }))}</span>
           <span>${escapeHtml(t('market.downloads', { n: Number(item.download_count || 0).toLocaleString(locale()) }))}</span>
+          ${ratingHtml}
         </div>
         <button class="market-card-open" type="button" data-open="${escapeHtml(publicPath)}">${escapeHtml(t('market.open'))}</button>
       `;
@@ -695,6 +730,145 @@
     }
   });
   loadMarket();
+  initProfile();
+
+  // --- User profile (fingerprint identity → sequential user_num) ---
+  let profileSelfNum = null;
+  let profileViewingSelf = true;
+
+  function profileShowMessage(msg) {
+    profileMsg.textContent = msg || '';
+  }
+
+  function profileSetAvatar(url, name) {
+    const has = !!url;
+    profileAvatarImg.classList.toggle('hidden', !has);
+    profileAvatarFallback.classList.toggle('hidden', has);
+    if (has) {
+      profileAvatarImg.src = url;
+    } else {
+      profileAvatarFallback.textContent = (name || '#').charAt(0).toUpperCase();
+    }
+  }
+
+  function profileRenderApps(apps, mine) {
+    const list = Array.isArray(apps) ? apps : [];
+    profileAppsEl.innerHTML = list.length
+      ? list.map((a) => {
+          const path = a.public_path || `/a/${a.app_id}`;
+          const icon = a.icon_url
+            ? `<img src="${escapeHtml(a.icon_url)}" alt="" loading="lazy">`
+            : '<span class="profile-app-dot"></span>';
+          const vis = mine && a.visibility && a.visibility !== 'public'
+            ? `<em class="profile-app-vis">${escapeHtml(a.visibility)}</em>` : '';
+          return `<a class="profile-app" href="${escapeHtml(path)}" target="_blank" rel="noopener noreferrer">${icon}<span>${escapeHtml(a.name || a.app_id)}</span>${vis}</a>`;
+        }).join('')
+      : `<p class="profile-apps-empty">${escapeHtml(t('profile.noApps'))}</p>`;
+  }
+
+  function profileRender(profile, apps, mine) {
+    if (!profile) return;
+    const name = profile.name || t('profile.anon');
+    profileNameView.textContent = name;
+    profileNumEl.textContent = `#${profile.user_num}`;
+    profileJoinedEl.textContent = profile.created_at
+      ? t('profile.joined', { d: new Date(profile.created_at).toLocaleDateString(locale()) })
+      : '';
+    profileSetAvatar(profile.avatar_url, name);
+    profileBioView.innerHTML = profile.bio_md ? window.wtaMd(profile.bio_md) : '';
+    profileAppsLabel.textContent = t(mine ? 'profile.myApps' : 'profile.publicApps');
+    profileRenderApps(apps, mine);
+    avatarUploadBtn.classList.toggle('hidden', !mine);
+    profileEditBtn.classList.toggle('hidden', !mine);
+    profileEditForm.classList.add('hidden');
+    profileShowMessage('');
+  }
+
+  async function openProfile(num) {
+    profileModal.classList.remove('hidden');
+    profileShowMessage('');
+    const mine = num == null || (profileSelfNum != null && Number(num) === profileSelfNum);
+    profileViewingSelf = mine;
+    try {
+      const res = await fetch(mine ? '/api/me' : `/api/users/${encodeURIComponent(num)}`);
+      if (!res.ok) throw new Error('load failed');
+      const data = await res.json();
+      if (mine && data.profile) profileSelfNum = data.profile.user_num;
+      profileRender(data.profile, data.apps, mine);
+      if (mine && data.profile && data.profile.avatar_url) {
+        profileBtnAvatar.src = data.profile.avatar_url;
+        profileBtnAvatar.classList.remove('hidden');
+        profileBtnIcon.classList.add('hidden');
+      }
+    } catch (_err) {
+      profileNameView.textContent = '—';
+      profileAppsEl.innerHTML = '';
+      profileShowMessage(t('profile.loadFailed'));
+    }
+  }
+
+  function initProfile() {
+    profileBtn.addEventListener('click', () => openProfile(null));
+    profileClose.addEventListener('click', () => profileModal.classList.add('hidden'));
+    profileModal.addEventListener('click', (e) => {
+      if (e.target === profileModal) profileModal.classList.add('hidden');
+    });
+    profileEditBtn.addEventListener('click', () => {
+      profileNameInput.value = profileNameView.textContent === t('profile.anon') ? '' : profileNameView.textContent;
+      profileBioInput.value = '';
+      profileEditForm.classList.remove('hidden');
+      profileEditBtn.classList.add('hidden');
+      profileMsg.textContent = '';
+      fetch('/api/me').then((r) => r.json()).then((d) => {
+        if (d.profile) {
+          profileNameInput.value = d.profile.name || '';
+          profileBioInput.value = d.profile.bio_md || '';
+        }
+      }).catch(() => {});
+    });
+    profileEditCancel.addEventListener('click', () => {
+      profileEditForm.classList.add('hidden');
+      profileEditBtn.classList.remove('hidden');
+    });
+    profileEditForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await fetch('/api/me/profile', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ name: profileNameInput.value.trim(), bio_md: profileBioInput.value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        profileShowMessage(t('profile.saved'));
+        profileEditForm.classList.add('hidden');
+        profileEditBtn.classList.remove('hidden');
+        openProfile(null);
+      } else {
+        profileShowMessage(t(`profile.${data.detail || 'invalid_name'}`));
+      }
+    });
+    avatarUploadBtn.addEventListener('click', () => avatarFile.click());
+    avatarFile.addEventListener('change', async () => {
+      const file = avatarFile.files && avatarFile.files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/me/avatar', { method: 'POST', body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        profileSetAvatar(data.avatar_url, profileNameView.textContent);
+        profileBtnAvatar.src = data.avatar_url;
+        profileBtnAvatar.classList.remove('hidden');
+        profileBtnIcon.classList.add('hidden');
+      } else {
+        profileShowMessage(t('profile.avatarFailed'));
+      }
+      avatarFile.value = '';
+    });
+    // ?u=N opens that user's public profile (linked from market/app pages).
+    const u = new URLSearchParams(window.location.search).get('u');
+    if (u && /^\d+$/.test(u)) openProfile(Number(u));
+  }
 
   async function applyHistoryItemToForm(item) {
     const recipe = item.recipe || {};
