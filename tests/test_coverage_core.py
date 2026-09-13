@@ -78,7 +78,7 @@ def test_config_android_strings(monkeypatch):
         (config.icon_cache_ttl_seconds, "ICON_CACHE_TTL_SECONDS", 3600, 3600, "1", 60, "7200", 7200),
         (config.html_cache_ttl_seconds, "HTML_CACHE_TTL_SECONDS", 900, 900, "1", 60, "1800", 1800),
         (config.icon_fetch_timeout, "ICON_FETCH_TIMEOUT", 4.0, 4.0, "0", 1.0, "20", 15.0),
-        (config.icon_candidate_limit, "ICON_CANDIDATE_LIMIT", 10, 10, "1", 2, "20", 14),
+        (config.icon_candidate_limit, "ICON_CANDIDATE_LIMIT", 14, 14, "1", 2, "20", 16),
         (config.recipe_cache_size, "RECIPE_CACHE_SIZE", 512, 512, "0", 1, "900", 900),
         (config.outbound_response_max_bytes, "OUTBOUND_RESPONSE_MAX_BYTES", 4194304, 4194304, "1", 65536, "9000000", 9000000),
         (config.outbound_redirect_limit, "OUTBOUND_REDIRECT_LIMIT", 4, 4, "-2", 0, "8", 8),

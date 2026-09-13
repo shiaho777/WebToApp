@@ -253,8 +253,8 @@ class DistillerIconFallbackTests(unittest.TestCase):
 
         with patch.object(distiller, "_fetch_url_bytes", side_effect=fake_fetch):
             candidates = distiller._collect_icon_candidates("https://example.com")
-        limit = distiller and 10  # matches the new default in config.icon_candidate_limit
-        head = candidates[:10]
+        limit = distiller and 14  # matches the new default in config.icon_candidate_limit
+        head = candidates[:14]
         self.assertIn("https://favicon.im/example.com", head)
         self.assertIn("https://favicon.yandex.net/favicon/example.com", head)
         self.assertIn("https://icons.duckduckgo.com/ip3/example.com.ico", head)
@@ -546,3 +546,49 @@ class DownloadPageLayoutTests(unittest.TestCase):
         body = page[page.find("<body>"):]
         self.assertLess(body.find('class="platforms"'), body.find('ios-fold'))
         self.assertLess(body.find('id="community-sec"'), body.find('class="hero-panel"'))
+
+
+class IconPipelineTests(unittest.TestCase):
+    """Icon normalization accepts every raster format Pillow reads, and ICO
+    decodes its largest frame (legacy BMP-encoded entries included)."""
+
+    def _png_dim(self, png):
+        return int.from_bytes(png[16:20], "big")
+
+    def test_ico_largest_frame_wins(self):
+        import io
+        from PIL import Image
+        big = Image.new("RGBA", (128, 128), (255, 0, 0, 255))
+        buf = io.BytesIO()
+        big.save(buf, format="ICO", sizes=[(16, 16), (128, 128)])
+        png = Distiller()._normalize_to_png(buf.getvalue())
+        self.assertIsNotNone(png)
+        self.assertEqual(self._png_dim(png), 128)
+
+    def test_jpeg_accepted(self):
+        import io
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new("RGB", (64, 64), (0, 128, 255)).save(buf, format="JPEG")
+        png = Distiller()._normalize_to_png(buf.getvalue())
+        self.assertIsNotNone(png)
+        self.assertEqual(png[:4], b"\x89PNG")
+
+    def test_svg_rejected(self):
+        self.assertIsNone(Distiller()._normalize_to_png(b"<svg xmlns='x'></svg>"))
+
+    def test_icon_miss_uses_short_cache(self):
+        from server.engine import cache as cache_mod
+        from unittest.mock import patch
+        d = Distiller()
+        recipe = {"url": "https://nohost.invalid/", "color": "#123456"}
+        with patch.object(d, "_collect_icon_candidates", return_value=[]), \
+             patch.object(d, "_choose_best_icon", return_value=None), \
+             patch.object(cache_mod.icon_cache, "get", return_value=None):
+            first = d._fetch_icon(recipe)
+            self.assertIsNotNone(first)  # placeholder PNG
+            # Second call inside the miss window must not re-sweep.
+            with patch.object(d, "_collect_icon_candidates",
+                              side_effect=AssertionError("re-swept")):
+                second = d._fetch_icon(recipe)
+            self.assertIsNotNone(second)

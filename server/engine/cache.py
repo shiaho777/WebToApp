@@ -50,5 +50,9 @@ class TTLCache:
 
 html_cache = TTLCache(max_size=128, ttl_seconds=900)
 icon_cache = TTLCache(max_size=256, ttl_seconds=3600)
+# Misses get a much shorter TTL: a transient network failure must not pin a
+# host to the placeholder icon for a full hour, but a short marker still
+# dedupes rebuild bursts (the candidate sweep is a few seconds on CN hosts).
+icon_miss_cache = TTLCache(max_size=256, ttl_seconds=60)
 
 analysis_cache = TTLCache(max_size=128, ttl_seconds=600)

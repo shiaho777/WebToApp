@@ -250,7 +250,13 @@ class DistillerHtmlModeTests(unittest.TestCase):
             with patch.object(distiller, "_generated_root", return_value=root):
                 recipe = {"id": "ab12cd34", "url": "https://x/", "color": "#123456", "source_type": "html"}
                 icon = distiller._fetch_icon(recipe)
-        self.assertEqual(icon, TINY_PNG)
+        # Normalization re-encodes via Pillow, so compare decoded pixels.
+        import io as _io
+        from PIL import Image as _Image
+        self.assertEqual(
+            _Image.open(_io.BytesIO(icon)).tobytes(),
+            _Image.open(_io.BytesIO(TINY_PNG)).tobytes(),
+        )
 
     def test_fetch_icon_falls_back_to_placeholder(self):
         distiller = Distiller()
