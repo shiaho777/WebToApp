@@ -432,7 +432,8 @@ section {
 
 .field input[type="text"],
 .field input[type="number"],
-.field select {
+.field select,
+.field textarea {
   min-height: 54px;
   width: 100%;
   padding: 14px 16px;
@@ -440,12 +441,19 @@ section {
   border-radius: 10px;
   background: rgba(250, 246, 240, 0.94);
   font-size: 1rem;
+  font-family: inherit;
   transition: border-color var(--transition), background var(--transition);
+}
+
+.field textarea {
+  resize: vertical;
+  line-height: 1.6;
 }
 
 .field input[type="text"]:focus,
 .field input[type="number"]:focus,
 .field select:focus,
+.field textarea:focus,
 .icon-upload-meta input[type="file"]:focus {
   border-color: rgba(201, 121, 83, 0.5);
   background: rgba(255, 252, 246, 1);
