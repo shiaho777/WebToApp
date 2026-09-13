@@ -619,8 +619,11 @@
   // --- Public market ---
   let marketSearchTimer = null;
 
+  let lastMarketItems = [];
+
   function renderMarket(items) {
     const list = Array.isArray(items) ? items : [];
+    lastMarketItems = list;
     marketList.innerHTML = '';
     marketEmpty.classList.toggle('hidden', list.length > 0);
     const fragment = document.createDocumentFragment();
@@ -735,6 +738,7 @@
   // --- User profile (fingerprint identity → sequential user_num) ---
   let profileSelfNum = null;
   let profileViewingSelf = true;
+  let profileViewedNum = null;
 
   function profileShowMessage(msg) {
     profileMsg.textContent = msg || '';
@@ -759,8 +763,10 @@
           const icon = a.icon_url
             ? `<img src="${escapeHtml(a.icon_url)}" alt="" loading="lazy">`
             : '<span class="profile-app-dot"></span>';
-          const vis = mine && a.visibility && a.visibility !== 'public'
-            ? `<em class="profile-app-vis">${escapeHtml(a.visibility)}</em>` : '';
+          const visKey = a.visibility === 'private' ? 'history.visibilityPrivate'
+            : a.visibility === 'public' ? 'history.visibilityPublic' : '';
+          const vis = mine && visKey
+            ? `<em class="profile-app-vis">${escapeHtml(t(visKey))}</em>` : '';
           return `<a class="profile-app" href="${escapeHtml(path)}" target="_blank" rel="noopener noreferrer">${icon}<span>${escapeHtml(a.name || a.app_id)}</span>${vis}</a>`;
         }).join('')
       : `<p class="profile-apps-empty">${escapeHtml(t('profile.noApps'))}</p>`;
@@ -789,6 +795,7 @@
     profileShowMessage('');
     const mine = num == null || (profileSelfNum != null && Number(num) === profileSelfNum);
     profileViewingSelf = mine;
+    profileViewedNum = mine ? null : Number(num);
     try {
       const res = await fetch(mine ? '/api/me' : `/api/users/${encodeURIComponent(num)}`);
       if (!res.ok) throw new Error('load failed');
@@ -1743,6 +1750,10 @@
     window.addEventListener('i18n:changed', () => {
       select.value = window.I18n.current;
       if (lastHistoryItems.length) renderHistory(lastHistoryItems);
+      if (lastMarketItems.length) renderMarket(lastMarketItems);
+      if (!profileModal.classList.contains('hidden')) {
+        openProfile(profileViewingSelf ? null : profileViewedNum);
+      }
     });
   })();
 
