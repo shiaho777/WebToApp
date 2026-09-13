@@ -679,7 +679,7 @@
     const params = new URLSearchParams();
     if (tag) params.set('tag', tag);
     if (marketSearchInput.value.trim()) params.set('search', marketSearchInput.value.trim());
-    params.set('sort', marketSortSelect.value || 'downloads');
+    params.set('sort', marketSortSelect.value || 'newest');
     try {
       const res = await fetch(`/api/market?${params.toString()}`);
       if (!res.ok) throw new Error('market failed');

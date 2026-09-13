@@ -693,6 +693,29 @@ class CommunityEndpointTests(unittest.TestCase):
         finally:
             del os.environ["ADMIN_TOKEN"]
 
+
+    def test_market_sort_rating_avg_then_count(self):
+        self._make_app("rlow", self.FP_A)
+        self._make_app("rhigh", self.FP_A)
+        self._make_app("rtie", self.FP_A)
+        self._make_app("rnone", self.FP_A)
+        # rhigh: 5.0 avg, 2 votes; rtie: 5.0 avg, 1 vote; rlow: 3.0; rnone: unrated
+        # Seed via the store directly — the HTTP path is IP-rate-limited and
+        # earlier tests in this class already drained the bucket.
+        cs = main.community_store
+        cs.add_comment("rhigh", "fp-x", "g", 5)
+        cs.add_comment("rhigh", "fp-y", "g", 5)
+        cs.add_comment("rtie", "fp-z", "g", 5)
+        cs.add_comment("rlow", "fp-w", "ok", 3)
+        items = self.client.get("/api/market", params={"sort": "rating"}).json()["items"]
+        ids = [i["app_id"] for i in items]
+        self.assertLess(ids.index("rhigh"), ids.index("rtie"))
+        self.assertLess(ids.index("rtie"), ids.index("rlow"))
+        self.assertLess(ids.index("rlow"), ids.index("rnone"))
+        # default sort is newest
+        default = self.client.get("/api/market").json()
+        self.assertEqual(default["sort"], "newest")
+
     def test_comment_validation_and_missing_fp(self):
         self._make_app("capp3", self.FP_A)
         self.assertEqual(

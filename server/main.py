@@ -1371,9 +1371,9 @@ HISTORY_BULK_DELETE_MAX = 500
 
 
 @app.get("/api/market")
-def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort: str = "downloads"):
-    if sort not in ("downloads", "visits", "newest"):
-        sort = "downloads"
+def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort: str = "newest"):
+    if sort not in ("downloads", "visits", "newest", "rating"):
+        sort = "newest"
     # Pull the full public set first; creator/rating decoration and the
     # search filter (which also matches creator name / numeric id) run after.
     items = history_store.list_public_apps(tag=tag, sort=sort, limit=1000, apps_dir=APPS_DIR)
@@ -1403,6 +1403,16 @@ def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort
                 return True
             return False
         items = [it for it in items if _market_hit(it)]
+    if sort == "rating":
+        # Highest average first; ties break toward the app with more
+        # ratings (a 5.0 from 20 votes outranks a 5.0 from one). Unrated
+        # apps sink to the bottom, newest first among themselves.
+        items.sort(key=lambda it: (
+            it["rating_avg"] is not None,
+            it["rating_avg"] or 0,
+            it["rating_count"],
+            it.get("created_at") or "",
+        ), reverse=True)
     items = items[:60]
     return {"items": items, "sort": sort}
 

@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260914-prof2">
-  <script src="js/i18n.js?v=20260914-prof2"></script>
-  <script src="js/i18n.strings.js?v=20260914-prof2"></script>
+  <link rel="stylesheet" href="css/style.css?v=20260914-sort1">
+  <script src="js/i18n.js?v=20260914-sort1"></script>
+  <script src="js/i18n.strings.js?v=20260914-sort1"></script>
 </head>
 <body>
   <header id="nav">
@@ -454,9 +454,10 @@
           <div class="market-toolbar">
             <input id="market-search" class="market-search" type="search" data-i18n-placeholder="market.searchPlaceholder" placeholder="Search apps..." autocomplete="off">
             <select id="market-sort" class="market-sort" aria-label="Sort">
+              <option value="newest" data-i18n="market.sortNewest" selected>Newest</option>
+              <option value="rating" data-i18n="market.sortRating">Top rated</option>
               <option value="downloads" data-i18n="market.sortDownloads">Most downloads</option>
               <option value="visits" data-i18n="market.sortVisits">Most visits</option>
-              <option value="newest" data-i18n="market.sortNewest">Newest</option>
             </select>
           </div>
         </div>
@@ -523,7 +524,7 @@
     </div>
   </div>
 
-  <script src="js/mdmini.js?v=20260914-prof2"></script>
-  <script src="js/app.v5.js?v=20260914-prof2"></script>
+  <script src="js/mdmini.js?v=20260914-sort1"></script>
+  <script src="js/app.v5.js?v=20260914-sort1"></script>
 </body>
 </html>
