@@ -484,3 +484,42 @@ class ArtifactSanitizationTests(unittest.TestCase):
         self.assertNotIn("javascript:", index)
         self.assertIn('src="about:blank"', index)
         self.assertIn("&lt;img onerror=1&gt;", index)
+
+
+class AppDescriptionTests(unittest.TestCase):
+    """Optional per-app description: sanitized into the recipe, rendered on
+    the download page, and exposed on market snapshots (issue #98)."""
+
+    def test_description_sanitized_into_recipe(self):
+        recipe = Distiller().create_recipe(
+            app_id="desc0001", url="https://example.com", name="App",
+            color="#7c3aed", display="fullscreen", orientation="any",
+            options={"description": "  hello   world \n next  " + "x" * 200},
+        )
+        desc = recipe["description"]
+        self.assertEqual(desc[:11], "hello world")
+        self.assertLessEqual(len(desc), 80)
+        self.assertNotIn("\n", desc)
+
+    def test_description_defaults_empty(self):
+        recipe = Distiller().create_recipe(
+            app_id="desc0002", url="https://example.com", name="App",
+            color="#7c3aed", display="fullscreen", orientation="any",
+            options={},
+        )
+        self.assertEqual(recipe["description"], "")
+
+    def test_page_shows_description_when_present(self):
+        page = DownloadPageHardeningTests()._page(
+            description="A tiny RSS reader")
+        self.assertIn('<p class="app-desc">A tiny RSS reader</p>', page)
+
+    def test_page_omits_element_without_description(self):
+        page = DownloadPageHardeningTests()._page()
+        self.assertNotIn('class="app-desc"', page)
+
+    def test_description_is_escaped(self):
+        page = DownloadPageHardeningTests()._page(
+            description='<img src=x onerror=alert(1)>')
+        self.assertNotIn('<img src=x', page)
+        self.assertIn("&lt;img src=x", page)

@@ -213,6 +213,7 @@ class Distiller:
             "android_package_prefix": package_prefix,
             "visibility": self._visibility(options),
             "tags": self._tags(options),
+            "description": self._description(options),
             "_custom_icon_data_url": self._custom_icon_data_url(options),
             "custom_icon_uploaded": bool(self._custom_icon_data_url(options)),
             "edit_token": self._edit_token(app_id),
@@ -307,6 +308,11 @@ class Distiller:
                 seen.add(value.lower())
                 cleaned.append(value)
         return cleaned[:5]
+
+    def _description(self, options):
+        raw = str(options.get("description") or "").strip()
+        raw = re.sub(r"\s+", " ", raw)
+        return raw[:80]
 
     def _feature_options(self, options):
         raw = options or {}
@@ -913,6 +919,10 @@ class Distiller:
             ) + "</div>"
             if tags else ""
         )
+        desc_html = ""
+        _app_desc = str(r.get("description") or "").strip()
+        if _app_desc:
+            desc_html = f'<p class="app-desc">{_esc(_app_desc)}</p>'
         inline_js = f"""window.WTA_APP_ID = {_js_literal(str(r.get('id') or ''))};
 (function(){{
   var T = {dl_i18n_json};
@@ -1001,6 +1011,7 @@ a{{color:inherit;text-decoration:none}}
 .hero-copy{{padding:8px 0 0}}
 .eyebrow{{margin-bottom:14px;font-size:.78rem;letter-spacing:.16em;color:rgba(30,25,20,.46);text-transform:uppercase}}
 .title{{max-width:14ch;font-family:'Spectral','Noto Serif SC','Songti SC',serif;font-size:clamp(2.2rem,4.2vw,3.4rem);font-weight:600;line-height:1.1;letter-spacing:0}}
+.app-desc{{margin-top:14px;font-size:16px;line-height:1.55;color:var(--ink-soft)}}
 .meta-row{{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}}
 .meta-chip{{display:inline-flex;align-items:center;padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:transparent;font-size:.86rem;color:var(--ink-soft)}}
 .meta-chip-tag{{border-color:rgba(201,121,83,.4);background:rgba(201,121,83,.1);color:#8a4b2d;font-weight:700}}
@@ -1118,6 +1129,7 @@ a{{color:inherit;text-decoration:none}}
     <section class="hero-copy">
       <div class="eyebrow" data-i18n="eyebrow">INSTALLATION / DOWNLOAD</div>
       <h1 class="title">{name_esc}</h1>
+      {desc_html}
       {tags_row}
       <div class="meta-row">
         <span class="meta-chip" data-i18n="chipPlatforms">5 platforms ready</span>

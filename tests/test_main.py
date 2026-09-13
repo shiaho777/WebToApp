@@ -195,12 +195,13 @@ class MarketAndVisibilityTests(unittest.TestCase):
         main.history_store = self.original_store
         self._tmp.cleanup()
 
-    def _build(self, app_id, visibility, tags):
+    def _build(self, app_id, visibility, tags, extra=None):
         (self.apps_dir / app_id).mkdir(parents=True, exist_ok=True)
         recipe = {
             "id": app_id, "name": f"App {app_id}", "url": f"https://{app_id}.test",
             "visibility": visibility, "tags": tags, "edit_token": f"tok-{app_id}",
         }
+        recipe.update(extra or {})
         (self.apps_dir / app_id / "recipe.json").write_text(json.dumps(recipe))
         main.history_store.record_build(self.FP, recipe, f"/a/{app_id}", None)
 
@@ -244,6 +245,14 @@ class MarketAndVisibilityTests(unittest.TestCase):
         items = {i["app_id"]: i for i in self.client.get("/api/market").json()["items"]}
         self.assertEqual(items["iconapp"]["icon_url"], "/a/iconapp/icon.png")
         self.assertIsNone(items["noicon"]["icon_url"])
+
+    def test_market_exposes_description_when_set(self):
+        self._build("descapp", "public", ["tools"],
+                    extra={"description": "A tiny RSS reader"})
+        self._build("nodesc", "public", ["tools"])
+        items = {i["app_id"]: i for i in self.client.get("/api/market").json()["items"]}
+        self.assertEqual(items["descapp"]["description"], "A tiny RSS reader")
+        self.assertEqual(items["nodesc"]["description"], "")
 
     def test_visibility_toggle_requires_edit_token(self):
         self._build("owned", "private", ["tools"])

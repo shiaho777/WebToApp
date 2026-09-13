@@ -2195,6 +2195,15 @@ section {
   font-size: 0.78rem;
 }
 
+.market-card-desc {
+  margin-top: 8px;
+  overflow: hidden;
+  color: var(--ink-soft, rgba(30, 25, 20, 0.68));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
+}
+
 .market-card-tags {
   display: flex;
   flex-wrap: wrap;
