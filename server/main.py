@@ -1413,8 +1413,9 @@ def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort
             it["rating_count"],
             it.get("created_at") or "",
         ), reverse=True)
+    total = len(items)
     items = items[:60]
-    return {"items": items, "sort": sort}
+    return {"items": items, "sort": sort, "total": total}
 
 
 # --- Community: profiles, creator attribution, comments + ratings ---

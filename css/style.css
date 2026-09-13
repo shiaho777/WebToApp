@@ -2204,6 +2204,18 @@ section {
   font-size: 0.84rem;
 }
 
+.market-count {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border: 1px solid rgba(30, 25, 20, 0.12);
+  border-radius: 999px;
+  background: rgba(30, 25, 20, 0.04);
+  color: rgba(30, 25, 20, 0.55);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .market-card-tags {
   display: flex;
   flex-wrap: wrap;
