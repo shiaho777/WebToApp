@@ -256,6 +256,19 @@ class CommunityStore:
             self._conn.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
             return "deleted"
 
+    def purge_apps(self, app_ids) -> int:
+        """Drop comments and creator links for apps being fully deleted."""
+        ids = [str(a or "") for a in app_ids if str(a or "")]
+        if not ids:
+            return 0
+        placeholders = ",".join("?" for _ in ids)
+        with self._lock:
+            cur = self._conn.execute(
+                f"DELETE FROM comments WHERE app_id IN ({placeholders})", ids)
+            self._conn.execute(
+                f"DELETE FROM app_creators WHERE app_id IN ({placeholders})", ids)
+            return cur.rowcount
+
     def rating_stats(self, app_id: str) -> dict:
         return self.rating_stats_map([app_id]).get(app_id, {"avg": None, "count": 0})
 
