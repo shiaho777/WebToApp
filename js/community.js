@@ -199,12 +199,15 @@
       var prof = { user_num: cm.user_num, name: cm.name, avatar_url: cm.avatar_url };
       var name = cm.name || (t('anonymous') + ' #' + cm.user_num);
       return '<div class="comment" data-cid="' + cm.id + '">' +
-        '<a class="comment-head" href="' + profileLink(cm.user_num) + '">' + avatarHtml(prof, 'comment-avatar') +
+        '<div class="comment-head">' +
+        '<a class="comment-head-link" href="' + profileLink(cm.user_num) + '">' + avatarHtml(prof, 'comment-avatar') +
         '<span class="comment-who"><b>' + esc(name) + '</b> <em class="creator-num">#' + cm.user_num + '</em>' +
         (cm.rating ? ' ' + starsHtml(cm.rating) : '') +
-        '</span><span class="comment-when">' + esc(fmtDate(cm.created_at)) + '</span></a>' +
-        '<div class="comment-body">' + esc(cm.body).replace(/\n/g, '<br>') + '</div>' +
+        '</span></a>' +
+        '<span class="comment-when">' + esc(fmtDate(cm.created_at)) + '</span>' +
         (cm.mine ? '<button class="comment-del" data-del="' + cm.id + '">' + esc(t('del')) + '</button>' : '') +
+        '</div>' +
+        '<div class="comment-body">' + esc(cm.body).replace(/\n/g, '<br>') + '</div>' +
         '</div>';
     }).join('');
   }

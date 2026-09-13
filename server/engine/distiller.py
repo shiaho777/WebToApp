@@ -1237,14 +1237,15 @@ a{{color:inherit;text-decoration:none}}
 .picker-label em{{font-style:normal;opacity:.7}}
 .pick-star{{background:none;border:none;font-size:1.25rem;color:#ddd3c4;cursor:pointer;padding:0 2px}}
 .pick-star.on{{color:#e8a33d}}
-.comment{{border-top:1px solid var(--line);padding:12px 0;position:relative}}
-.comment-head{{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}}
+.comment{{border-top:1px solid var(--line);padding:12px 0}}
+.comment-head{{display:flex;align-items:center;gap:10px}}
+.comment-head-link{{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-decoration:none;color:inherit}}
 .comment-avatar{{width:30px;height:30px;border-radius:50%;object-fit:cover;font-size:.7rem}}
 .comment-who{{display:flex;align-items:baseline;gap:6px;min-width:0}}
 .comment-who b{{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-.comment-when{{margin-left:auto;font-size:.75rem;color:var(--ink-soft)}}
+.comment-when{{flex:none;font-size:.75rem;color:var(--ink-soft)}}
 .comment-body{{margin:6px 0 0 40px;font-size:.9rem;line-height:1.65;word-break:break-word}}
-.comment-del{{position:absolute;top:10px;right:0;background:none;border:none;color:var(--ink-soft);font-size:.75rem;cursor:pointer;text-decoration:underline}}
+.comment-del{{flex:none;background:none;border:none;color:var(--ink-soft);font-size:.75rem;cursor:pointer;text-decoration:underline}}
 .comments-empty{{color:var(--ink-soft);font-size:.9rem}}
 </style>
 </head>
@@ -1327,7 +1328,7 @@ a{{color:inherit;text-decoration:none}}
 </div>
 <script>{script_body}</script>
 <script src="/js/mdmini.js"></script>
-<script src="/js/community.js"></script>
+<script src="/js/community.js?v=20260914-c1"></script>
 </body>
 </html>"""
         return html
