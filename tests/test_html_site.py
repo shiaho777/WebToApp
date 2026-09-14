@@ -187,6 +187,25 @@ class ResolveAndMetaTests(unittest.TestCase):
         self.assertEqual(html_site.mime_for(Path("a.png")), "image/png")
         self.assertEqual(html_site.mime_for(Path("a.xyz")), "application/octet-stream")
 
+    def test_appify_merges_existing_viewport(self):
+        out = html_site.appify_index_html(
+            b'<html><head><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"></head></html>')
+        text = out.decode()
+        self.assertIn('user-scalable=no', text)
+        self.assertIn('viewport-fit=cover', text)
+        self.assertIn('maximum-scale=1', text)
+        self.assertIn('shrink-to-fit=no', text)
+
+    def test_appify_inserts_missing_viewport(self):
+        out = html_site.appify_index_html(b'<html><head><title>x</title></head></html>')
+        self.assertIn('name="viewport"', out.decode())
+
+    def test_appify_leaves_non_html_and_headless(self):
+        blob = b'\x89PNG binary \x00\x01'
+        self.assertEqual(html_site.appify_index_html(blob), blob)
+        no_head = b'just text'
+        self.assertEqual(html_site.appify_index_html(no_head), no_head)
+
     def test_extract_site_meta(self):
         meta = html_site.extract_site_meta(self.site)
         self.assertEqual(meta["title"], "My Html App")

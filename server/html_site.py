@@ -256,6 +256,48 @@ def stage_html_app(data: bytes, filename: str, name: str, apps_dir: Path) -> dic
         raise
 
 
+_VIEWPORT_META_RE = re.compile(
+    r'<meta[^>]*\bname\s*=\s*["\']?viewport["\']?[^>]*>', re.IGNORECASE)
+_HEAD_OPEN_RE = re.compile(r'<head[^>]*>', re.IGNORECASE)
+_CONTENT_ATTR_RE = re.compile(r'content\s*=\s*["\']([^"\']*)["\']', re.IGNORECASE)
+_VIEWPORT_KEYS = {"width", "initial-scale", "minimum-scale", "maximum-scale",
+                  "user-scalable", "viewport-fit"}
+_APP_VIEWPORT = ("width=device-width,initial-scale=1,maximum-scale=1,"
+                 "user-scalable=no,viewport-fit=cover")
+
+
+def appify_index_html(data: bytes) -> bytes:
+    """Patch a hosted page's viewport so it presents like an installed app:
+    edge-to-edge under iOS chrome and no browser-style pinch zoom. Other
+    viewport keys are preserved; everything else is untouched."""
+    try:
+        html = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    head = _HEAD_OPEN_RE.search(html)
+    if not head:
+        return data
+    head_close = html.lower().find("</head>", head.end())
+    scope = head_close if head_close != -1 else min(len(html), head.end() + 8192)
+    region = html[head.end():scope]
+    m = _VIEWPORT_META_RE.search(region)
+    if m:
+        content_m = _CONTENT_ATTR_RE.search(m.group(0))
+        extra = []
+        if content_m:
+            for piece in content_m.group(1).split(","):
+                piece = piece.strip()
+                if piece and piece.split("=", 1)[0].strip().lower() not in _VIEWPORT_KEYS:
+                    extra.append(piece)
+        content = _APP_VIEWPORT + ("," + ",".join(extra) if extra else "")
+        meta = f'<meta name="viewport" content="{content}">'
+        html = html[:head.end()] + region[:m.start()] + meta + region[m.end():] + html[scope:]
+    else:
+        meta = f'<meta name="viewport" content="{_APP_VIEWPORT}">'
+        html = html[:head.end()] + meta + html[head.end():]
+    return html.encode("utf-8")
+
+
 def resolve_site_file(site_dir: Path, rel_path: str) -> Optional[Path]:
     """Resolve a served path inside a site dir; directories fall back to
     ``index.html``. Returns None when the path does not exist or escapes."""
