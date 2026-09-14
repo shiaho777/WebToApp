@@ -1057,9 +1057,11 @@ async def distill_html_app(
 
 @app.patch("/api/app/{app_id}/url")
 async def update_app_url(app_id: str, body: UpdateUrlRequest, request: Request):
-    """Hot-swap the target URL of an already-installed Web Clip.
-    Users don't need to reinstall — their Web Clip still points at our /launch
-    endpoint, which now redirects to the new URL.
+    """Hot-swap the target URL of a Web Clip installed before the direct-URL
+    change. Those profiles point at our /launch endpoint, which now redirects
+    to the new URL — no reinstall needed. Newly generated profiles point
+    straight at the target (a cross-origin /launch redirect would kick the
+    FullScreen clip out to Safari), so they must be rebuilt to change URL.
 
     Authorization: the caller must present the app's ``edit_token`` (returned
     only to the creator in the /api/distill response). Without it, anyone who

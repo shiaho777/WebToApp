@@ -465,6 +465,22 @@ class ArtifactSanitizationTests(unittest.TestCase):
         self.assertIn(b"&lt;/dict&gt;", cfg)
         self.assertIn(b"com.webtoapp.abcd.clip", cfg)
 
+    def test_mobileconfig_points_clip_directly_at_target(self):
+        """A FullScreen clip that 302s cross-origin (via /launch) gets pushed
+        into Safari instead of running standalone — the clip URL must be the
+        target itself."""
+        import tempfile
+        from pathlib import Path
+
+        distiller = Distiller()
+        recipe = {"id": "zz123abc", "name": "App", "url": "https://target.test/x", "color": "#000000"}
+        with tempfile.TemporaryDirectory() as tmp:
+            meta = distiller._build_ios(Path(tmp), recipe, None, base_url="https://ours.test")
+            cfg = (Path(tmp) / "ios.mobileconfig").read_bytes()
+        self.assertIn(b"<key>URL</key><string>https://target.test/x</string>", cfg)
+        self.assertNotIn(b"/launch", cfg)
+        self.assertFalse(meta["dynamic_url"])
+
     def test_android_fallback_escapes_and_sanitizes(self):
         import tempfile
         import zipfile
