@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse, PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Optional
@@ -1815,6 +1815,15 @@ async def serve_app_site(app_id: str, request: Request, file_path: str = ""):
     if path is None:
         raise HTTPException(404, "Site file not found")
     history_store.record_visit(app_id, "site")
+    if path.suffix.lower() in (".html", ".htm"):
+        # Hosted HTML gets an app-grade viewport (edge-to-edge, no pinch zoom)
+        # so installed Web Clips don't look like a browser page.
+        patched = html_site.appify_index_html(path.read_bytes())
+        return Response(
+            patched,
+            media_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
     return FileResponse(
         path,
         media_type=html_site.mime_for(path),
