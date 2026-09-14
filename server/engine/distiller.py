@@ -2042,9 +2042,13 @@ echo "✓ {n_fs} 已安装到应用菜单"
     def _build_ios(self, dl: Path, r: dict, icon_png, base_url: Optional[str] = None):
         """Emit a Web Clip profile.
 
-        If `base_url` is provided, the Web Clip points at `{base_url}/a/{id}/launch`
-        so the server can later swap the target URL without re-installing.
-        Otherwise the Web Clip points directly at the recipe's URL.
+        The Web Clip points directly at the recipe's URL. Routing it through
+        `{base_url}/a/{id}/launch` would 302 cross-origin at open time, and iOS
+        pushes out-of-scope navigation into Safari — the clip would never run
+        standalone, showing Safari's bottom bar and theme-tinted top instead.
+        `base_url` is accepted for signature compatibility but ignored; the
+        /launch route and PATCH hot-swap still serve profiles installed before
+        this change.
 
         If a signing cert is configured, the final file is a DER-encoded CMS
         signature — iOS will show the signer's domain in place of the red
@@ -2054,9 +2058,8 @@ echo "✓ {n_fs} 已安装到应用菜单"
         uid1 = str(uuid.uuid5(uuid.NAMESPACE_URL, r['url'] + '.clip'))
         uid2 = str(uuid.uuid5(uuid.NAMESPACE_URL, r['url'] + '.profile'))
 
-        # iOS stays on the lightweight launch route so the server only handles
-        # the initial open and target hot-swap, not the full browsing session.
-        web_clip_url = f"{base_url}/a/{r['id']}/launch" if base_url else r['url']
+        # Point the clip at the target itself so FullScreen opens standalone.
+        web_clip_url = r['url']
         name_xml = _xml_esc(r['name'])
         clip_url_xml = _xml_esc(_safe_url(web_clip_url))
         id_part = _bundle_id_part(r['id'])
@@ -2101,7 +2104,7 @@ echo "✓ {n_fs} 已安装到应用菜单"
         (dl / "ios.mobileconfig").write_bytes(signed_bytes)
         return {
             "signed": was_signed,
-            "dynamic_url": bool(base_url),
+            "dynamic_url": False,
             "web_clip_url": web_clip_url,
         }
 
