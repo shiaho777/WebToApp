@@ -1022,63 +1022,6 @@
     });
   }
 
-  function syncNavPopoverTop() {
-    const nav = document.getElementById('nav');
-    if (!nav) return;
-    const bottom = Math.ceil(nav.getBoundingClientRect().bottom);
-    document.documentElement.style.setProperty('--nav-pop-top', (bottom + 8) + 'px');
-  }
-
-  function initSupportMint() {
-    const btn = document.getElementById('support-copy');
-    const statusEl = document.getElementById('support-copy-status');
-    const mintEl = document.querySelector('.nav-support-mint');
-    const row = document.querySelector('.nav-support-mint-row');
-    if (!btn || !statusEl || !mintEl || !row) return;
-    const mint = (mintEl.textContent || '').trim();
-    let timer = 0;
-    let state = '';
-
-    function paintStatus() {
-      if (state === 'ok') statusEl.textContent = t('nav.supportCopied');
-      else if (state === 'fail') statusEl.textContent = t('nav.supportCopyFailed');
-      else statusEl.textContent = '';
-    }
-
-    btn.addEventListener('click', () => {
-      window.clearTimeout(timer);
-      copyPlainText(mint).then(() => {
-        state = 'ok';
-        btn.classList.add('is-copied');
-        row.classList.remove('is-failed');
-        paintStatus();
-        timer = window.setTimeout(() => {
-          state = '';
-          btn.classList.remove('is-copied');
-          statusEl.textContent = '';
-        }, 1600);
-      }).catch(() => {
-        state = 'fail';
-        btn.classList.remove('is-copied');
-        row.classList.add('is-failed');
-        paintStatus();
-        timer = window.setTimeout(() => {
-          state = '';
-          row.classList.remove('is-failed');
-          statusEl.textContent = '';
-        }, 2200);
-      });
-    });
-
-    window.addEventListener('i18n:changed', () => {
-      if (state) paintStatus();
-      window.requestAnimationFrame(syncNavPopoverTop);
-    });
-    window.addEventListener('resize', syncNavPopoverTop);
-    window.addEventListener('load', syncNavPopoverTop);
-    syncNavPopoverTop();
-  }
-
   function initProfile() {
     // Paint the cached avatar instantly, then refresh in the background —
     // otherwise the nav button shows the generic icon on every page load
@@ -1092,7 +1035,6 @@
       }
     }).catch(() => {});
     initQqGroup();
-    initSupportMint();
     profileBtn.addEventListener('click', () => openProfile(null));
     profileClose.addEventListener('click', () => closeProfileModal());
     profileModal.addEventListener('click', (e) => {

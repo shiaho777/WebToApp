@@ -76,11 +76,10 @@ button {
   position: sticky;
   top: 0;
   z-index: 20;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  column-gap: 16px;
-  padding: 12px clamp(22px, 4vw, 52px);
+  justify-content: space-between;
+  padding: 18px clamp(22px, 4vw, 52px);
   background: var(--paper);
   border-bottom: 1px solid rgba(30, 25, 20, 0.08);
 }
@@ -1612,7 +1611,7 @@ section {
   }
 
   .nav-actions {
-    gap: 4px;
+    gap: 6px;
   }
 
   .qq-group-btn {
@@ -1778,111 +1777,6 @@ section {
   flex: none;
 }
 
-.nav-support {
-  position: relative;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  text-align: center;
-}
-
-.nav-support-title,
-.nav-support-note {
-  margin: 0;
-  max-width: 100%;
-}
-
-.nav-support-title {
-  font-size: 0.78rem;
-  font-weight: 650;
-  line-height: 1.25;
-  color: var(--ink);
-}
-
-.nav-support-note {
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: var(--ink-faint);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.nav-support-mint-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  max-width: 100%;
-  margin-top: 3px;
-  padding: 1px 2px 1px 10px;
-  border: 1px solid rgba(30, 25, 20, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 251, 246, 0.72);
-}
-
-.nav-support-mint-row.is-failed {
-  border-color: rgba(138, 75, 45, 0.45);
-}
-
-.nav-support-mint {
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.68rem;
-  line-height: 1.4;
-  letter-spacing: 0;
-  white-space: nowrap;
-  color: var(--ink-soft);
-  direction: ltr;
-  unicode-bidi: isolate;
-  user-select: all;
-}
-
-.nav-support-mint::-webkit-scrollbar {
-  display: none;
-}
-
-.nav-support-mint:hover {
-  color: var(--accent);
-}
-
-.nav-support-copy {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  color: var(--ink);
-}
-
-.nav-support-copy:hover,
-.nav-support-copy.is-copied {
-  color: var(--accent);
-}
-
-.nav-support-icon-check {
-  display: none;
-}
-
-.nav-support-copy.is-copied .nav-support-icon-copy {
-  display: none;
-}
-
-.nav-support-copy.is-copied .nav-support-icon-check {
-  display: block;
-}
-
-.nav-support-copy svg {
-  display: block;
-}
-
 .gh-link {
   display: inline-flex;
   align-items: center;
@@ -2031,43 +1925,10 @@ section {
   line-height: 1.45;
 }
 
-@media (max-width: 960px) {
-  #nav {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "logo actions"
-      "support support";
-    row-gap: 8px;
-  }
-
-  .logo {
-    grid-area: logo;
-  }
-
-  .nav-actions {
-    grid-area: actions;
-    justify-self: end;
-    min-width: 0;
-  }
-
-  .nav-support {
-    grid-area: support;
-    padding-top: 2px;
-  }
-
-  .nav-notices-panel,
-  .qq-group-panel {
-    position: fixed;
-    top: var(--nav-pop-top, 118px);
-    inset-inline: 12px;
-    width: auto;
-  }
-}
-
 @media (max-width: 720px) {
   .nav-notices-panel {
     position: fixed;
-    top: var(--nav-pop-top, 118px);
+    top: 62px;
     inset-inline: 12px;
     width: auto;
   }
@@ -2083,7 +1944,6 @@ section {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
   flex: none;
   height: 40px;
   min-width: 44px;
@@ -2108,26 +1968,6 @@ section {
 .qq-group-btn:focus-visible {
   outline: 2px solid var(--accent, #c97953);
   outline-offset: 2px;
-}
-
-.qq-group-icon {
-  display: none;
-}
-
-@media (max-width: 720px) {
-  .qq-group-btn {
-    width: 40px;
-    min-width: 40px;
-    padding: 0;
-  }
-
-  .qq-group-btn span {
-    display: none;
-  }
-
-  .qq-group-icon {
-    display: block;
-  }
 }
 
 .qq-group-panel {
@@ -3205,37 +3045,6 @@ section {
 .market-rating-cnt {
   color: rgba(30, 25, 20, 0.45);
   font-weight: 400;
-}
-
-/* After the base popover rules, so a narrow header still opens these below itself. */
-@media (max-width: 960px) {
-  .nav-notices-panel,
-  .qq-group-panel {
-    position: fixed;
-    top: var(--nav-pop-top, 118px);
-    inset-inline: 12px;
-    width: auto;
-  }
-}
-
-@media (max-width: 400px) {
-  #nav {
-    padding-inline: 10px;
-    column-gap: 6px;
-  }
-
-  .nav-actions {
-    gap: 2px;
-  }
-
-  .profile-btn,
-  .nav-notices-btn,
-  .gh-link,
-  .qq-group-btn {
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
-  }
 }
 
 .profile-vis-badge {
