@@ -1,0 +1,16 @@
+{
+  "name": "WebToApp",
+  "short_name": "WebToApp",
+  "description": "Turn any website into an installable app for iPhone, Android, Windows, macOS and Linux.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf9f5",
+  "theme_color": "#faf9f5",
+  "icons": [
+    { "src": "/assets/logo.svg?v=20261104-brand1", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/assets/icon-192.png?v=20261104-brand1", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png?v=20261104-brand1", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-maskable-512.png?v=20261104-brand1", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

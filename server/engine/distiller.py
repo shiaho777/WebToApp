@@ -1181,7 +1181,8 @@ class Distiller:
 <title>{name_esc} — Download | WebToApp</title>
 <meta name="description" content="Download the installer or config profile of {name_esc} for your device. Works on iPhone, Android, Windows, macOS and Linux.">
 <meta name="theme-color" content="{color_safe}">
-<link rel="icon" href="/assets/site-logo-96.jpg">
+<link rel="icon" href="/assets/logo.svg?v=20261104-brand1" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png?v=20261104-brand1" sizes="32x32" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Noto+Serif+SC:wght@600;700&family=Spectral:wght@600;700&display=swap" rel="stylesheet">
@@ -1335,7 +1336,7 @@ a{{color:inherit;text-decoration:none}}
 <div class="page">
   <div class="nav">
     <a class="brand" href="/">
-      <img src="/assets/site-logo-96.jpg" alt="WebToApp" width="28" height="28">
+      <img src="/assets/logo.svg?v=20261104-brand1" alt="WebToApp" width="28" height="28">
       <span>WebToApp</span>
     </a>
     <div class="nav-right">
@@ -1410,7 +1411,7 @@ a{{color:inherit;text-decoration:none}}
   </main>
 </div>
 <script>{script_body}</script>
-<script src="/js/ui.js?v=20261104-ui1"></script>
+<script src="/js/ui.js?v=20261104-ui2"></script>
 <script src="/js/mdmini.js"></script>
 <script src="/js/community.js?v=20261014-ux1"></script>
 </body>
