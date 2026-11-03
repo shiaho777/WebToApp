@@ -13,9 +13,17 @@
   document.querySelectorAll('[data-reveal]').forEach(el => revealObserver.observe(el));
 
   // --- Counter Animation ---
+  const reducedMotionQuery = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
   function animateCount(el, target, duration = 1800) {
-    const start = performance.now();
     const fmt = (n) => n.toLocaleString('en-US');
+    if (reducedMotionQuery && reducedMotionQuery.matches) {
+      el.textContent = fmt(target);
+      return;
+    }
+    const start = performance.now();
     const tick = (now) => {
       const progress = Math.min((now - start) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
@@ -548,7 +556,7 @@
         .map(([platform, count]) => `${platform} ${Number(count || 0).toLocaleString(locale())}`)
         .join(' · ') || t('history.none');
       const iconHtml = item.icon_url
-        ? `<img class="history-icon" src="${escapeHtml(item.icon_url)}" alt="${escapeHtml(item.name || item.app_id)}">`
+        ? `<img class="history-icon" src="${escapeHtml(item.icon_url)}" alt="${escapeHtml(item.name || item.app_id)}" loading="lazy" decoding="async">`
         : `<div class="history-icon" aria-hidden="true"></div>`;
       const isHtmlApp = !!(item.recipe && item.recipe.source_type === 'html');
       const htmlBadge = isHtmlApp
@@ -1215,7 +1223,7 @@
     if (storedImgs.length) {
       aboutImageDataUrls = null;
       aboutImagesPreview.innerHTML = storedImgs
-        .map((n) => `<img src="/a/${encodeURIComponent(item.app_id)}/about/${n}" alt="">`)
+        .map((n) => `<img src="/a/${encodeURIComponent(item.app_id)}/about/${n}" alt="" loading="lazy" decoding="async">`)
         .join('');
       aboutImagesName.textContent = t('config.aboutImagesCount', { n: storedImgs.length });
     } else {
@@ -1518,7 +1526,7 @@
   function renderAboutImagesPreview() {
     const list = aboutImageDataUrls || [];
     aboutImagesPreview.innerHTML = list
-      .map((d) => `<img src="${d}" alt="">`)
+      .map((d) => `<img src="${d}" alt="" loading="lazy" decoding="async">`)
       .join('');
     aboutImagesName.textContent = list.length
       ? t('config.aboutImagesCount', { n: list.length })

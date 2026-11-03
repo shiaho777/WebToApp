@@ -42,7 +42,7 @@ The only hard dependency is Python. Everything else is optional and degrades gra
 ## 2. Get the code
 
 ```bash
-git clone https://github.com/shiahonb777/WebToApp.git
+git clone https://github.com/shiaho777/WebToApp.git
 cd WebToApp
 ```
 

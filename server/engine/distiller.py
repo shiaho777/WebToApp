@@ -1181,10 +1181,10 @@ class Distiller:
 <title>{name_esc} — Download | WebToApp</title>
 <meta name="description" content="Download the installer or config profile of {name_esc} for your device. Works on iPhone, Android, Windows, macOS and Linux.">
 <meta name="theme-color" content="{color_safe}">
-<link rel="icon" href="/assets/site-logo.jpg">
+<link rel="icon" href="/assets/site-logo-96.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Noto+Serif+SC:wght@600;700&family=Spectral:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{{
   --paper:#f7f3ec;
@@ -1335,7 +1335,7 @@ a{{color:inherit;text-decoration:none}}
 <div class="page">
   <div class="nav">
     <a class="brand" href="/">
-      <img src="/assets/site-logo.jpg" alt="WebToApp">
+      <img src="/assets/site-logo-96.jpg" alt="WebToApp" width="28" height="28">
       <span>WebToApp</span>
     </a>
     <div class="nav-right">

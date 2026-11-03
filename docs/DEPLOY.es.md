@@ -42,7 +42,7 @@ La única dependencia obligatoria es Python. Todo lo demás es opcional y degrad
 ## 2. Obtener el código
 
 ```bash
-git clone https://github.com/shiahonb777/WebToApp.git
+git clone https://github.com/shiaho777/WebToApp.git
 cd WebToApp
 ```
 
