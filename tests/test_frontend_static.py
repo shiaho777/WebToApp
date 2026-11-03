@@ -268,5 +268,71 @@ class BrandAndComponentSystemTests(unittest.TestCase):
         self.assertNotRegex(self.css, r"\n\s+color: rgba\(var\(--ink-rgb\), 0\.[3-5]\d*\);")
 
 
+class FrontendBuildFlowTests(unittest.TestCase):
+    """Guards for the live build progress, form lock and result platforms (#167)."""
+
+    BUILD_KEYS = (
+        "build.title",
+        "build.failedTitle",
+        "build.retry",
+        "build.busy",
+        "build.buttonBusy",
+        "build.platformFailed",
+        "build.step.queued",
+        "build.step.icon",
+        "build.step.shell",
+        "build.step.platforms",
+        "build.step.publish",
+    )
+
+    def setUp(self):
+        self.html = _read("index.html")
+        self.js = _read("js/app.v5.js")
+        self.css = _read("css/style.css")
+
+    def test_progress_panel_lists_every_step_and_platform(self):
+        for step in ("queued", "fetching_icon", "writing_shell", "building_platforms", "uploading_cdn"):
+            self.assertIn(f'data-step="{step}"', self.html)
+        for platform in ("android", "ios", "windows", "macos", "linux"):
+            self.assertIn(f'data-platform="{platform}"', self.html)
+
+    def test_live_region_is_separate_from_ticking_timer(self):
+        self.assertIn('id="build-progress-live"', self.html)
+        self.assertNotRegex(self.html, r'id="build-progress"[^>]*aria-live')
+
+    def test_inline_error_has_retry(self):
+        self.assertIn('id="build-error"', self.html)
+        self.assertIn('id="build-retry-btn"', self.html)
+        self.assertIn("buildRetryBtn.addEventListener('click', handleGenerateClick)", self.js)
+
+    def test_progress_no_longer_written_into_button_text(self):
+        self.assertNotIn("stageLabel(", self.js)
+        self.assertNotIn("config.generateBtnEmoji", self.js)
+
+    def test_concurrent_builds_are_blocked(self):
+        self.assertIn("if (buildInFlight) throw new Error(t('build.busy'))", self.js)
+        regen = self.js[self.js.index("if (target.dataset.regenerate)"):]
+        self.assertLess(regen.index("buildInFlight"), regen.index("applyHistoryItemToForm"))
+
+    def test_result_platforms_reflect_platform_errors(self):
+        self.assertIn('id="result-platforms"', self.html)
+        self.assertIn("renderResultPlatforms(data && data.platform_errors)", self.js)
+        for cls in (".platform-tag.is-ready", ".platform-tag.is-error"):
+            self.assertIn(cls, self.css)
+
+    def test_progress_styles_exist(self):
+        for cls in (".build-progress", ".build-steps", ".build-platforms", ".build-error", ".is-locked"):
+            self.assertIn(cls, self.css)
+
+    def test_build_strings_exist_in_every_language(self):
+        strings = _read("js/i18n.strings.js")
+        start = strings.index("'build.title'")
+        block = strings[strings.rfind("(function", 0, start):]
+        for lang in LANGS:
+            self.assertIn(f"R('{lang}',", block, lang)
+        for key in self.BUILD_KEYS:
+            self.assertEqual(block.count(f"'{key}'"), len(LANGS), key)
+
+
 if __name__ == "__main__":
     unittest.main()

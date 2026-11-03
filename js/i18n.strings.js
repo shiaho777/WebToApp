@@ -2622,4 +2622,123 @@
   R('pt', { 'profile.saveFailed': 'Não foi possível salvar o perfil. Verifique a conexão e tente novamente.' });
   R('fr', { 'profile.saveFailed': 'Impossible d’enregistrer le profil. Vérifiez votre connexion et réessayez.' });
   R('de', { 'profile.saveFailed': 'Profil konnte nicht gespeichert werden. Verbindung prüfen und erneut versuchen.' });
+
+  // Build progress panel (#167)
+  R('en', {
+    'build.title': 'Building your app',
+    'build.failedTitle': 'Build failed',
+    'build.retry': 'Try again',
+    'build.busy': 'A build is already running. Please wait for it to finish.',
+    'build.buttonBusy': 'Building…',
+    'build.platformFailed': 'failed',
+    'build.step.queued': 'Queued',
+    'build.step.icon': 'Fetching icon',
+    'build.step.shell': 'Writing app shell',
+    'build.step.platforms': 'Building platforms',
+    'build.step.publish': 'Publishing downloads'
+  });
+  R('zh', {
+    'build.title': '正在生成你的应用',
+    'build.failedTitle': '生成失败',
+    'build.retry': '重试',
+    'build.busy': '已有一个生成任务在进行，请等它完成。',
+    'build.buttonBusy': '生成中…',
+    'build.platformFailed': '失败',
+    'build.step.queued': '排队中',
+    'build.step.icon': '获取图标',
+    'build.step.shell': '写入应用外壳',
+    'build.step.platforms': '打包各平台',
+    'build.step.publish': '发布下载文件'
+  });
+  R('ja', {
+    'build.title': 'アプリを生成しています',
+    'build.failedTitle': '生成に失敗しました',
+    'build.retry': '再試行',
+    'build.busy': '生成中のタスクがあります。完了までお待ちください。',
+    'build.buttonBusy': '生成中…',
+    'build.platformFailed': '失敗',
+    'build.step.queued': '待機中',
+    'build.step.icon': 'アイコン取得',
+    'build.step.shell': 'アプリシェル作成',
+    'build.step.platforms': '各OSをビルド',
+    'build.step.publish': 'ダウンロードを公開'
+  });
+  R('ar', {
+    'build.title': 'جارٍ إنشاء تطبيقك',
+    'build.failedTitle': 'فشل الإنشاء',
+    'build.retry': 'إعادة المحاولة',
+    'build.busy': 'هناك عملية إنشاء قيد التشغيل. يرجى الانتظار حتى تنتهي.',
+    'build.buttonBusy': 'جارٍ الإنشاء…',
+    'build.platformFailed': 'فشل',
+    'build.step.queued': 'في الانتظار',
+    'build.step.icon': 'جلب الأيقونة',
+    'build.step.shell': 'كتابة غلاف التطبيق',
+    'build.step.platforms': 'بناء المنصات',
+    'build.step.publish': 'نشر ملفات التنزيل'
+  });
+  R('ru', {
+    'build.title': 'Собираем ваше приложение',
+    'build.failedTitle': 'Сборка не удалась',
+    'build.retry': 'Повторить',
+    'build.busy': 'Сборка уже идёт. Дождитесь её завершения.',
+    'build.buttonBusy': 'Сборка…',
+    'build.platformFailed': 'ошибка',
+    'build.step.queued': 'В очереди',
+    'build.step.icon': 'Получение значка',
+    'build.step.shell': 'Создание оболочки',
+    'build.step.platforms': 'Сборка платформ',
+    'build.step.publish': 'Публикация файлов'
+  });
+  R('es', {
+    'build.title': 'Creando tu app',
+    'build.failedTitle': 'La compilación falló',
+    'build.retry': 'Reintentar',
+    'build.busy': 'Ya hay una compilación en curso. Espera a que termine.',
+    'build.buttonBusy': 'Compilando…',
+    'build.platformFailed': 'falló',
+    'build.step.queued': 'En cola',
+    'build.step.icon': 'Obteniendo icono',
+    'build.step.shell': 'Escribiendo la app',
+    'build.step.platforms': 'Compilando plataformas',
+    'build.step.publish': 'Publicando descargas'
+  });
+  R('pt', {
+    'build.title': 'Criando seu app',
+    'build.failedTitle': 'A compilação falhou',
+    'build.retry': 'Tentar novamente',
+    'build.busy': 'Já existe uma compilação em andamento. Aguarde terminar.',
+    'build.buttonBusy': 'Compilando…',
+    'build.platformFailed': 'falhou',
+    'build.step.queued': 'Na fila',
+    'build.step.icon': 'Obtendo ícone',
+    'build.step.shell': 'Gerando o app',
+    'build.step.platforms': 'Compilando plataformas',
+    'build.step.publish': 'Publicando downloads'
+  });
+  R('fr', {
+    'build.title': 'Création de votre app',
+    'build.failedTitle': 'Échec de la création',
+    'build.retry': 'Réessayer',
+    'build.busy': 'Une création est déjà en cours. Veuillez patienter.',
+    'build.buttonBusy': 'Création…',
+    'build.platformFailed': 'échec',
+    'build.step.queued': 'En attente',
+    'build.step.icon': 'Récupération de l’icône',
+    'build.step.shell': 'Écriture de l’app',
+    'build.step.platforms': 'Compilation des plateformes',
+    'build.step.publish': 'Publication des téléchargements'
+  });
+  R('de', {
+    'build.title': 'Deine App wird erstellt',
+    'build.failedTitle': 'Erstellung fehlgeschlagen',
+    'build.retry': 'Erneut versuchen',
+    'build.busy': 'Es läuft bereits ein Build. Bitte warte, bis er fertig ist.',
+    'build.buttonBusy': 'Wird erstellt…',
+    'build.platformFailed': 'fehlgeschlagen',
+    'build.step.queued': 'In Warteschlange',
+    'build.step.icon': 'Icon abrufen',
+    'build.step.shell': 'App-Hülle schreiben',
+    'build.step.platforms': 'Plattformen bauen',
+    'build.step.publish': 'Downloads veröffentlichen'
+  });
 })();

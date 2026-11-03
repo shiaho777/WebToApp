@@ -112,6 +112,17 @@
   const previewFrame = document.getElementById('preview-frame');
   const previewUrl = document.getElementById('preview-url');
   const previewOpenBtn = document.getElementById('preview-open-btn');
+  const configPanel = document.getElementById('config-panel');
+  const configGrid = configPanel ? configPanel.querySelector('.config-grid') : null;
+  const buildProgress = document.getElementById('build-progress');
+  const buildProgressFill = document.getElementById('build-progress-fill');
+  const buildProgressElapsed = document.getElementById('build-progress-elapsed');
+  const buildSteps = document.getElementById('build-steps');
+  const buildPlatforms = document.getElementById('build-platforms');
+  const buildError = document.getElementById('build-error');
+  const buildErrorText = document.getElementById('build-error-text');
+  const buildRetryBtn = document.getElementById('build-retry-btn');
+  const resultPlatforms = document.getElementById('result-platforms');
   const historyList = document.getElementById('history-list');
   const historyEmpty = document.getElementById('history-empty');
   const historyExportBtn = document.getElementById('history-export-btn');
@@ -1293,7 +1304,176 @@
     workspace.classList.remove('hidden');
   }
 
+  // --- Build progress ---
+  const BUILD_STEP_ORDER = ['queued', 'fetching_icon', 'writing_shell', 'building_platforms', 'uploading_cdn'];
+  const BUILD_STAGE_STEP = {
+    queued: 'queued',
+    starting: 'queued',
+    running: 'fetching_icon',
+    fetching_icon: 'fetching_icon',
+    writing_shell: 'writing_shell',
+    building_platforms: 'building_platforms',
+    platform_done: 'building_platforms',
+    platform_error: 'building_platforms',
+    uploading_cdn: 'uploading_cdn',
+    done: 'uploading_cdn',
+  };
+  const BUILD_PLATFORMS = ['android', 'ios', 'windows', 'macos', 'linux'];
+  const PLATFORM_LABELS = { android: 'Android', ios: 'iOS', windows: 'Windows', macos: 'macOS', linux: 'Linux' };
+  const buildProgressTitle = document.getElementById('build-progress-title');
+  const buildProgressLive = document.getElementById('build-progress-live');
+  let buildInFlight = false;
+  let buildStartedAt = 0;
+  let buildClock = null;
+  let buildPercentShown = 0;
+  let lastPlatformStatus = {};
+  let lastAnnouncedStep = '';
+
+  function formatElapsed(ms) {
+    const total = Math.max(0, Math.round(ms / 1000));
+    if (total < 60) return `${total}s`;
+    return `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, '0')}s`;
+  }
+
+  function tickBuildClock() {
+    if (buildProgressElapsed) buildProgressElapsed.textContent = formatElapsed(Date.now() - buildStartedAt);
+  }
+
+  function stopBuildClock() {
+    window.clearInterval(buildClock);
+    buildClock = null;
+    tickBuildClock();
+  }
+
+  function setBuildLocked(locked) {
+    buildInFlight = locked;
+    if (configGrid) {
+      configGrid.inert = locked;
+      configGrid.classList.toggle('is-locked', locked);
+      configGrid.setAttribute('aria-busy', locked ? 'true' : 'false');
+    }
+    generateBtn.disabled = locked;
+    generateBtn.textContent = locked ? t('build.buttonBusy') : t('config.generateBtn');
+  }
+
+  function setBuildStep(stepKey, failed) {
+    if (!buildSteps) return;
+    const activeIndex = BUILD_STEP_ORDER.indexOf(stepKey);
+    buildSteps.querySelectorAll('li[data-step]').forEach((li) => {
+      const i = BUILD_STEP_ORDER.indexOf(li.dataset.step);
+      let state = 'pending';
+      if (i < activeIndex) state = 'done';
+      else if (i === activeIndex) state = failed ? 'error' : 'active';
+      li.dataset.state = state;
+      if (i === activeIndex) li.setAttribute('aria-current', 'step');
+      else li.removeAttribute('aria-current');
+      if (i === activeIndex && !failed && buildProgressLive && lastAnnouncedStep !== stepKey) {
+        lastAnnouncedStep = stepKey;
+        buildProgressLive.textContent = li.textContent.trim();
+      }
+    });
+  }
+
+  function setPlatformStates(stepKey) {
+    if (!buildPlatforms) return;
+    const stepIdx = BUILD_STEP_ORDER.indexOf(stepKey);
+    const platformIdx = BUILD_STEP_ORDER.indexOf('building_platforms');
+    buildPlatforms.querySelectorAll('li[data-platform]').forEach((li) => {
+      const raw = lastPlatformStatus[li.dataset.platform];
+      let state = raw === 'done' || raw === 'error' ? raw : 'pending';
+      if (state === 'pending' && stepIdx === platformIdx) state = 'active';
+      if (state === 'pending' && stepIdx > platformIdx) state = 'done';
+      li.dataset.state = state;
+    });
+  }
+
+  function buildPercent(stepKey, progress) {
+    if (stepKey === 'fetching_icon') return 12;
+    if (stepKey === 'writing_shell') return 22;
+    if (stepKey === 'uploading_cdn') return 94;
+    if (stepKey === 'building_platforms') {
+      const total = Number(progress && progress.total) || BUILD_PLATFORMS.length;
+      const done = Math.min(Number(progress && progress.done) || 0, total);
+      return 28 + Math.round((done / total) * 60);
+    }
+    return 4;
+  }
+
+  function updateBuildProgress(stage, progress) {
+    if (!buildProgress) return;
+    const stepKey = BUILD_STAGE_STEP[stage] || 'fetching_icon';
+    const statusMap = progress && progress.platform_status;
+    if (statusMap && Object.keys(statusMap).length) lastPlatformStatus = { ...statusMap };
+    setBuildStep(stepKey, false);
+    setPlatformStates(stepKey);
+    buildPercentShown = Math.max(buildPercentShown, buildPercent(stepKey, progress));
+    if (buildProgressFill) buildProgressFill.style.width = `${buildPercentShown}%`;
+    buildProgress.dataset.step = stepKey;
+  }
+
+  function startBuildProgress() {
+    setBuildLocked(true);
+    if (!buildProgress) return;
+    lastPlatformStatus = {};
+    lastAnnouncedStep = '';
+    buildPercentShown = 0;
+    buildProgress.classList.remove('hidden', 'is-failed');
+    if (buildError) buildError.classList.add('hidden');
+    if (buildErrorText) buildErrorText.textContent = '';
+    if (buildProgressTitle) buildProgressTitle.textContent = t('build.title');
+    buildStartedAt = Date.now();
+    tickBuildClock();
+    window.clearInterval(buildClock);
+    buildClock = window.setInterval(tickBuildClock, 1000);
+    updateBuildProgress('queued', null);
+  }
+
+  function finishBuildProgress() {
+    stopBuildClock();
+    setBuildLocked(false);
+    if (buildProgress) buildProgress.classList.add('hidden');
+  }
+
+  function failBuildProgress(message) {
+    stopBuildClock();
+    setBuildLocked(false);
+    if (!buildProgress) return;
+    buildProgress.classList.remove('hidden');
+    buildProgress.classList.add('is-failed');
+    setBuildStep(buildProgress.dataset.step || 'queued', true);
+    if (buildProgressTitle) buildProgressTitle.textContent = t('build.failedTitle');
+    if (buildErrorText) buildErrorText.textContent = message || t('err.generateFailed');
+    if (buildError) buildError.classList.remove('hidden');
+    scheduleGentleScroll(buildProgress, { block: 'nearest', threshold: 0.3, delay: 60 });
+  }
+
+  function renderResultPlatforms(platformErrors) {
+    if (!resultPlatforms) return;
+    const errors = platformErrors || {};
+    resultPlatforms.innerHTML = BUILD_PLATFORMS.map((p) => {
+      const label = escapeHtml(PLATFORM_LABELS[p]);
+      if (Object.prototype.hasOwnProperty.call(errors, p)) {
+        return `<span class="platform-tag is-error" title="${escapeHtml(String(errors[p] || ''))}">${label} · ${escapeHtml(t('build.platformFailed'))}</span>`;
+      }
+      return `<span class="platform-tag is-ready">${label}</span>`;
+    }).join('');
+  }
+
   async function generateAppFromCurrentForm() {
+    if (buildInFlight) throw new Error(t('build.busy'));
+    startBuildProgress();
+    try {
+      const data = await runBuildRequest();
+      renderResultPlatforms(data && data.platform_errors);
+      finishBuildProgress();
+      return data;
+    } catch (err) {
+      failBuildProgress(err && err.message);
+      throw err;
+    }
+  }
+
+  async function runBuildRequest() {
     const options = {};
     const versionName = sanitizeAndroidVersionName(androidVersionNameInput.value);
     const versionCode = sanitizeAndroidVersionCode(androidVersionCodeInput.value);
@@ -1349,21 +1529,9 @@
     const task = await submitRes.json();
     if (!task.task_id) throw new Error(t('err.taskSubmitFailed'));
 
-    const stageLabel = (stage, progress) => {
-      const key = `generate.stage.${stage || 'running'}`;
-      const translated = t(key);
-      const base = translated === key ? t('generate.stage.running') : translated;
-      if (progress && progress.total) {
-        return `${base} (${Number(progress.done || 0)}/${Number(progress.total)})`;
-      }
-      return base;
-    };
-    if (generateBtn) {
-      generateBtn.dataset.originalText = generateBtn.textContent;
-      generateBtn.textContent = stageLabel('queued');
-    }
+    updateBuildProgress('queued', null);
     let data = null;
-    try {
+    {
       let attempts = 0;
       let transientFailures = 0;
       const MAX_TRANSIENT_FAILURES = 5;
@@ -1397,15 +1565,11 @@
         }
         const payload = await pollRes.json();
         if (payload && payload.status && payload.task_id) {
-          if (generateBtn) generateBtn.textContent = stageLabel(payload.stage || payload.status, payload.progress);
+          updateBuildProgress(payload.stage || payload.status, payload.progress);
           continue;
         }
         data = payload;
         break;
-      }
-    } finally {
-      if (generateBtn && generateBtn.dataset.originalText) {
-        generateBtn.textContent = generateBtn.dataset.originalText;
       }
     }
     if (!data) throw new Error(t('err.generateTimeout'));
@@ -1970,24 +2134,22 @@
 
   // --- Generate App ---
 
-  generateBtn.addEventListener('click', async () => {
+  async function handleGenerateClick() {
+    if (buildInFlight) return;
     if (selectedTags.size === 0) {
       notify(t('err.tagsRequired'), 'error');
       tagsPicker.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
-    generateBtn.textContent = t('config.generating');
-    generateBtn.disabled = true;
-
     try {
       await generateAppFromCurrentForm();
-    } catch (e) {
-      notify(t('err.generateRetry', { msg: e.message }), 'error');
+    } catch (_err) {
+      // failBuildProgress() already shows the error inline with a retry button.
     }
+  }
 
-    generateBtn.textContent = t('config.generateBtnEmoji');
-    generateBtn.disabled = false;
-  });
+  generateBtn.addEventListener('click', handleGenerateClick);
+  if (buildRetryBtn) buildRetryBtn.addEventListener('click', handleGenerateClick);
 
   syncRestoreIconButton();
 
@@ -2071,10 +2233,15 @@
     }
     if (target.dataset.regenerate) {
       if (!item) return;
+      if (buildInFlight) {
+        notify(t('build.busy'), 'info');
+        return;
+      }
       try {
         target.disabled = true;
         target.textContent = t('history.regenerating');
         await applyHistoryItemToForm(item);
+        if (buildProgress) scheduleGentleScroll(buildProgress, { block: 'center', threshold: 0.55, delay: 80 });
         await generateAppFromCurrentForm();
       } catch (_err) {
         notify(t('err.regenerateRetry'), 'error');
