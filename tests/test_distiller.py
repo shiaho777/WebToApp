@@ -380,6 +380,9 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertIn("sha256-", script_src)
         # WTA_APP_ID must be assigned before community.js executes.
         self.assertLess(page.index("window.WTA_APP_ID"), page.index("/js/community.js"))
+        # community.js uses the shared toast/confirm helpers (issue #157).
+        self.assertIn('/js/ui.js', page)
+        self.assertLess(page.index("/js/ui.js"), page.index("/js/community.js"))
         self.assertIn("ca-pub-7023716352718601", page)
         self.assertIn("pagead2.googlesyndication.com", script_src)
         self.assertIn("googleads.g.doubleclick.net", page)
