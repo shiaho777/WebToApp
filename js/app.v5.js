@@ -911,6 +911,27 @@
     }
   }
 
+  function notify(message, type) {
+    if (window.WtaUI) window.WtaUI.toast(message, { type: type || 'info' });
+    else window.alert(message);
+  }
+
+  function ask(message, options) {
+    if (window.WtaUI) return window.WtaUI.confirm(message, options);
+    return Promise.resolve(window.confirm(message));
+  }
+
+  function flashLabel(button, text, ms) {
+    if (!button.dataset.label) button.dataset.label = button.textContent;
+    button.textContent = text;
+    window.clearTimeout(Number(button.dataset.flashTimer || 0));
+    button.dataset.flashTimer = String(window.setTimeout(() => {
+      button.textContent = button.dataset.label;
+      delete button.dataset.label;
+      delete button.dataset.flashTimer;
+    }, ms || 1600));
+  }
+
   function copyPlainText(text) {
     const legacy = () => new Promise((resolve, reject) => {
       const area = document.createElement('textarea');
@@ -1459,7 +1480,7 @@
   distillBtn.addEventListener('click', () => {
     if (inputMode === 'html') {
       if (!htmlFile) {
-        alert(t('err.htmlNoFile'));
+        notify(t('err.htmlNoFile'), 'error');
         return;
       }
       scheduleGentleScroll(workspace, { block: 'start', threshold: 0.55, delay: 120 });
@@ -1562,7 +1583,7 @@
       // Network failure: fall through to a local, file-name-only prefill.
     }
     if (uploadError) {
-      alert(uploadError);
+      notify(uploadError, 'error');
       resetHtmlFile();
       return;
     }
@@ -1652,19 +1673,30 @@
     }, 450);
 
     let data;
+    let failureReason = '';
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       });
-      if (res.ok) data = await res.json();
+      if (res.ok) {
+        data = await res.json();
+      } else {
+        const err = await res.json().catch(() => null);
+        failureReason = apiErrorMessage(err && err.detail, 'analysis.failed.generic');
+      }
     } catch (_err) {
+      failureReason = t('analysis.failed.network');
     } finally {
       clearInterval(loaderTimer);
     }
 
-    if (!data) data = simulateAnalysis(url);
+    if (!data) {
+      data = simulateAnalysis(url);
+      data.analysisFailed = true;
+      data.failureReason = failureReason || t('analysis.failed.generic');
+    }
     showAnalysisResults(data);
   }
 
@@ -1751,8 +1783,8 @@
   }
 
   function showAnalysisResults(data) {
-    analysisStatus.textContent = t('analysis.statusDone');
-    analysisStatus.className = 'status-badge done';
+    analysisStatus.textContent = data.analysisFailed ? t('analysis.statusFailed') : t('analysis.statusDone');
+    analysisStatus.className = data.analysisFailed ? 'status-badge warn' : 'status-badge done';
     const title = String(data.title || data.host || '').trim();
     const suggestedName = String(data.suggestedName || data.siteName || data.title || data.host || '').trim();
     const suggestedNameSource = String(data.suggestedNameSource || '').trim();
@@ -1775,6 +1807,20 @@
       detectedIconDataUrl = '';
       setRestoreIconState('', {});
       fillIconPreview('', '');
+    }
+
+    if (data.analysisFailed) {
+      analysisBody.innerHTML = `
+        <div class="analysis-results">
+          <div class="analysis-item analysis-notice">
+            <span class="value warn">${escapeHtml(data.failureReason)}</span>
+          </div>
+          <div class="analysis-item"><span class="label">${escapeHtml(t('analysis.suggestedName'))}</span><span class="value info">${escapeHtml(suggestedName)}</span></div>
+          <div class="analysis-item analysis-hint">
+            <span class="value info">${escapeHtml(t('analysis.failed.hint'))}</span>
+          </div>
+        </div>`;
+      return;
     }
 
     if (data.authProtected) {
@@ -1818,7 +1864,7 @@
 
   generateBtn.addEventListener('click', async () => {
     if (selectedTags.size === 0) {
-      alert(t('err.tagsRequired'));
+      notify(t('err.tagsRequired'), 'error');
       tagsPicker.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
@@ -1828,7 +1874,7 @@
     try {
       await generateAppFromCurrentForm();
     } catch (e) {
-      alert(t('err.generateRetry', { msg: e.message }));
+      notify(t('err.generateRetry', { msg: e.message }), 'error');
     }
 
     generateBtn.textContent = t('config.generateBtnEmoji');
@@ -1839,11 +1885,13 @@
 
   // --- Copy Link ---
   copyBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(appLink.value).then(() => {
-      const orig = copyBtn.textContent;
-      copyBtn.textContent = t('result.copied');
-      setTimeout(() => copyBtn.textContent = orig, 2000);
-    });
+    copyPlainText(appLink.value)
+      .then(() => flashLabel(copyBtn, t('result.copied'), 2000))
+      .catch(() => {
+        appLink.focus();
+        appLink.select();
+        notify(t('err.copyManual'), 'error');
+      });
   });
 
   previewOpenBtn.addEventListener('click', () => {
@@ -1897,7 +1945,7 @@
         renderHistory((data.history && data.history.items) || []);
         loadMarket();
       } catch (err) {
-        alert(err.message || t('err.visibilityRetry'));
+        notify(err.message || t('err.visibilityRetry'), 'error');
       } finally {
         target.disabled = false;
       }
@@ -1921,7 +1969,7 @@
         await applyHistoryItemToForm(item);
         await generateAppFromCurrentForm();
       } catch (_err) {
-        alert(t('err.regenerateRetry'));
+        notify(t('err.regenerateRetry'), 'error');
       } finally {
         target.disabled = false;
         target.textContent = t('history.regenerate');
@@ -1930,12 +1978,10 @@
     }
     if (target.dataset.copy) {
       try {
-        await navigator.clipboard.writeText(target.dataset.copy);
-        const original = target.textContent;
-        target.textContent = t('history.copied');
-        window.setTimeout(() => { target.textContent = original; }, 1600);
+        await copyPlainText(target.dataset.copy);
+        flashLabel(target, t('history.copied'), 1600);
       } catch (_err) {
-        alert(t('err.copyManual'));
+        notify(t('err.copyManual'), 'error');
       }
       return;
     }
@@ -1985,7 +2031,7 @@
   historyDeleteSelectedBtn.addEventListener('click', async () => {
     const ids = Array.from(historySelected);
     if (!ids.length) return;
-    if (!window.confirm(t('history.confirmDeleteBulk', { n: String(ids.length) }))) return;
+    if (!(await ask(t('history.confirmDeleteBulk', { n: String(ids.length) }), { danger: true }))) return;
     try {
       historyDeleteSelectedBtn.disabled = true;
       const res = await fetch('/api/history/delete-bulk', {
@@ -1997,7 +2043,7 @@
       setHistorySelectMode(false);
       await loadHistory();
     } catch (_err) {
-      alert(t('err.removeRetry'));
+      notify(t('err.removeRetry'), 'error');
     } finally {
       historyDeleteSelectedBtn.disabled = false;
     }
@@ -2018,7 +2064,7 @@
       link.click();
       URL.revokeObjectURL(href);
     } catch (_err) {
-      alert(t('err.exportRetry'));
+      notify(t('err.exportRetry'), 'error');
     }
   });
 
@@ -2040,9 +2086,9 @@
       if (!res.ok) throw new Error('import failed');
       const data = await res.json();
       renderHistory((data.history && data.history.items) || []);
-      alert(t('history.importDone', { imported: data.imported, restored: data.restored }));
+      notify(t('history.importDone', { imported: data.imported, restored: data.restored }), 'success');
     } catch (_err) {
-      alert(t('err.importFormat'));
+      notify(t('err.importFormat'), 'error');
     } finally {
       historyImportInput.value = '';
     }

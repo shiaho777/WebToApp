@@ -288,7 +288,8 @@
         pickedRating = 0;
         load();
       }).catch(function () {
-        alert(t('postFailed'));
+        if (window.WtaUI) window.WtaUI.toast(t('postFailed'), { type: 'error' });
+        else alert(t('postFailed'));
       }).finally(function () {
         btn.disabled = false;
       });
@@ -296,9 +297,15 @@
     var list = document.getElementById('comments-list');
     if (list) list.addEventListener('click', function (e) {
       var b = e.target.closest('[data-del]');
-      if (!b || !confirm(t('del') + '?')) return;
-      fetch('/api/comments/' + b.dataset.del, { method: 'DELETE' })
-        .then(function (r) { if (r.ok) load(); });
+      if (!b) return;
+      var asked = window.WtaUI
+        ? window.WtaUI.confirm(t('del') + '?', { danger: true })
+        : Promise.resolve(confirm(t('del') + '?'));
+      asked.then(function (ok) {
+        if (!ok) return;
+        fetch('/api/comments/' + b.dataset.del, { method: 'DELETE' })
+          .then(function (r) { if (r.ok) load(); });
+      });
     });
   }
 

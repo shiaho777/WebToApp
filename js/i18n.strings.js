@@ -2540,4 +2540,68 @@
     'market.ratings': '{n} Bewertungen',
     'market.noRatings': 'Keine Bewertungen'
   });
+  R('en', { 'ui.close': 'Close', 'ui.cancel': 'Cancel', 'ui.confirm': 'OK' });
+  R('zh', { 'ui.close': '关闭', 'ui.cancel': '取消', 'ui.confirm': '确定' });
+  R('ja', { 'ui.close': '閉じる', 'ui.cancel': 'キャンセル', 'ui.confirm': 'OK' });
+  R('ar', { 'ui.close': 'إغلاق', 'ui.cancel': 'إلغاء', 'ui.confirm': 'موافق' });
+  R('ru', { 'ui.close': 'Закрыть', 'ui.cancel': 'Отмена', 'ui.confirm': 'ОК' });
+  R('es', { 'ui.close': 'Cerrar', 'ui.cancel': 'Cancelar', 'ui.confirm': 'Aceptar' });
+  R('pt', { 'ui.close': 'Fechar', 'ui.cancel': 'Cancelar', 'ui.confirm': 'OK' });
+  R('fr', { 'ui.close': 'Fermer', 'ui.cancel': 'Annuler', 'ui.confirm': 'OK' });
+  R('de', { 'ui.close': 'Schließen', 'ui.cancel': 'Abbrechen', 'ui.confirm': 'OK' });
+
+  R('en', {
+    'analysis.statusFailed': 'Analysis failed',
+    'analysis.failed.generic': 'We couldn’t analyze this site',
+    'analysis.failed.network': 'Network error: the server could not be reached',
+    'analysis.failed.hint': 'Enter a name and icon below, then generate as usual'
+  });
+  R('zh', {
+    'analysis.statusFailed': '分析失败',
+    'analysis.failed.generic': '无法分析该网站',
+    'analysis.failed.network': '网络异常，无法连接服务器',
+    'analysis.failed.hint': '可在下方手动填写名称和图标，然后照常生成'
+  });
+  R('ja', {
+    'analysis.statusFailed': '分析失敗',
+    'analysis.failed.generic': 'このサイトを分析できませんでした',
+    'analysis.failed.network': 'ネットワークエラー：サーバーに接続できません',
+    'analysis.failed.hint': '下で名前とアイコンを入力すれば、通常どおり生成できます'
+  });
+  R('ar', {
+    'analysis.statusFailed': 'فشل التحليل',
+    'analysis.failed.generic': 'تعذّر تحليل هذا الموقع',
+    'analysis.failed.network': 'خطأ في الشبكة: تعذّر الوصول إلى الخادم',
+    'analysis.failed.hint': 'أدخل الاسم والأيقونة أدناه ثم أنشئ التطبيق كالمعتاد'
+  });
+  R('ru', {
+    'analysis.statusFailed': 'Ошибка анализа',
+    'analysis.failed.generic': 'Не удалось проанализировать сайт',
+    'analysis.failed.network': 'Ошибка сети: сервер недоступен',
+    'analysis.failed.hint': 'Укажите название и иконку ниже и создайте приложение как обычно'
+  });
+  R('es', {
+    'analysis.statusFailed': 'Análisis fallido',
+    'analysis.failed.generic': 'No se pudo analizar este sitio',
+    'analysis.failed.network': 'Error de red: no se pudo contactar con el servidor',
+    'analysis.failed.hint': 'Indica el nombre y el icono abajo y genera la app como siempre'
+  });
+  R('pt', {
+    'analysis.statusFailed': 'Falha na análise',
+    'analysis.failed.generic': 'Não foi possível analisar este site',
+    'analysis.failed.network': 'Erro de rede: não foi possível contatar o servidor',
+    'analysis.failed.hint': 'Informe o nome e o ícone abaixo e gere o app normalmente'
+  });
+  R('fr', {
+    'analysis.statusFailed': 'Échec de l’analyse',
+    'analysis.failed.generic': 'Impossible d’analyser ce site',
+    'analysis.failed.network': 'Erreur réseau : serveur injoignable',
+    'analysis.failed.hint': 'Saisissez le nom et l’icône ci-dessous, puis générez comme d’habitude'
+  });
+  R('de', {
+    'analysis.statusFailed': 'Analyse fehlgeschlagen',
+    'analysis.failed.generic': 'Diese Website konnte nicht analysiert werden',
+    'analysis.failed.network': 'Netzwerkfehler: Server nicht erreichbar',
+    'analysis.failed.hint': 'Name und Symbol unten eintragen und wie gewohnt erstellen'
+  });
 })();

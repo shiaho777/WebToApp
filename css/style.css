@@ -347,6 +347,11 @@ section {
   color: var(--success);
 }
 
+.status-badge.warn {
+  background: rgba(160, 83, 61, 0.12);
+  color: var(--danger);
+}
+
 .analysis-loader {
   text-align: left;
   padding: 12px 0 6px;
@@ -430,6 +435,15 @@ section {
 .analysis-item .value.bad { color: var(--danger); }
 .analysis-item .value.good { color: var(--success); }
 .analysis-item .value.info { color: var(--accent-warm); }
+.analysis-item .value.warn { color: var(--danger); }
+
+.analysis-item.analysis-notice {
+  justify-content: flex-start;
+}
+
+.analysis-item.analysis-notice .value {
+  text-align: start;
+}
 
 .analysis-actions {
   display: flex;
