@@ -630,6 +630,10 @@
 
   // --- Public market ---
   let marketSearchTimer = null;
+  let marketRequestSeq = 0;
+  let marketAbort = null;
+  const marketError = document.getElementById('market-error');
+  const marketRetryBtn = document.getElementById('market-retry');
 
   let lastMarketItems = [];
 
@@ -721,16 +725,33 @@
     if (tag) params.set('tag', tag);
     if (marketSearchInput.value.trim()) params.set('search', marketSearchInput.value.trim());
     params.set('sort', marketSortSelect.value || 'newest');
+    // Only the newest request may paint: a slow response for an older query
+    // must not overwrite results the user has already moved past.
+    const seq = ++marketRequestSeq;
+    if (marketAbort) marketAbort.abort();
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    marketAbort = controller;
+    marketList.setAttribute('aria-busy', 'true');
     try {
-      const res = await fetch(`/api/market?${params.toString()}`);
+      const res = await fetch(`/api/market?${params.toString()}`, controller ? { signal: controller.signal } : undefined);
       if (!res.ok) throw new Error('market failed');
       const data = await res.json();
+      if (seq !== marketRequestSeq) return;
       const items = data.items || [];
       marketCount.textContent = t('market.count', { n: data.total != null ? data.total : items.length });
+      marketError.classList.add('hidden');
       renderMarket(items);
-    } catch (_err) {
+    } catch (err) {
+      if (seq !== marketRequestSeq || (err && err.name === 'AbortError')) return;
       marketCount.textContent = '';
       renderMarket([]);
+      marketEmpty.classList.add('hidden');
+      marketError.classList.remove('hidden');
+    } finally {
+      if (seq === marketRequestSeq) {
+        marketList.removeAttribute('aria-busy');
+        marketAbort = null;
+      }
     }
   }
 
@@ -745,10 +766,20 @@
     if (btn) window.open(btn.dataset.open, '_blank', 'noopener,noreferrer');
   });
 
-  document.querySelectorAll('.market-tab').forEach((tab) => {
+  const marketTabs = Array.from(document.querySelectorAll('.market-tab'));
+  function selectMarketTab(tab) {
+    marketTabs.forEach((el) => {
+      const active = el === tab;
+      el.classList.toggle('active', active);
+      el.setAttribute('role', 'tab');
+      el.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+  selectMarketTab(marketTabs.find((el) => el.classList.contains('active')) || marketTabs[0]);
+  marketTabs.forEach((tab) => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.market-tab').forEach((el) => el.classList.remove('active'));
-      tab.classList.add('active');
+      if (tab.classList.contains('active')) return;
+      selectMarketTab(tab);
       loadMarket();
     });
   });
@@ -759,6 +790,7 @@
   });
 
   marketSortSelect.addEventListener('change', loadMarket);
+  if (marketRetryBtn) marketRetryBtn.addEventListener('click', loadMarket);
 
   async function recoverHistoryFromPageContext() {
     const candidates = new Set();
@@ -882,29 +914,48 @@
     openProfile(num);
   }
 
-  function closeProfileModal() {
+  let profileReturnFocus = null;
+  let profileLoadSeq = 0;
+
+  function hideProfileModal() {
+    if (profileModal.classList.contains('hidden')) return;
     profileModal.classList.add('hidden');
+    profileLoadSeq += 1;
+    const back = profileReturnFocus;
+    profileReturnFocus = null;
+    if (back && typeof back.focus === 'function' && document.contains(back)) back.focus();
+  }
+
+  function closeProfileModal() {
+    hideProfileModal();
     if (new URLSearchParams(window.location.search).has('u')) {
       history.pushState({}, '', profileUrlFor(null));
     }
   }
 
   async function openProfile(num) {
-    profileModal.classList.remove('hidden');
+    if (profileModal.classList.contains('hidden')) {
+      profileReturnFocus = document.activeElement;
+      profileModal.classList.remove('hidden');
+      profileClose.focus();
+    }
     profileShowMessage('');
     const mine = num == null || (profileSelfNum != null && Number(num) === profileSelfNum);
     profileViewingSelf = mine;
     profileViewedNum = mine ? null : Number(num);
+    const seq = ++profileLoadSeq;
     try {
       const res = await fetch(mine ? '/api/me' : `/api/users/${encodeURIComponent(num)}`);
       if (!res.ok) throw new Error('load failed');
       const data = await res.json();
+      if (seq !== profileLoadSeq) return;
       if (mine && data.profile) {
         profileCacheWrite(data.profile);
         paintNavAvatar(data.profile);
       }
       profileRender(data.profile, data.apps, mine);
     } catch (_err) {
+      if (seq !== profileLoadSeq) return;
       profileNameView.textContent = '—';
       profileAppsEl.innerHTML = '';
       profileShowMessage(t('profile.loadFailed'));
@@ -1061,6 +1112,12 @@
     profileModal.addEventListener('click', (e) => {
       if (e.target === profileModal) closeProfileModal();
     });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (profileModal.classList.contains('hidden')) return;
+      e.preventDefault();
+      closeProfileModal();
+    });
     profileEditBtn.addEventListener('click', () => {
       profileNameInput.value = profileNameView.textContent === t('profile.anon') ? '' : profileNameView.textContent;
       profileBioInput.value = '';
@@ -1080,19 +1137,28 @@
     });
     profileEditForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const res = await fetch('/api/me/profile', {
-        method: 'POST',
-        headers: apiHeaders(),
-        body: JSON.stringify({ name: profileNameInput.value.trim(), bio_md: profileBioInput.value }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        profileShowMessage(t('profile.saved'));
-        profileEditForm.classList.add('hidden');
-        profileEditBtn.classList.remove('hidden');
-        openProfile(null);
-      } else {
-        profileShowMessage(t(`profile.${data.detail || 'invalid_name'}`));
+      const saveBtn = profileEditForm.querySelector('button[type=submit]');
+      if (saveBtn && saveBtn.disabled) return;
+      if (saveBtn) saveBtn.disabled = true;
+      try {
+        const res = await fetch('/api/me/profile', {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({ name: profileNameInput.value.trim(), bio_md: profileBioInput.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          profileShowMessage(t('profile.saved'));
+          profileEditForm.classList.add('hidden');
+          profileEditBtn.classList.remove('hidden');
+          openProfile(null);
+        } else {
+          profileShowMessage(t(`profile.${data.detail || 'invalid_name'}`));
+        }
+      } catch (_err) {
+        notify(t('profile.saveFailed'), 'error');
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
       }
     });
     avatarUploadBtn.addEventListener('click', () => avatarFile.click());
@@ -1101,18 +1167,23 @@
       if (!file) return;
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/me/avatar', { method: 'POST', body: fd });
-      if (res.ok) {
+      avatarUploadBtn.disabled = true;
+      try {
+        const res = await fetch('/api/me/avatar', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('avatar failed');
         const data = await res.json();
         profileSetAvatar(data.avatar_url, profileNameView.textContent, profileSelfNum);
         const merged = profileCacheRead() || { user_num: profileSelfNum };
         merged.avatar_url = data.avatar_url;
         profileCacheWrite(merged);
         paintNavAvatar(merged);
-      } else {
+      } catch (_err) {
         profileShowMessage(t('profile.avatarFailed'));
+        notify(t('profile.avatarFailed'), 'error');
+      } finally {
+        avatarUploadBtn.disabled = false;
+        avatarFile.value = '';
       }
-      avatarFile.value = '';
     });
     // ?u=N opens that user's public profile (linked from market/app pages).
     const u = new URLSearchParams(window.location.search).get('u');
@@ -1121,7 +1192,7 @@
     window.addEventListener('popstate', () => {
       const pu = new URLSearchParams(window.location.search).get('u');
       if (pu && /^\d+$/.test(pu)) openProfile(Number(pu));
-      else profileModal.classList.add('hidden');
+      else hideProfileModal();
     });
   }
 
@@ -1286,12 +1357,27 @@
     let data = null;
     try {
       let attempts = 0;
+      let transientFailures = 0;
+      const MAX_TRANSIENT_FAILURES = 5;
       while (attempts < 240) {
         attempts += 1;
-        await sleep(attempts <= 8 ? 400 : 800);
-        const pollRes = await fetch(`/api/distill/${encodeURIComponent(task.task_id)}`, {
-          headers: apiHeaders(),
-        });
+        await sleep(attempts <= 8 ? 400 : 800 + transientFailures * 600);
+        let pollRes;
+        try {
+          pollRes = await fetch(`/api/distill/${encodeURIComponent(task.task_id)}`, {
+            headers: apiHeaders(),
+          });
+        } catch (_err) {
+          transientFailures += 1;
+          if (transientFailures >= MAX_TRANSIENT_FAILURES) throw new Error(t('analysis.failed.network'));
+          continue;
+        }
+        if (pollRes.status === 502 || pollRes.status === 503 || pollRes.status === 504) {
+          transientFailures += 1;
+          if (transientFailures >= MAX_TRANSIENT_FAILURES) throw new Error(t('err.generateFailed'));
+          continue;
+        }
+        transientFailures = 0;
         if (pollRes.status === 404) throw new Error(t('err.taskMissing'));
         if (!pollRes.ok) {
           let message = '';
@@ -2111,9 +2197,21 @@
 
   // --- Nav scroll effect ---
   const nav = document.getElementById('nav');
+  let navScrolled = null;
+  let navTicking = false;
+  function syncNavScrolled() {
+    navTicking = false;
+    const scrolled = window.scrollY > 50;
+    if (scrolled === navScrolled) return;
+    navScrolled = scrolled;
+    nav.classList.toggle('is-scrolled', scrolled);
+  }
   window.addEventListener('scroll', () => {
-    nav.style.background = window.scrollY > 50 ? 'rgba(243, 234, 223, 0.94)' : 'rgba(243, 234, 223, 0.9)';
+    if (navTicking) return;
+    navTicking = true;
+    window.requestAnimationFrame(syncNavScrolled);
   }, { passive: true });
+  syncNavScrolled();
 
   // --- Util ---
   function readFileAsDataUrl(file) {

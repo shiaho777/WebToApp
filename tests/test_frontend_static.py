@@ -20,6 +20,9 @@ NEW_KEYS = (
     "analysis.failed.generic",
     "analysis.failed.network",
     "analysis.failed.hint",
+    "market.loadFailed",
+    "market.retry",
+    "profile.saveFailed",
 )
 
 
@@ -68,6 +71,35 @@ class FrontendFeedbackTests(unittest.TestCase):
         css = _read("css/style.css")
         self.assertIn(".status-badge.warn", css)
         self.assertIn(".analysis-item .value.warn", css)
+
+
+class FrontendResilienceTests(unittest.TestCase):
+    """Regression guards for issue #159."""
+
+    def test_market_error_state_is_distinct_from_empty(self):
+        html = _read("index.html")
+        self.assertIn('id="market-error"', html)
+        self.assertIn('id="market-retry"', html)
+        self.assertIn('id="market-empty"', html)
+
+    def test_market_ignores_stale_responses(self):
+        src = _read("js/app.v5.js")
+        self.assertIn("marketRequestSeq", src)
+        self.assertIn("seq !== marketRequestSeq", src)
+
+    def test_profile_modal_closes_on_escape(self):
+        src = _read("js/app.v5.js")
+        self.assertIn("profileReturnFocus", src)
+        self.assertRegex(src, r"e\.key !== 'Escape'[\s\S]{0,200}closeProfileModal\(\)")
+
+    def test_nav_scroll_uses_class_not_inline_style(self):
+        src = _read("js/app.v5.js")
+        self.assertNotIn("nav.style.background", src)
+        self.assertIn("is-scrolled", src)
+        self.assertIn("#nav.is-scrolled", _read("css/style.css"))
+
+    def test_chinese_market_empty_text_typo_fixed(self):
+        self.assertNotIn("公链应用", _read("js/i18n.strings.js"))
 
 
 if __name__ == "__main__":

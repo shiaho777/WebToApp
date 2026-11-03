@@ -15,9 +15,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261014-ux1">
+  <link rel="stylesheet" href="css/style.css?v=20261014-ux2">
   <script src="js/i18n.js?v=20261013-ads1"></script>
-  <script src="js/i18n.strings.js?v=20261014-ux1"></script>
+  <script src="js/i18n.strings.js?v=20261014-ux2"></script>
 </head>
 <body>
   <header id="nav">
@@ -534,6 +534,10 @@
           <div id="market-empty" class="history-empty hidden">
             <p data-i18n="market.empty">No public apps here yet. Publish one of yours from the build history.</p>
           </div>
+          <div id="market-error" class="history-empty market-error hidden" role="alert">
+            <p data-i18n="market.loadFailed">Couldn't load the market. Check your connection and try again.</p>
+            <button id="market-retry" class="market-retry" type="button" data-i18n="market.retry">Retry</button>
+          </div>
           <div id="market-list" class="market-list"></div>
         </div>
       </div>
@@ -591,6 +595,6 @@
   <script src="js/ui.js?v=20261014-ux1"></script>
   <script src="js/announcements.js?v=20261013-ads1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261014-ux1"></script>
+  <script src="js/app.v5.js?v=20261014-ux2"></script>
 </body>
 </html>
