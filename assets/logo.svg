@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="WebToApp">
+  <rect width="64" height="64" rx="15" fill="#d97757"/>
+  <circle cx="26" cy="26" r="12.5" fill="none" stroke="#faf9f5" stroke-width="4.5"/>
+  <rect x="30" y="30" width="21" height="21" rx="5.5" fill="#141413"/>
+</svg>

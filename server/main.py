@@ -8,6 +8,7 @@ import base64
 import hashlib
 import ipaddress
 import json
+import mimetypes
 import re
 import secrets
 import shutil
@@ -49,6 +50,10 @@ from server.task_store import TaskStore
 app = FastAPI(title="WebToApp Distillation Engine", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+
+# Not every OS mime table knows .webmanifest; StaticFiles would fall back to
+# text/plain and browsers would ignore the manifest.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 _LONG_CACHE_PREFIXES = ("/css/", "/js/", "/assets/")
 _LONG_CACHE_SUFFIXES = (".css", ".js", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2")

@@ -120,12 +120,12 @@ class FrontendPerformanceTests(unittest.TestCase):
                 self.assertNotIn("Spectral:wght@400", url, rel)
 
     def test_nav_logo_uses_small_asset_with_dimensions(self):
-        self.assertTrue((ROOT / "assets/site-logo-96.jpg").is_file())
+        self.assertTrue((ROOT / "assets/logo.svg").is_file())
         for rel in ("index.html", "server/engine/distiller.py"):
             src = _read(rel)
             self.assertRegex(
                 src,
-                r'<img src="/?assets/site-logo-96\.jpg" alt="WebToApp" width="28" height="28">',
+                r'<img src="/?assets/logo\.svg\?v=[\w-]+" alt="WebToApp" width="28" height="28">',
                 rel,
             )
             self.assertNotIn('src="assets/site-logo.jpg"', src, rel)
@@ -193,6 +193,79 @@ class FrontendDesignSystemTests(unittest.TestCase):
         for line in css_lines:
             stripped = re.sub(r"var\([^()]*(?:\([^()]*\)[^()]*)*\)", "", line)
             self.assertNotRegex(stripped, r"#[0-9a-fA-F]{3,6}\b", line.strip())
+
+
+def _hex_luminance(value):
+    value = value.lstrip("#")
+    channels = [int(value[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast(a, b):
+    hi, lo = sorted((_hex_luminance(a), _hex_luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+class BrandAndComponentSystemTests(unittest.TestCase):
+    """Guards for the Anthropic-style component system and brand icon set (#165)."""
+
+    ICONS = (
+        "assets/logo.svg",
+        "assets/favicon-32.png",
+        "assets/apple-touch-icon.png",
+        "assets/icon-192.png",
+        "assets/icon-512.png",
+        "assets/icon-maskable-512.png",
+    )
+
+    def setUp(self):
+        self.css = _read("css/style.css")
+        self.root = self.css[: self.css.index("}")]
+
+    def test_icon_files_exist(self):
+        for rel in self.ICONS:
+            self.assertTrue((ROOT / rel).is_file(), rel)
+
+    def test_pages_reference_new_icon_set(self):
+        html = _read("index.html")
+        self.assertIn('href="assets/logo.svg', html)
+        self.assertIn('rel="apple-touch-icon"', html)
+        self.assertIn('rel="manifest"', html)
+        self.assertIn("assets/logo.svg", _read("privacy.html"))
+        self.assertIn("/assets/logo.svg", _read("server/engine/distiller.py"))
+
+    def test_manifest_declares_installable_icons(self):
+        import json
+
+        manifest = json.loads(_read("manifest.webmanifest"))
+        sizes = {icon.get("sizes") for icon in manifest.get("icons", [])}
+        self.assertTrue({"192x192", "512x512"} <= sizes)
+        self.assertTrue(any("maskable" in icon.get("purpose", "") for icon in manifest["icons"]))
+        for icon in manifest["icons"]:
+            self.assertTrue((ROOT / icon["src"].lstrip("/").split("?")[0]).is_file(), icon["src"])
+
+    def test_manifest_mime_type_is_registered(self):
+        self.assertIn("application/manifest+json", _read("server/main.py"))
+
+    def test_palette_matches_reference_tokens(self):
+        self.assertIn("--paper: #faf9f5;", self.root)
+        self.assertIn("--paper-deep: #f0eee6;", self.root)
+        self.assertRegex(self.root, r"--ink-rgb:\s*20,\s*20,\s*19;")
+
+    def test_tertiary_text_meets_contrast(self):
+        faint = re.search(r"--ink-faint:\s*(#[0-9a-fA-F]{6});", self.root).group(1)
+        for surface in ("#faf9f5", "#f0eee6", "#ffffff"):
+            self.assertGreaterEqual(_contrast(faint, surface), 4.5, surface)
+
+    def test_no_heavy_weights_or_glass_effects(self):
+        self.assertNotRegex(self.css, r"font-weight:\s*(650|700|800)\b")
+        self.assertNotRegex(self.css, r"backdrop-filter:\s*blur")
+        self.assertNotIn("backdrop-filter:blur", _read("js/ui.js"))
+
+    def test_text_colors_do_not_use_translucent_ink(self):
+        # Readable text goes through --ink-soft / --ink-faint so contrast is controlled.
+        self.assertNotRegex(self.css, r"\n\s+color: rgba\(var\(--ink-rgb\), 0\.[3-5]\d*\);")
 
 
 if __name__ == "__main__":
