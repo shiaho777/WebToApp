@@ -512,7 +512,7 @@
     'time.monthsAgo': '{n} 个月前',
     'time.yearsAgo': '{n} 年前',
     'market.tabAll': '全部',
-    'market.empty': '这里还没有公链应用。可以从构建历史中发布你的应用。',
+    'market.empty': '这里还没有公开应用。可以从构建历史中发布你的应用。',
     'market.visits': '{n} 次访问',
     'market.downloads': '{n} 次下载',
     'market.open': '打开应用页',
@@ -2604,4 +2604,22 @@
     'analysis.failed.network': 'Netzwerkfehler: Server nicht erreichbar',
     'analysis.failed.hint': 'Name und Symbol unten eintragen und wie gewohnt erstellen'
   });
+  R('en', { 'market.loadFailed': 'Couldn\'t load the market. Check your connection and try again.', 'market.retry': 'Retry' });
+  R('zh', { 'market.loadFailed': '应用市场加载失败，请检查网络后重试。', 'market.retry': '重试' });
+  R('ja', { 'market.loadFailed': 'マーケットを読み込めませんでした。接続を確認して再試行してください。', 'market.retry': '再試行' });
+  R('ar', { 'market.loadFailed': 'تعذّر تحميل السوق. تحقّق من الاتصال وحاول مرة أخرى.', 'market.retry': 'إعادة المحاولة' });
+  R('ru', { 'market.loadFailed': 'Не удалось загрузить каталог. Проверьте соединение и повторите попытку.', 'market.retry': 'Повторить' });
+  R('es', { 'market.loadFailed': 'No se pudo cargar el mercado. Revisa tu conexión e inténtalo de nuevo.', 'market.retry': 'Reintentar' });
+  R('pt', { 'market.loadFailed': 'Não foi possível carregar o mercado. Verifique a conexão e tente novamente.', 'market.retry': 'Tentar novamente' });
+  R('fr', { 'market.loadFailed': 'Impossible de charger le catalogue. Vérifiez votre connexion et réessayez.', 'market.retry': 'Réessayer' });
+  R('de', { 'market.loadFailed': 'Der Marktplatz konnte nicht geladen werden. Verbindung prüfen und erneut versuchen.', 'market.retry': 'Erneut versuchen' });
+  R('en', { 'profile.saveFailed': 'Couldn\'t save your profile. Check your connection and try again.' });
+  R('zh', { 'profile.saveFailed': '资料保存失败，请检查网络后重试' });
+  R('ja', { 'profile.saveFailed': 'プロフィールを保存できませんでした。接続を確認して再試行してください。' });
+  R('ar', { 'profile.saveFailed': 'تعذّر حفظ الملف الشخصي. تحقّق من الاتصال وحاول مرة أخرى.' });
+  R('ru', { 'profile.saveFailed': 'Не удалось сохранить профиль. Проверьте соединение и повторите попытку.' });
+  R('es', { 'profile.saveFailed': 'No se pudo guardar el perfil. Revisa tu conexión e inténtalo de nuevo.' });
+  R('pt', { 'profile.saveFailed': 'Não foi possível salvar o perfil. Verifique a conexão e tente novamente.' });
+  R('fr', { 'profile.saveFailed': 'Impossible d’enregistrer le profil. Vérifiez votre connexion et réessayez.' });
+  R('de', { 'profile.saveFailed': 'Profil konnte nicht gespeichert werden. Verbindung prüfen und erneut versuchen.' });
 })();
