@@ -1753,6 +1753,211 @@ section {
   font-size: 0.82rem;
 }
 
+.platform-tag.is-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-color: var(--line);
+  background: var(--paper-strong);
+  color: var(--ink);
+}
+
+.platform-tag.is-ready::before,
+.platform-tag.is-error::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.platform-tag.is-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-color: rgba(var(--danger-rgb), 0.32);
+  background: rgba(var(--danger-rgb), 0.06);
+  color: var(--danger-text);
+}
+
+.platform-tag.is-error::before {
+  background: var(--danger);
+}
+
+/* ===== Build progress (#167) ===== */
+.config-grid.is-locked {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+
+.build-progress {
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper-strong);
+}
+
+.build-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.build-progress-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.build-progress-elapsed {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.build-progress-bar {
+  height: 4px;
+  margin: var(--space-4) 0 var(--space-5);
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--paper-deep);
+}
+
+.build-progress-bar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+  transition: width 600ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.build-progress.is-failed .build-progress-bar span {
+  background: var(--danger);
+}
+
+.build-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.build-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.build-steps li[data-state="active"] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.build-steps li[data-state="done"] {
+  color: var(--ink);
+}
+
+.build-steps li[data-state="error"] {
+  color: var(--danger-text);
+  font-weight: 500;
+}
+
+.build-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  background: transparent;
+}
+
+[data-state="active"] > .build-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  animation: build-pulse 1.4s ease-in-out infinite;
+}
+
+[data-state="done"] > .build-dot {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+[data-state="error"] > .build-dot {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+@keyframes build-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.35); }
+  50% { box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0); }
+}
+
+.build-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4) 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.build-platforms li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.build-platforms li[data-state="active"],
+.build-platforms li[data-state="done"] {
+  color: var(--ink);
+}
+
+.build-platforms li[data-state="error"] {
+  border-color: rgba(var(--danger-rgb), 0.32);
+  color: var(--danger-text);
+}
+
+.build-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(var(--danger-rgb), 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(var(--danger-rgb), 0.06);
+}
+
+.build-error p {
+  flex: 1 1 16rem;
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-state="active"] > .build-dot { animation: none; }
+  .build-progress-bar span { transition: none; }
+}
+
 .preview-shell {
   overflow: hidden;
   border: 1px solid rgba(var(--ink-rgb), 0.08);

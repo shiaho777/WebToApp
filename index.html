@@ -19,9 +19,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261104-ui2">
+  <link rel="stylesheet" href="css/style.css?v=20261104-build1">
   <script src="js/i18n.js?v=20261013-ads1"></script>
-  <script src="js/i18n.strings.js?v=20261014-ux2"></script>
+  <script src="js/i18n.strings.js?v=20261104-build1"></script>
 </head>
 <body>
   <header id="nav">
@@ -430,6 +430,32 @@
             </div>
 
             <button id="generate-btn" class="btn-primary" type="button" data-i18n="config.generateBtn">Generate app</button>
+            <div id="build-progress" class="build-progress hidden">
+              <span id="build-progress-live" class="sr-only" role="status" aria-live="polite"></span>
+              <div class="build-progress-head">
+                <span class="build-progress-title" id="build-progress-title" data-i18n="build.title">Building your app</span>
+                <span class="build-progress-elapsed" id="build-progress-elapsed">0s</span>
+              </div>
+              <div class="build-progress-bar" aria-hidden="true"><span id="build-progress-fill"></span></div>
+              <ol class="build-steps" id="build-steps">
+                <li data-step="queued"><span class="build-dot"></span><span data-i18n="build.step.queued">Queued</span></li>
+                <li data-step="fetching_icon"><span class="build-dot"></span><span data-i18n="build.step.icon">Fetching icon</span></li>
+                <li data-step="writing_shell"><span class="build-dot"></span><span data-i18n="build.step.shell">Writing app shell</span></li>
+                <li data-step="building_platforms"><span class="build-dot"></span><span data-i18n="build.step.platforms">Building platforms</span></li>
+                <li data-step="uploading_cdn"><span class="build-dot"></span><span data-i18n="build.step.publish">Publishing downloads</span></li>
+              </ol>
+              <ul class="build-platforms" id="build-platforms">
+                <li data-platform="android" data-state="pending"><span class="build-dot"></span>Android</li>
+                <li data-platform="ios" data-state="pending"><span class="build-dot"></span>iOS</li>
+                <li data-platform="windows" data-state="pending"><span class="build-dot"></span>Windows</li>
+                <li data-platform="macos" data-state="pending"><span class="build-dot"></span>macOS</li>
+                <li data-platform="linux" data-state="pending"><span class="build-dot"></span>Linux</li>
+              </ul>
+              <div class="build-error hidden" id="build-error" role="alert">
+                <p id="build-error-text"></p>
+                <button id="build-retry-btn" class="btn-secondary" type="button" data-i18n="build.retry">Try again</button>
+              </div>
+            </div>
             <small class="field-note create-note" data-i18n="config.retentionNote">A generated app link is cleaned up automatically after 30 days with no visits, to avoid holding system resources long-term.</small>
           </div>
         </div>
@@ -443,7 +469,7 @@
           <input id="app-link" type="text" readonly>
           <button id="copy-btn" type="button" data-i18n="result.copy">Copy</button>
         </div>
-        <div class="platforms">
+        <div class="platforms" id="result-platforms">
           <span class="platform-tag">Android</span>
           <span class="platform-tag">iOS</span>
           <span class="platform-tag">Windows</span>
@@ -609,6 +635,6 @@
   <script src="js/ui.js?v=20261104-ui2"></script>
   <script src="js/announcements.js?v=20261013-ads1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261104-ui1"></script>
+  <script src="js/app.v5.js?v=20261104-build1"></script>
 </body>
 </html>
