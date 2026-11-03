@@ -42,7 +42,7 @@ WebToApp を本番環境で動かすためのステップバイステップガ�
 ## 2. コードを取得
 
 ```bash
-git clone https://github.com/shiahonb777/WebToApp.git
+git clone https://github.com/shiaho777/WebToApp.git
 cd WebToApp
 ```
 

@@ -42,7 +42,7 @@ Die einzige zwingende Abhängigkeit ist Python. Alles andere ist optional und de
 ## 2. Code beziehen
 
 ```bash
-git clone https://github.com/shiahonb777/WebToApp.git
+git clone https://github.com/shiaho777/WebToApp.git
 cd WebToApp
 ```
 

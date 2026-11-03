@@ -38,6 +38,7 @@ from server.engine import mobileconfig_signer
 from server.engine.cache import analysis_cache, html_cache, icon_cache
 from server.engine.storage import r2_storage
 from server.community_store import CommunityStore, MAX_BIO_LEN, MAX_COMMENT_LEN
+from server.compression import TextCompressionMiddleware
 from server.history_store import HistoryStore
 from server.engine.icon_quality import is_unusable_icon
 from server.icon_review import review_deadline_passed, run_icon_review_pass
@@ -153,6 +154,11 @@ async def add_cache_headers(request: Request, call_next):
     elif path.endswith("/icon.png") or path.endswith("/manifest.json"):
         response.headers["Cache-Control"] = "public, max-age=3600"
     return response
+
+
+# Registered last so it wraps every other middleware and compresses the final
+# response, headers included.
+app.add_middleware(TextCompressionMiddleware)
 
 ROOT = Path(__file__).parent.parent
 APPS_DIR = ROOT / "generated"
