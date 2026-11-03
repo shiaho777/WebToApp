@@ -1735,11 +1735,25 @@
       </div>`;
   }
 
+  let urlInvalidTimer = null;
+  function clearUrlInvalid() {
+    clearTimeout(urlInvalidTimer);
+    urlInputWrap.classList.remove('is-invalid');
+    urlInput.removeAttribute('aria-invalid');
+  }
+  function markUrlInvalid() {
+    clearTimeout(urlInvalidTimer);
+    urlInputWrap.classList.add('is-invalid');
+    urlInput.setAttribute('aria-invalid', 'true');
+    urlInput.focus();
+    urlInvalidTimer = setTimeout(clearUrlInvalid, 2400);
+  }
+  urlInput.addEventListener('input', clearUrlInvalid);
+
   async function startDistill() {
     const raw = urlInput.value.trim();
     if (!raw || !isValidUrl(raw)) {
-      urlInput.style.boxShadow = '0 0 0 2px #f87171';
-      setTimeout(() => urlInput.style.boxShadow = '', 1500);
+      markUrlInvalid();
       return;
     }
 

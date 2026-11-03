@@ -151,5 +151,49 @@ class FrontendPerformanceTests(unittest.TestCase):
         self.assertIn("app.add_middleware(TextCompressionMiddleware)", src)
 
 
+class FrontendDesignSystemTests(unittest.TestCase):
+    """Guards for the token-based design system, dark mode and hero layout (#163)."""
+
+    def setUp(self):
+        self.css = _read("css/style.css")
+
+    def test_dark_palette_is_defined(self):
+        self.assertIn("@media (prefers-color-scheme: dark)", self.css)
+        self.assertRegex(self.css, r"color-scheme:\s*dark")
+        html = _read("index.html")
+        self.assertIn('media="(prefers-color-scheme: dark)"', html)
+
+    def test_no_hard_coded_ink_channels(self):
+        # Ink-tinted colors must go through --ink-rgb so dark mode can flip them.
+        root_end = self.css.index("}")
+        body = self.css[root_end:]
+        self.assertNotRegex(body, r"rgba\(\s*30\s*,\s*25\s*,\s*20\s*,")
+
+    def test_every_custom_property_is_defined(self):
+        css = re.sub(r"/\*[\s\S]*?\*/", "", self.css)
+        used = set(re.findall(r"var\(\s*(--[\w-]+)", css))
+        defined = set(re.findall(r"(--[\w-]+)\s*:", css))
+        self.assertEqual(sorted(used - defined), [])
+
+    def test_hero_is_not_forced_to_full_viewport(self):
+        match = re.search(r"#hero\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(match)
+        self.assertNotIn("100vh", match.group(1))
+
+    def test_url_validation_uses_state_class(self):
+        src = _read("js/app.v5.js")
+        self.assertNotIn("urlInput.style.boxShadow", src)
+        self.assertIn("classList.add('is-invalid')", src)
+        self.assertIn(".url-input-wrap.is-invalid", self.css)
+
+    def test_ui_helpers_follow_tokens_with_light_fallbacks(self):
+        src = _read("js/ui.js")
+        css_lines = [line for line in src.splitlines() if line.strip().startswith("'.wta-")]
+        self.assertTrue(css_lines)
+        for line in css_lines:
+            stripped = re.sub(r"var\([^()]*(?:\([^()]*\)[^()]*)*\)", "", line)
+            self.assertNotRegex(stripped, r"#[0-9a-fA-F]{3,6}\b", line.strip())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,13 +9,14 @@
   <meta property="og:title" content="WebToApp — Turn websites into apps">
   <meta property="og:description" content="Enter a link. Seconds later it can be installed, shared and used like an app.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#efe4d4">
+  <meta name="theme-color" content="#efe4d4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17130f" media="(prefers-color-scheme: dark)">
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7023716352718601" crossorigin="anonymous"></script>
   <link rel="icon" href="assets/site-logo-96.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Noto+Serif+SC:wght@600&family=Spectral:wght@600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261014-ux2">
+  <link rel="stylesheet" href="css/style.css?v=20261104-ui1">
   <script src="js/i18n.js?v=20261013-ads1"></script>
   <script src="js/i18n.strings.js?v=20261014-ux2"></script>
 </head>
@@ -94,10 +95,20 @@
         <div class="hero-copy" data-reveal>
           <p class="hero-kicker" data-i18n="hero.kicker">WEBTOAPP / WEBSITE TO APP</p>
           <h1><span data-i18n="hero.titleLine1">Turn websites</span><br><span data-i18n="hero.titleLine2">into apps.</span></h1>
+          <p class="subtitle" data-i18n="hero.subtitle">Enter a link. Seconds later it can be installed, shared and used like an app. From iPhone to desktop, it is the same generated result.</p>
+          <div class="hero-platforms">
+            <span class="hero-platforms-label" data-i18n="platforms.title">One build, five apps</span>
+            <ul class="hero-platform-list">
+              <li>Android</li>
+              <li>iOS</li>
+              <li>macOS</li>
+              <li>Windows</li>
+              <li>Linux</li>
+            </ul>
+          </div>
         </div>
         <div class="hero-side" data-reveal>
           <div class="badge" data-i18n="hero.badge">Open source · Free · No sign-up</div>
-          <p class="subtitle" data-i18n="hero.subtitle">Enter a link. Seconds later it can be installed, shared and used like an app. From iPhone to desktop, it is the same generated result.</p>
 
           <div class="source-mode" role="group" aria-label="Source type">
             <button id="mode-url-btn" class="mode-btn active" type="button" data-i18n="mode.url">Website URL</button>
@@ -592,9 +603,9 @@
     </div>
   </div>
 
-  <script src="js/ui.js?v=20261014-ux1"></script>
+  <script src="js/ui.js?v=20261104-ui1"></script>
   <script src="js/announcements.js?v=20261013-ads1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261104-perf1"></script>
+  <script src="js/app.v5.js?v=20261104-ui1"></script>
 </body>
 </html>

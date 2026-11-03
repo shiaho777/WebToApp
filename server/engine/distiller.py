@@ -1410,7 +1410,7 @@ a{{color:inherit;text-decoration:none}}
   </main>
 </div>
 <script>{script_body}</script>
-<script src="/js/ui.js?v=20261014-ux1"></script>
+<script src="/js/ui.js?v=20261104-ui1"></script>
 <script src="/js/mdmini.js"></script>
 <script src="/js/community.js?v=20261014-ux1"></script>
 </body>
