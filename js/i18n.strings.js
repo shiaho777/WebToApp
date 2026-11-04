@@ -3121,4 +3121,16 @@
     'hero.modeSnapshot': 'Snapshot'
   });
 
+
+  // Collapsible hero preview (#179)
+  R('en', { 'hero.previewToggle': 'Preview the app', 'hero.previewToggleHint': 'Open a phone or desktop frame with the live page.' });
+  R('zh', { 'hero.previewToggle': '预览 App 效果', 'hero.previewToggleHint': '展开手机或桌面框，直接查看实时页面。' });
+  R('ja', { 'hero.previewToggle': 'アプリをプレビュー', 'hero.previewToggleHint': 'スマホまたはデスクトップ枠でライブページを確認できます。' });
+  R('ar', { 'hero.previewToggle': 'معاينة التطبيق', 'hero.previewToggleHint': 'افتح إطار الهاتف أو سطح المكتب لرؤية الصفحة المباشرة.' });
+  R('ru', { 'hero.previewToggle': 'Предпросмотр приложения', 'hero.previewToggleHint': 'Откройте рамку телефона или компьютера с живой страницей.' });
+  R('es', { 'hero.previewToggle': 'Vista previa de la app', 'hero.previewToggleHint': 'Abre un marco de móvil o escritorio con la página en vivo.' });
+  R('pt', { 'hero.previewToggle': 'Prévia do app', 'hero.previewToggleHint': 'Abra uma moldura de celular ou desktop com a página ao vivo.' });
+  R('fr', { 'hero.previewToggle': 'Aperçu de l’app', 'hero.previewToggleHint': 'Ouvrez un cadre mobile ou bureau avec la page en direct.' });
+  R('de', { 'hero.previewToggle': 'App-Vorschau', 'hero.previewToggleHint': 'Öffne einen Handy- oder Desktop-Rahmen mit der Live-Seite.' });
+
 })();

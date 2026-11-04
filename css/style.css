@@ -4855,3 +4855,123 @@ section {
 .market-card-foot {
   flex-wrap: wrap;
 }
+
+/* ===== Centered hero + collapsible preview (#179) ===== */
+.hero-center {
+  width: min(860px, 100%);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero-center .subtitle {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.hero-center .hero-form {
+  max-width: 640px;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.hero-center .url-input-wrap {
+  text-align: left;
+}
+
+.hero-center .hero-points {
+  justify-content: center;
+}
+
+.hero-preview {
+  width: min(560px, 100%);
+  margin: var(--space-6) auto 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.hero-preview-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  color: var(--ink);
+  list-style: none;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.hero-preview-summary::-webkit-details-marker {
+  display: none;
+}
+
+.hero-preview-summary:hover {
+  background: var(--paper-deep);
+}
+
+.hero-preview-summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.hero-preview-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+}
+
+.hero-preview-summary-text {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+}
+
+.hero-preview-summary-text strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.hero-preview-summary-text small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.hero-preview-chevron {
+  flex: none;
+  color: var(--ink-faint);
+  transition: transform var(--transition);
+}
+
+.hero-preview[open] .hero-preview-chevron {
+  transform: rotate(180deg);
+}
+
+.hero-preview-body {
+  padding: 0 18px 22px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.hero-preview-body .hero-stage {
+  padding-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .hero-preview-summary {
+    padding: 12px 14px;
+  }
+
+  .hero-preview-body {
+    padding: 0 12px 18px;
+  }
+}
