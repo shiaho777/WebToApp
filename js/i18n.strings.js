@@ -2998,4 +2998,79 @@
   R('fr', { 'history.noMatches': 'Aucune app ne correspond à votre recherche.', 'market.noMatches': 'Aucune app ne correspond à cette recherche ou ce filtre.' });
   R('de', { 'history.noMatches': 'Keine Apps passen zu deiner Suche.', 'market.noMatches': 'Keine Apps passen zu dieser Suche oder diesem Filter.' });
 
+
+  // Hero page preview (#173)
+  R('en', {
+    'hero.stageCaption': 'Preview — type a link to see the page.',
+    'hero.previewIdle': 'Type a link to preview the page.',
+    'hero.previewLoading': 'Loading preview…',
+    'hero.previewUnavailable': 'Preview unavailable. Open the site to check it.',
+    'hero.openSite': 'Open site',
+    'hero.previewAlt': 'Preview of {host}'
+  });
+  R('zh', {
+    'hero.stageCaption': '页面预览——输入链接即可看到网站内容。',
+    'hero.previewIdle': '输入链接即可预览页面。',
+    'hero.previewLoading': '正在加载预览…',
+    'hero.previewUnavailable': '预览暂不可用，可打开网站查看。',
+    'hero.openSite': '打开网站',
+    'hero.previewAlt': '{host} 的预览'
+  });
+  R('ja', {
+    'hero.stageCaption': 'プレビュー — リンクを入力するとページが表示されます。',
+    'hero.previewIdle': 'リンクを入力するとページをプレビューできます。',
+    'hero.previewLoading': 'プレビューを読み込み中…',
+    'hero.previewUnavailable': 'プレビューを表示できません。サイトを開いて確認してください。',
+    'hero.openSite': 'サイトを開く',
+    'hero.previewAlt': '{host} のプレビュー'
+  });
+  R('ar', {
+    'hero.stageCaption': 'معاينة — اكتب رابطاً لرؤية الصفحة.',
+    'hero.previewIdle': 'اكتب رابطاً لمعاينة الصفحة.',
+    'hero.previewLoading': 'جارٍ تحميل المعاينة…',
+    'hero.previewUnavailable': 'المعاينة غير متاحة. افتح الموقع للتحقق منه.',
+    'hero.openSite': 'فتح الموقع',
+    'hero.previewAlt': 'معاينة {host}'
+  });
+  R('ru', {
+    'hero.stageCaption': 'Предпросмотр — введите ссылку, чтобы увидеть страницу.',
+    'hero.previewIdle': 'Введите ссылку, чтобы увидеть предпросмотр страницы.',
+    'hero.previewLoading': 'Загрузка предпросмотра…',
+    'hero.previewUnavailable': 'Предпросмотр недоступен. Откройте сайт, чтобы проверить его.',
+    'hero.openSite': 'Открыть сайт',
+    'hero.previewAlt': 'Предпросмотр {host}'
+  });
+  R('es', {
+    'hero.stageCaption': 'Vista previa: escribe un enlace para ver la página.',
+    'hero.previewIdle': 'Escribe un enlace para previsualizar la página.',
+    'hero.previewLoading': 'Cargando vista previa…',
+    'hero.previewUnavailable': 'Vista previa no disponible. Abre el sitio para comprobarlo.',
+    'hero.openSite': 'Abrir sitio',
+    'hero.previewAlt': 'Vista previa de {host}'
+  });
+  R('pt', {
+    'hero.stageCaption': 'Prévia — digite um link para ver a página.',
+    'hero.previewIdle': 'Digite um link para pré-visualizar a página.',
+    'hero.previewLoading': 'Carregando prévia…',
+    'hero.previewUnavailable': 'Prévia indisponível. Abra o site para conferir.',
+    'hero.openSite': 'Abrir site',
+    'hero.previewAlt': 'Prévia de {host}'
+  });
+  R('fr', {
+    'hero.stageCaption': 'Aperçu — saisissez un lien pour voir la page.',
+    'hero.previewIdle': 'Saisissez un lien pour prévisualiser la page.',
+    'hero.previewLoading': 'Chargement de l’aperçu…',
+    'hero.previewUnavailable': 'Aperçu indisponible. Ouvrez le site pour vérifier.',
+    'hero.openSite': 'Ouvrir le site',
+    'hero.previewAlt': 'Aperçu de {host}'
+  });
+  R('de', {
+    'hero.stageCaption': 'Vorschau – Link eingeben, um die Seite zu sehen.',
+    'hero.previewIdle': 'Link eingeben, um die Seite in der Vorschau zu sehen.',
+    'hero.previewLoading': 'Vorschau wird geladen…',
+    'hero.previewUnavailable': 'Vorschau nicht verfügbar. Öffne die Website zur Prüfung.',
+    'hero.openSite': 'Website öffnen',
+    'hero.previewAlt': 'Vorschau von {host}'
+  });
+
 })();
