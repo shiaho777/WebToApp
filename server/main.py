@@ -1486,10 +1486,27 @@ async def delete_history_item(app_id: str, request: Request):
 HISTORY_BULK_DELETE_MAX = 500
 
 
+MARKET_PAGE_MAX = 60
+
+
 @app.get("/api/market")
-def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort: str = "newest"):
+def market_listing(
+    tag: Optional[str] = None,
+    search: Optional[str] = None,
+    sort: str = "newest",
+    limit: int = MARKET_PAGE_MAX,
+    offset: int = 0,
+):
     if sort not in ("downloads", "visits", "newest", "rating"):
         sort = "newest"
+    try:
+        page_limit = max(1, min(int(limit), MARKET_PAGE_MAX))
+    except (TypeError, ValueError):
+        page_limit = MARKET_PAGE_MAX
+    try:
+        page_offset = max(0, int(offset))
+    except (TypeError, ValueError):
+        page_offset = 0
     # Pull the full public set first; creator/rating decoration and the
     # search filter (which also matches creator name / numeric id) run after.
     items = history_store.list_public_apps(tag=tag, sort=sort, limit=1000, apps_dir=APPS_DIR)
@@ -1530,9 +1547,16 @@ def market_listing(tag: Optional[str] = None, search: Optional[str] = None, sort
             it.get("created_at") or "",
         ), reverse=True)
     total = len(items)
-    items = items[:60]
-    _decorate_icon_reviews(items)
-    return {"items": items, "sort": sort, "total": total}
+    page = items[page_offset:page_offset + page_limit]
+    _decorate_icon_reviews(page)
+    return {
+        "items": page,
+        "sort": sort,
+        "total": total,
+        "offset": page_offset,
+        "limit": page_limit,
+        "has_more": page_offset + len(page) < total,
+    }
 
 
 # --- Community: profiles, creator attribution, comments + ratings ---

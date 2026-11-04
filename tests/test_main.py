@@ -241,6 +241,26 @@ class MarketAndVisibilityTests(unittest.TestCase):
         ids = [item["app_id"] for item in resp.json()["items"]]
         self.assertEqual(ids, ["findme"])
 
+    def test_market_paginates_with_limit_and_offset(self):
+        for i in range(5):
+            self._build(f"page{i}", "public", ["tools"])
+        first = self.client.get("/api/market", params={"limit": 2, "offset": 0}).json()
+        self.assertEqual(len(first["items"]), 2)
+        self.assertEqual(first["total"], 5)
+        self.assertEqual(first["limit"], 2)
+        self.assertEqual(first["offset"], 0)
+        self.assertTrue(first["has_more"])
+        second = self.client.get("/api/market", params={"limit": 2, "offset": 4}).json()
+        self.assertEqual(len(second["items"]), 1)
+        self.assertFalse(second["has_more"])
+        ids = {item["app_id"] for item in first["items"] + second["items"]}
+        self.assertEqual(len(ids), 3)
+        # Page size is capped and offsets cannot go negative.
+        capped = self.client.get("/api/market", params={"limit": 999, "offset": -4}).json()
+        self.assertEqual(capped["limit"], 60)
+        self.assertEqual(capped["offset"], 0)
+        self.assertFalse(capped["has_more"])
+
     def test_market_never_leaks_edit_token(self):
         self._build("pubtok", "public", ["tools"])
         item = self.client.get("/api/market").json()["items"][0]

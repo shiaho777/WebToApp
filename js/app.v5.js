@@ -385,6 +385,103 @@
     htmlInputWrap.classList.toggle('hidden', inputMode !== 'html');
   }
 
+  // --- Hero live preview ---
+  // Shows what the generated app looks like (icon, name, host) as the user
+  // types. Purely presentational: the favicon lookup is debounced and falls
+  // back to a monogram when it fails.
+  const stageTabs = Array.from(document.querySelectorAll('[data-stage-tab]'));
+  const heroStage = document.getElementById('hero-stage');
+  const stageAppIcon = document.getElementById('stage-app-icon');
+  const stageAppImg = document.getElementById('stage-app-img');
+  const stageAppLetter = document.getElementById('stage-app-letter');
+  const stageAppName = document.getElementById('stage-app-name');
+  const stageAppHost = document.getElementById('stage-app-host');
+  const PREVIEW_DEFAULT = {
+    name: 'WebToApp',
+    host: (window.location.hostname || '').replace(/^www\./, '') || 'shiaho.sbs',
+  };
+  let previewTimer = null;
+  let previewHost = '';
+
+  function setStageTab(stage, focusTab) {
+    const target = stage === 'desktop' ? 'desktop' : 'phone';
+    stageTabs.forEach((tab) => {
+      const active = tab.dataset.stageTab === target;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.tabIndex = active ? 0 : -1;
+      if (active && focusTab) tab.focus();
+    });
+    if (heroStage) heroStage.dataset.stage = target;
+  }
+
+  stageTabs.forEach((tab) => {
+    tab.addEventListener('click', () => setStageTab(tab.dataset.stageTab, false));
+    tab.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      event.preventDefault();
+      const dir = event.key === 'ArrowRight' ? 1 : -1;
+      const rtl = document.documentElement.dir === 'rtl';
+      const next = stageTabs[(stageTabs.indexOf(tab) + (rtl ? -dir : dir) + stageTabs.length) % stageTabs.length];
+      if (next) setStageTab(next.dataset.stageTab, true);
+    });
+  });
+
+  function previewHostOf(raw) {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    try {
+      const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+      const host = url.hostname.toLowerCase().replace(/^www\./, '');
+      return host.includes('.') ? host : '';
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function previewNameOf(host) {
+    if (!host) return '';
+    const label = host.split('.')[0] || host;
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  function renderStagePreview() {
+    const host = previewHostOf(urlInput.value);
+    const name = previewNameOf(host);
+    if (stageAppName) stageAppName.textContent = name || PREVIEW_DEFAULT.name;
+    if (stageAppHost) stageAppHost.textContent = host || PREVIEW_DEFAULT.host;
+    if (stageAppLetter) stageAppLetter.textContent = (name || PREVIEW_DEFAULT.name).charAt(0).toUpperCase();
+    if (!stageAppImg) return;
+    if (!host) {
+      previewHost = '';
+      stageAppImg.classList.add('hidden');
+      stageAppImg.removeAttribute('src');
+      if (stageAppIcon) stageAppIcon.classList.remove('has-image');
+      return;
+    }
+    if (host === previewHost) return;
+    previewHost = host;
+    if (stageAppIcon) stageAppIcon.classList.remove('has-image');
+    stageAppImg.classList.add('hidden');
+    stageAppImg.removeAttribute('src');
+    stageAppImg.onload = () => {
+      stageAppImg.classList.remove('hidden');
+      if (stageAppIcon) stageAppIcon.classList.add('has-image');
+    };
+    stageAppImg.onerror = () => {
+      stageAppImg.classList.add('hidden');
+      if (stageAppIcon) stageAppIcon.classList.remove('has-image');
+    };
+    stageAppImg.referrerPolicy = 'no-referrer';
+    stageAppImg.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+  }
+
+  urlInput.addEventListener('input', () => {
+    window.clearTimeout(previewTimer);
+    previewTimer = window.setTimeout(renderStagePreview, 450);
+  });
+  renderStagePreview();
+
   // --- Platform tabs (per-platform settings) ---
   // Only Android currently exposes extra knobs (they drive the real APK
   // build); the other panels document their fixed shells + shared-settings
@@ -543,91 +640,135 @@
     input.setAttribute('value', text);
   }
 
+  let historyQuery = '';
+  let historySort = 'newest';
+
+  function historyHostOf(item) {
+    const raw = item.target_url || (item.recipe && item.recipe.url) || '';
+    try {
+      return new URL(raw).hostname.replace(/^www\./, '');
+    } catch (_err) {
+      return String(raw || '');
+    }
+  }
+
+  function visibleHistoryItems() {
+    const q = historyQuery.trim().toLowerCase();
+    let list = lastHistoryItems.slice();
+    if (q) {
+      list = list.filter((item) => {
+        const haystack = `${item.name || ''} ${item.target_url || ''} ${(item.tags || []).join(' ')}`.toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+    if (historySort === 'visits') {
+      list.sort((a, b) => Number(b.visit_count || 0) - Number(a.visit_count || 0));
+    } else if (historySort === 'downloads') {
+      list.sort((a, b) => Number(b.download_count || 0) - Number(a.download_count || 0));
+    } else {
+      list.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    }
+    return list;
+  }
+
   function renderHistory(items) {
-    const list = Array.isArray(items) ? items : [];
-    lastHistoryItems = list;
+    lastHistoryItems = Array.isArray(items) ? items : [];
+    const filtered = visibleHistoryItems();
     historyList.innerHTML = '';
-    historyEmpty.classList.toggle('hidden', list.length > 0);
+    historyEmpty.classList.toggle('hidden', filtered.length > 0);
+    const emptyText = historyEmpty.querySelector('p');
+    if (emptyText) {
+      const key = lastHistoryItems.length && !filtered.length ? 'history.noMatches' : 'history.empty';
+      emptyText.setAttribute('data-i18n', key);
+      emptyText.textContent = t(key);
+    }
     historyList.classList.toggle('selecting', historySelectMode);
     updateHistorySelectBar();
-    updateHistoryToggle(list.length);
-    if (!list.length) return;
+    updateHistoryToggle(filtered.length);
+    if (!filtered.length) return;
 
     // Collapsed by default to keep the page short; selection mode always
     // renders everything so bulk clean-up can reach every entry.
-    const visibleList = (historySelectMode || historyExpanded) ? list : list.slice(0, HISTORY_PREVIEW_COUNT);
+    const visibleList = (historySelectMode || historyExpanded || historyQuery.trim())
+      ? filtered
+      : filtered.slice(0, HISTORY_PREVIEW_COUNT);
     const fragment = document.createDocumentFragment();
     visibleList.forEach((item) => {
-      const card = document.createElement('article');
-      const publicPath = getAbsoluteUrl(item.public_path || `/a/${item.app_id}`);
-      const targetUrl = item.target_url || '';
+      const row = document.createElement('article');
+      const appId = item.app_id || '';
+      const publicPath = getAbsoluteUrl(item.public_path || `/a/${appId}`);
+      const host = historyHostOf(item);
       const breakdown = item.visit_breakdown || {};
       const downloadBreakdown = item.download_breakdown || {};
-      const downloadSummary = Object.entries(downloadBreakdown)
-        .map(([platform, count]) => `${platform} ${Number(count || 0).toLocaleString(locale())}`)
-        .join(' · ') || t('history.none');
+      const platformChips = Object.entries(downloadBreakdown)
+        .filter(([, count]) => Number(count || 0) > 0)
+        .map(([platform, count]) => `<span class="detail-chip">${escapeHtml(platform)} ${Number(count).toLocaleString(locale())}</span>`)
+        .join('');
       const iconHtml = item.icon_url
-        ? `<img class="history-icon" src="${escapeHtml(item.icon_url)}" alt="${escapeHtml(item.name || item.app_id)}" loading="lazy" decoding="async">`
-        : `<div class="history-icon" aria-hidden="true"></div>`;
+        ? `<img src="${escapeHtml(item.icon_url)}" alt="" loading="lazy" decoding="async">`
+        : `<span class="app-row-letter" aria-hidden="true">${escapeHtml((item.name || appId || '?').charAt(0).toUpperCase())}</span>`;
       const isHtmlApp = !!(item.recipe && item.recipe.source_type === 'html');
-      const htmlBadge = isHtmlApp
-        ? `<span class="history-badge-html">${escapeHtml(t('history.badgeHtml'))}</span>`
-        : '';
       const isPublic = item.visibility === 'public';
-      const visibilityBtnLabel = isPublic ? t('history.visibilityPublic') : t('history.visibilityPrivate');
-      const visibilityBtn = `<button class="history-visibility${isPublic ? ' is-public' : ''}" type="button" data-visibility-toggle="${escapeHtml(item.app_id || '')}" title="${escapeHtml(t('history.visibilityHint'))}">${escapeHtml(visibilityBtnLabel)}</button>`;
-      card.className = 'history-card';
-      card.classList.toggle('selected', historySelected.has(item.app_id || ''));
-      card._historyItem = item;
-      card.innerHTML = `
-        <div class="history-main">
-          <div class="history-name-row">
-            <label class="history-check"><input type="checkbox" data-select="${escapeHtml(item.app_id || '')}" ${historySelected.has(item.app_id || '') ? 'checked' : ''}></label>
-            ${iconHtml}
-            <div class="history-name-block">
-              <div class="history-name">${escapeHtml(item.name || item.app_id)}${htmlBadge}</div>
-              <div class="history-link">${escapeHtml(publicPath)}</div>
-              ${item.icon_review_deadline ? `<p class="history-icon-review">${escapeHtml(t('history.iconReview', { deadline: formatDeadline(item.icon_review_deadline) }))}</p>` : ''}
-            </div>
+      const visibilityAction = isPublic ? t('history.makePrivate') : t('history.makePublic');
+      row.className = 'app-row';
+      row.classList.toggle('selected', historySelected.has(appId));
+      row.classList.toggle('is-public', isPublic);
+      row.dataset.appId = appId;
+      row._historyItem = item;
+      row.innerHTML = `
+        <label class="app-row-check">
+          <input type="checkbox" data-select="${escapeHtml(appId)}" ${historySelected.has(appId) ? 'checked' : ''}>
+        </label>
+        <div class="app-row-icon">${iconHtml}</div>
+        <div class="app-row-main" data-expand tabindex="0" role="button" aria-expanded="false">
+          <div class="app-row-title">
+            <span class="app-row-name">${escapeHtml(item.name || appId)}</span>
+            <span class="pill ${isPublic ? 'pill-public' : 'pill-private'}">${escapeHtml(isPublic ? t('history.visibilityPublic') : t('history.visibilityPrivate'))}</span>
+            ${isHtmlApp ? `<span class="pill">${escapeHtml(t('history.badgeHtml'))}</span>` : ''}
           </div>
-          <div class="history-meta">
-            <span class="history-meta-chip">${escapeHtml(t('history.visits', { n: Number(item.visit_count || 0).toLocaleString(locale()) }))}</span>
-            <span class="history-meta-chip">${escapeHtml(t('history.downloads', { n: Number(item.download_count || 0).toLocaleString(locale()) }))}</span>
-            <span class="history-meta-chip">${escapeHtml(t('history.updatedAt', { time: formatHistoryTime(item.updated_at) }))}</span>
-            <span class="history-meta-chip">${escapeHtml(t('history.target', { url: targetUrl }))}</span>
+          <div class="app-row-sub">
+            ${host ? `<span class="app-row-host">${escapeHtml(host)}</span><span aria-hidden="true">·</span>` : ''}
+            <span>${escapeHtml(relTime(item.updated_at))}</span>
           </div>
-          <div class="history-breakdown">
-            <div class="history-breakdown-row">
-              <span>${escapeHtml(t('history.rowLanding'))}</span>
-              <strong>${Number(breakdown.landing || 0).toLocaleString(locale())}</strong>
-            </div>
-            <div class="history-breakdown-row">
-              <span>${escapeHtml(t('history.rowInstall'))}</span>
-              <strong>${Number(breakdown.install || 0).toLocaleString(locale())}</strong>
-            </div>
-            <div class="history-breakdown-row">
-              <span>${escapeHtml(t('history.rowPwa'))}</span>
-              <strong>${Number(breakdown.pwa || 0).toLocaleString(locale())}</strong>
-            </div>
-            <div class="history-breakdown-row">
-              <span>${escapeHtml(t('history.rowLaunch'))}</span>
-              <strong>${Number(breakdown.launch || 0).toLocaleString(locale())}</strong>
-            </div>
-            <div class="history-breakdown-row history-breakdown-row-wide">
-              <span>${escapeHtml(t('history.rowPlatform'))}</span>
-              <strong>${escapeHtml(downloadSummary)}</strong>
-            </div>
+          ${item.icon_review_deadline ? `<p class="app-row-warn">${escapeHtml(t('history.iconReview', { deadline: formatDeadline(item.icon_review_deadline) }))}</p>` : ''}
+        </div>
+        <div class="app-row-metrics">
+          <span class="metric" title="${escapeHtml(t('history.visitsLabel'))}">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.6"/></svg>
+            ${Number(item.visit_count || 0).toLocaleString(locale())}
+          </span>
+          <span class="metric" title="${escapeHtml(t('history.downloadsLabel'))}">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg>
+            ${Number(item.download_count || 0).toLocaleString(locale())}
+          </span>
+        </div>
+        <div class="app-row-actions">
+          <button class="app-row-open" type="button" data-open="${escapeHtml(publicPath)}">${escapeHtml(t('market.open'))}</button>
+          <button class="icon-btn app-row-menu-btn" type="button" data-row-menu aria-haspopup="menu" aria-expanded="false" aria-label="${escapeHtml(t('history.more'))}">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+          </button>
+          <div class="row-menu hidden" role="menu">
+            <button type="button" role="menuitem" data-copy="${escapeHtml(publicPath)}">${escapeHtml(t('history.copyLink'))}</button>
+            <button type="button" role="menuitem" data-edit="${escapeHtml(appId)}">${escapeHtml(t('history.editForm'))}</button>
+            <button type="button" role="menuitem" data-regenerate="${escapeHtml(appId)}">${escapeHtml(t('history.regenerate'))}</button>
+            <button type="button" role="menuitem" data-visibility-toggle="${escapeHtml(appId)}">${escapeHtml(visibilityAction)}</button>
+            <button type="button" role="menuitem" class="danger" data-delete="${escapeHtml(appId)}">${escapeHtml(t('history.delete'))}</button>
           </div>
         </div>
-        <div class="history-actions">
-          ${visibilityBtn}
-          <button class="history-action primary" type="button" data-open="${escapeHtml(publicPath)}">${escapeHtml(t('history.openPage'))}</button>
-          <button class="history-action" type="button" data-regenerate="${escapeHtml(item.app_id || '')}">${escapeHtml(t('history.regenerate'))}</button>
-          <button class="history-action" type="button" data-edit="${escapeHtml(item.app_id || '')}">${escapeHtml(t('history.editForm'))}</button>
-          <button class="history-action" type="button" data-copy="${escapeHtml(publicPath)}">${escapeHtml(t('history.copyLink'))}</button>
+        <div class="app-row-detail" hidden>
+          <div class="detail-grid">
+            <div class="detail-item"><span>${escapeHtml(t('history.rowLanding'))}</span><strong>${Number(breakdown.landing || 0).toLocaleString(locale())}</strong></div>
+            <div class="detail-item"><span>${escapeHtml(t('history.rowInstall'))}</span><strong>${Number(breakdown.install || 0).toLocaleString(locale())}</strong></div>
+            <div class="detail-item"><span>${escapeHtml(t('history.rowPwa'))}</span><strong>${Number(breakdown.pwa || 0).toLocaleString(locale())}</strong></div>
+            <div class="detail-item"><span>${escapeHtml(t('history.rowLaunch'))}</span><strong>${Number(breakdown.launch || 0).toLocaleString(locale())}</strong></div>
+          </div>
+          <div class="detail-platforms">
+            <span class="detail-label">${escapeHtml(t('history.rowPlatform'))}</span>
+            ${platformChips || `<span class="detail-chip muted">${escapeHtml(t('history.none'))}</span>`}
+          </div>
         </div>
       `;
-      fragment.appendChild(card);
+      fragment.appendChild(row);
     });
     historyList.appendChild(fragment);
   }
@@ -655,56 +796,76 @@
   const marketRetryBtn = document.getElementById('market-retry');
 
   let lastMarketItems = [];
+  let marketHasMore = false;
+  const marketLoadMoreBtn = document.getElementById('market-load-more');
 
-  function renderMarket(items) {
+  function marketHostOf(item) {
+    try {
+      return new URL(item.target_url || '').hostname.replace(/^www\./, '');
+    } catch (_err) {
+      return String(item.target_url || '');
+    }
+  }
+
+  function renderMarket(items, append) {
     const list = Array.isArray(items) ? items : [];
-    lastMarketItems = list;
-    marketList.innerHTML = '';
-    marketEmpty.classList.toggle('hidden', list.length > 0);
+    lastMarketItems = append ? lastMarketItems.concat(list) : list;
+    if (!append) marketList.innerHTML = '';
+    marketEmpty.classList.toggle('hidden', lastMarketItems.length > 0);
+    const emptyText = marketEmpty.querySelector('p');
+    if (emptyText) {
+      const activeTag = document.querySelector('.market-tab.active');
+      const filtering = !!marketSearchInput.value.trim() || !!(activeTag && activeTag.dataset.marketTag);
+      const key = !lastMarketItems.length && filtering ? 'market.noMatches' : 'market.empty';
+      emptyText.setAttribute('data-i18n', key);
+      emptyText.textContent = t(key);
+    }
     const fragment = document.createDocumentFragment();
     list.forEach((item) => {
       const publicPath = getAbsoluteUrl(item.public_path || `/a/${item.app_id}`);
-      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 5) : [];
+      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
       const tagChips = tags.map((tag) => `<span class="market-tag">${escapeHtml(tag)}</span>`).join('');
       const iconHtml = item.icon_url
-        ? `<img class="market-card-icon" src="${escapeHtml(item.icon_url)}" alt="" loading="lazy">`
-        : `<div class="market-card-icon" aria-hidden="true"></div>`;
+        ? `<img src="${escapeHtml(item.icon_url)}" alt="" loading="lazy" decoding="async">`
+        : `<span class="market-card-letter" aria-hidden="true">${escapeHtml((item.name || item.app_id || '?').charAt(0).toUpperCase())}</span>`;
       const creatorAvatar = item.creator_avatar_url
         ? `<img class="market-creator-avatar" src="${escapeHtml(item.creator_avatar_url)}" alt="" loading="lazy">`
         : `<span class="market-creator-avatar avatar-fallback" aria-hidden="true">${escapeHtml((item.creator_name || '#').charAt(0).toUpperCase())}</span>`;
       const creatorHtml = item.creator_num
         ? `<a class="market-creator" href="/?u=${encodeURIComponent(item.creator_num)}" data-user-num="${encodeURIComponent(item.creator_num)}">
-             ${creatorAvatar}<span class="market-creator-name">${escapeHtml(item.creator_name || t('profile.anon'))}</span><span class="market-creator-num">#${item.creator_num}</span>
+             ${creatorAvatar}<span class="market-creator-name">${escapeHtml(item.creator_name || t('profile.anon'))}</span>
            </a>`
         : '';
-      const createdStr = relTime(item.created_at);
       const ratingHtml = item.rating_count
-        ? `<span class="market-rating"><span class="market-star">★</span> ${Number(item.rating_avg).toFixed(1)}<span class="market-rating-cnt">(${item.rating_count})</span></span>`
-        : `<span class="market-rating"><span class="market-star market-star-off">★</span><span class="market-rating-cnt">${escapeHtml(t('market.noRatings'))}</span></span>`;
+        ? `<span class="market-card-rating"><span class="market-star">★</span>${Number(item.rating_avg).toFixed(1)}<span class="market-rating-cnt">(${Number(item.rating_count).toLocaleString(locale())})</span></span>`
+        : `<span class="market-card-rating is-empty"><span class="market-star market-star-off">★</span><span class="market-rating-cnt">${escapeHtml(t('market.noRatings'))}</span></span>`;
       const card = document.createElement('article');
       card.className = 'market-card';
       card.innerHTML = `
-        <div class="market-card-top">
-          ${iconHtml}
-          <div style="min-width:0">
-            <div class="market-card-name">${escapeHtml(item.name || item.app_id)}</div>
-            <div class="market-card-url">${escapeHtml(item.target_url || '')}</div>
-            ${item.icon_review_deadline ? `<span class="market-icon-review">${escapeHtml(t('market.iconReview'))}</span>` : ''}
+        <div class="market-card-head">
+          <div class="market-card-icon">${iconHtml}</div>
+          <div class="market-card-heading">
+            <h3 class="market-card-name">${escapeHtml(item.name || item.app_id)}</h3>
+            <p class="market-card-host">${escapeHtml(marketHostOf(item))}</p>
           </div>
-        </div>
-        ${creatorHtml ? `<div class="market-card-creator">${creatorHtml}${createdStr ? `<span class="market-card-date">${escapeHtml(createdStr)}</span>` : ''}</div>` : (createdStr ? `<div class="market-card-creator"><span class="market-card-date">${escapeHtml(createdStr)}</span></div>` : '')}
-        ${tagChips ? `<div class="market-card-tags">${tagChips}</div>` : ''}
-        ${item.description ? `<div class="market-card-desc">${escapeHtml(item.description)}</div>` : ''}
-        <div class="market-card-meta">
-          <span>${escapeHtml(t('market.visits', { n: Number(item.visit_count || 0).toLocaleString(locale()) }))}</span>
-          <span>${escapeHtml(t('market.downloads', { n: Number(item.download_count || 0).toLocaleString(locale()) }))}</span>
           ${ratingHtml}
+        </div>
+        ${item.description ? `<p class="market-card-desc">${escapeHtml(item.description)}</p>` : ''}
+        ${tagChips ? `<div class="market-card-tags">${tagChips}</div>` : ''}
+        ${item.icon_review_deadline ? `<span class="market-icon-review">${escapeHtml(t('market.iconReview'))}</span>` : ''}
+        <div class="market-card-foot">
+          ${creatorHtml || `<span class="market-card-anon">${escapeHtml(t('profile.anon'))}</span>`}
+          <span class="market-card-downloads">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg>
+            ${Number(item.download_count || 0).toLocaleString(locale())}
+          </span>
         </div>
         <button class="market-card-open" type="button" data-open="${escapeHtml(publicPath)}">${escapeHtml(t('market.open'))}</button>
       `;
       fragment.appendChild(card);
     });
     marketList.appendChild(fragment);
+    if (marketLoadMoreBtn) marketLoadMoreBtn.classList.toggle('hidden', !marketHasMore);
   }
 
   function formatDeadline(iso) {
@@ -737,13 +898,18 @@
     return t('time.yearsAgo', { n: Math.floor(mo / 12) });
   }
 
-  async function loadMarket() {
+  const MARKET_PAGE_SIZE = 24;
+
+  async function loadMarket(options = {}) {
+    const append = options.append === true;
     const activeTab = document.querySelector('.market-tab.active');
     const tag = activeTab ? activeTab.dataset.marketTag : '';
     const params = new URLSearchParams();
     if (tag) params.set('tag', tag);
     if (marketSearchInput.value.trim()) params.set('search', marketSearchInput.value.trim());
     params.set('sort', marketSortSelect.value || 'newest');
+    params.set('limit', String(MARKET_PAGE_SIZE));
+    params.set('offset', String(append ? lastMarketItems.length : 0));
     // Only the newest request may paint: a slow response for an older query
     // must not overwrite results the user has already moved past.
     const seq = ++marketRequestSeq;
@@ -751,25 +917,33 @@
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     marketAbort = controller;
     marketList.setAttribute('aria-busy', 'true');
+    if (marketLoadMoreBtn) marketLoadMoreBtn.disabled = true;
     try {
       const res = await fetch(`/api/market?${params.toString()}`, controller ? { signal: controller.signal } : undefined);
       if (!res.ok) throw new Error('market failed');
       const data = await res.json();
       if (seq !== marketRequestSeq) return;
       const items = data.items || [];
+      marketHasMore = data.has_more === true;
       marketCount.textContent = t('market.count', { n: data.total != null ? data.total : items.length });
       marketError.classList.add('hidden');
-      renderMarket(items);
+      renderMarket(items, append);
     } catch (err) {
       if (seq !== marketRequestSeq || (err && err.name === 'AbortError')) return;
-      marketCount.textContent = '';
-      renderMarket([]);
-      marketEmpty.classList.add('hidden');
-      marketError.classList.remove('hidden');
+      if (append && lastMarketItems.length) {
+        notify(t('market.loadFailed'), 'error');
+      } else {
+        marketCount.textContent = '';
+        marketHasMore = false;
+        renderMarket([]);
+        marketEmpty.classList.add('hidden');
+        marketError.classList.remove('hidden');
+      }
     } finally {
       if (seq === marketRequestSeq) {
         marketList.removeAttribute('aria-busy');
         marketAbort = null;
+        if (marketLoadMoreBtn) marketLoadMoreBtn.disabled = false;
       }
     }
   }
@@ -805,11 +979,12 @@
 
   marketSearchInput.addEventListener('input', () => {
     if (marketSearchTimer) clearTimeout(marketSearchTimer);
-    marketSearchTimer = setTimeout(loadMarket, 250);
+    marketSearchTimer = setTimeout(() => loadMarket(), 250);
   });
 
-  marketSortSelect.addEventListener('change', loadMarket);
-  if (marketRetryBtn) marketRetryBtn.addEventListener('click', loadMarket);
+  marketSortSelect.addEventListener('change', () => loadMarket());
+  if (marketRetryBtn) marketRetryBtn.addEventListener('click', () => loadMarket());
+  if (marketLoadMoreBtn) marketLoadMoreBtn.addEventListener('click', () => loadMarket({ append: true }));
 
   async function recoverHistoryFromPageContext() {
     const candidates = new Set();
@@ -2170,9 +2345,18 @@
     window.open(href, '_blank', 'noopener,noreferrer');
   });
 
+  function closeRowMenus(except) {
+    historyList.querySelectorAll('.row-menu').forEach((menu) => {
+      if (menu === except) return;
+      menu.classList.add('hidden');
+      const btn = menu.parentElement.querySelector('[data-row-menu]');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
   historyList.addEventListener('click', async (event) => {
-    const card = event.target.closest('.history-card');
-    const item = card && card._historyItem;
+    const row = event.target.closest('.app-row');
+    const item = row && row._historyItem;
     if (historySelectMode) {
       const id = (item && item.app_id) || '';
       if (!id) return;
@@ -2187,8 +2371,62 @@
       renderHistory(lastHistoryItems);
       return;
     }
-    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate], [data-visibility-toggle]');
-    if (!target) return;
+
+    const menuBtn = event.target.closest('[data-row-menu]');
+    if (menuBtn && row) {
+      const menu = row.querySelector('.row-menu');
+      const willOpen = menu.classList.contains('hidden');
+      closeRowMenus(willOpen ? menu : null);
+      menu.classList.toggle('hidden', !willOpen);
+      menu.classList.remove('is-up');
+      if (willOpen && menu.getBoundingClientRect().bottom > window.innerHeight - 8) {
+        menu.classList.add('is-up');
+      }
+      menuBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      return;
+    }
+
+    const expandEl = event.target.closest('[data-expand]');
+    if (expandEl && row) {
+      const detail = row.querySelector('.app-row-detail');
+      const willOpen = detail.hasAttribute('hidden');
+      detail.toggleAttribute('hidden', !willOpen);
+      row.classList.toggle('is-expanded', willOpen);
+      expandEl.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      return;
+    }
+
+    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate], [data-visibility-toggle], [data-delete]');
+    if (!target) {
+      closeRowMenus();
+      return;
+    }
+    closeRowMenus();
+
+    if (target.dataset.delete) {
+      const appId = target.dataset.delete;
+      const name = (item && (item.name || item.app_id)) || appId;
+      if (!(await ask(t('history.confirmDelete', { name }), { danger: true }))) return;
+      try {
+        target.disabled = true;
+        const res = await fetch(`/api/history/${encodeURIComponent(appId)}`, {
+          method: 'DELETE',
+          headers: { 'X-Device-Fingerprint': deviceFingerprint },
+        });
+        if (!res.ok) throw new Error('delete failed');
+        const data = await res.json();
+        delete editTokens[appId];
+        saveEditTokens();
+        renderHistory((data.history && data.history.items) || []);
+        loadMarket();
+        notify(t('history.deleted'), 'success');
+      } catch (_err) {
+        notify(t('err.removeRetry'), 'error');
+      } finally {
+        target.disabled = false;
+      }
+      return;
+    }
     if (target.dataset.visibilityToggle) {
       const appId = target.dataset.visibilityToggle;
       const current = item && item.visibility === 'public' ? 'public' : 'private';
@@ -2262,15 +2500,73 @@
     }
   });
 
+  historyList.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const expandEl = event.target.closest('[data-expand]');
+    if (!expandEl) return;
+    event.preventDefault();
+    expandEl.click();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('.row-menu') || event.target.closest('[data-row-menu]')) return;
+    closeRowMenus();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    closeRowMenus();
+    if (historyMorePanel && !historyMorePanel.classList.contains('hidden')) {
+      historyMorePanel.classList.add('hidden');
+      historyMoreBtn.setAttribute('aria-expanded', 'false');
+      historyMoreBtn.focus();
+    }
+  });
+
+  const historySearchInput = document.getElementById('history-search');
+  const historySortSelect = document.getElementById('history-sort');
+  const historyMoreBtn = document.getElementById('history-more-btn');
+  const historyMorePanel = document.getElementById('history-more-panel');
+
+  if (historySearchInput) {
+    historySearchInput.addEventListener('input', () => {
+      historyQuery = historySearchInput.value;
+      renderHistory(lastHistoryItems);
+    });
+  }
+  if (historySortSelect) {
+    historySortSelect.addEventListener('change', () => {
+      historySort = historySortSelect.value || 'newest';
+      renderHistory(lastHistoryItems);
+    });
+  }
+  if (historyMoreBtn && historyMorePanel) {
+    historyMoreBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const willOpen = historyMorePanel.classList.contains('hidden');
+      historyMorePanel.classList.toggle('hidden', !willOpen);
+      historyMoreBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+    document.addEventListener('click', (event) => {
+      if (historyMorePanel.classList.contains('hidden')) return;
+      if (historyMorePanel.contains(event.target) || historyMoreBtn.contains(event.target)) return;
+      historyMorePanel.classList.add('hidden');
+      historyMoreBtn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
   function updateHistorySelectBar() {
-    const total = lastHistoryItems.length;
+    const visible = visibleHistoryItems();
     historySelectCount.textContent = t('history.selectedCount', { n: String(historySelected.size) });
     historyDeleteSelectedBtn.disabled = historySelected.size === 0;
-    historySelectAll.checked = total > 0 && historySelected.size === total;
+    historySelectAll.checked = visible.length > 0
+      && visible.every((entry) => historySelected.has(entry.app_id || ''));
+    historySelectAll.indeterminate = historySelected.size > 0 && !historySelectAll.checked;
   }
 
   function updateHistoryToggle(total) {
-    const show = total > HISTORY_PREVIEW_COUNT && !historySelectMode;
+    // While searching every match is rendered, so "show all" would lie.
+    const show = total > HISTORY_PREVIEW_COUNT && !historySelectMode && !historyQuery.trim();
     historyToggleBtn.classList.toggle('hidden', !show);
     historyToggleBtn.textContent = historyExpanded
       ? t('history.showLess')
@@ -2289,6 +2585,13 @@
     historyManageBtn.classList.toggle('hidden', on);
     historyExportBtn.classList.toggle('hidden', on);
     historyImportBtn.classList.toggle('hidden', on);
+    if (historyMoreBtn) {
+      historyMoreBtn.classList.toggle('hidden', on);
+      if (on && historyMorePanel) {
+        historyMorePanel.classList.add('hidden');
+        historyMoreBtn.setAttribute('aria-expanded', 'false');
+      }
+    }
     renderHistory(lastHistoryItems);
   }
 
@@ -2296,9 +2599,10 @@
   historyCancelSelectBtn.addEventListener('click', () => setHistorySelectMode(false));
 
   historySelectAll.addEventListener('change', () => {
+    const visible = visibleHistoryItems();
     historySelected.clear();
     if (historySelectAll.checked) {
-      lastHistoryItems.forEach((entry) => historySelected.add(entry.app_id || ''));
+      visible.forEach((entry) => historySelected.add(entry.app_id || ''));
     }
     renderHistory(lastHistoryItems);
   });
@@ -2317,6 +2621,7 @@
       if (!res.ok) throw new Error('bulk delete failed');
       setHistorySelectMode(false);
       await loadHistory();
+      loadMarket();
     } catch (_err) {
       notify(t('err.removeRetry'), 'error');
     } finally {
