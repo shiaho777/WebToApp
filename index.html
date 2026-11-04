@@ -18,9 +18,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261104-brand2">
+  <link rel="stylesheet" href="css/style.css?v=20261104-home2">
   <script src="js/i18n.js?v=20261013-ads1"></script>
-  <script src="js/i18n.strings.js?v=20261104-build1"></script>
+  <script src="js/i18n.strings.js?v=20261104-home2"></script>
 </head>
 <body>
   <header id="nav">
@@ -97,49 +97,91 @@
         <div class="hero-copy" data-reveal>
           <p class="hero-kicker" data-i18n="hero.kicker">WEBTOAPP / WEBSITE TO APP</p>
           <h1><span data-i18n="hero.titleLine1">Turn websites</span><br><span data-i18n="hero.titleLine2">into apps.</span></h1>
-          <p class="subtitle" data-i18n="hero.subtitle">Enter a link. Seconds later it can be installed, shared and used like an app. From iPhone to desktop, it is the same generated result.</p>
-          <div class="hero-platforms">
-            <span class="hero-platforms-label" data-i18n="platforms.title">One build, five apps</span>
-            <ul class="hero-platform-list">
-              <li>Android</li>
-              <li>iOS</li>
-              <li>macOS</li>
-              <li>Windows</li>
-              <li>Linux</li>
-            </ul>
+          <p class="subtitle" data-i18n="hero.subtitle">Paste a link. Get an installable app for iPhone, Android, Windows, macOS and Linux.</p>
+
+          <div class="hero-form">
+            <div class="source-mode" role="group" aria-label="Source type">
+              <button id="mode-url-btn" class="mode-btn active" type="button" data-i18n="mode.url">Website URL</button>
+              <button id="mode-html-btn" class="mode-btn" type="button" data-i18n="mode.html">HTML file</button>
+            </div>
+
+            <div class="url-input-wrap" id="url-input-wrap">
+              <input id="url-input" type="url" data-i18n-placeholder="hero.urlPlaceholder" placeholder="Enter a website link" autocomplete="off" spellcheck="false">
+              <button id="distill-btn" type="button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                <span data-i18n="hero.startBtn">Get started</span>
+              </button>
+            </div>
+
+            <div class="html-input-wrap hidden" id="html-input-wrap">
+              <input id="html-file-input" class="sr-only" type="file" accept=".html,.htm,.zip">
+              <label for="html-file-input" class="html-dropzone" id="html-dropzone">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="html-dropzone-label" id="html-file-label" data-i18n="mode.htmlPick">Choose .html or .zip file</span>
+                <small class="html-dropzone-hint" id="html-file-hint" data-i18n="mode.htmlHint">A single HTML file, or a zip containing index.html</small>
+              </label>
+            </div>
           </div>
+
+          <ul class="hero-points">
+            <li>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span data-i18n="hero.pointFree">Free, open source, no sign-up</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5"/><path d="M6 20h8"/><path d="M10 14v6"/><rect x="17" y="9" width="5" height="10" rx="1"/></svg>
+              <span data-i18n="hero.pointPlatforms">Five installers from one build</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
+              <span data-i18n="hero.pointSize">Kilobyte-sized packages</span>
+            </li>
+          </ul>
         </div>
-        <div class="hero-side" data-reveal>
-          <div class="badge" data-i18n="hero.badge">Open source · Free · No sign-up</div>
 
-          <div class="source-mode" role="group" aria-label="Source type">
-            <button id="mode-url-btn" class="mode-btn active" type="button" data-i18n="mode.url">Website URL</button>
-            <button id="mode-html-btn" class="mode-btn" type="button" data-i18n="mode.html">HTML file</button>
-          </div>
-
-          <div class="url-input-wrap" id="url-input-wrap">
-            <input id="url-input" type="url" data-i18n-placeholder="hero.urlPlaceholder" placeholder="Enter a website link" autocomplete="off" spellcheck="false">
-            <button id="distill-btn" type="button">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-              <span data-i18n="hero.startBtn">Get started</span>
+        <div class="hero-stage" data-reveal>
+          <div class="stage-tabs" role="tablist" data-i18n-aria-label="hero.stageLabel" aria-label="Preview device">
+            <button class="stage-tab active" type="button" role="tab" aria-selected="true" data-stage-tab="phone">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg>
+              <span data-i18n="hero.stagePhone">Phone</span>
+            </button>
+            <button class="stage-tab" type="button" role="tab" aria-selected="false" tabindex="-1" data-stage-tab="desktop">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+              <span data-i18n="hero.stageDesktop">Desktop</span>
             </button>
           </div>
 
-          <div class="html-input-wrap hidden" id="html-input-wrap">
-            <input id="html-file-input" class="sr-only" type="file" accept=".html,.htm,.zip">
-            <label for="html-file-input" class="html-dropzone" id="html-dropzone">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-              <span class="html-dropzone-label" id="html-file-label" data-i18n="mode.htmlPick">Choose .html or .zip file</span>
-              <small class="html-dropzone-hint" id="html-file-hint" data-i18n="mode.htmlHint">A single HTML file, or a zip containing index.html</small>
-            </label>
+          <div class="stage-frame" id="hero-stage" data-stage="phone">
+            <div class="stage-device">
+              <div class="stage-screen">
+                <div class="stage-bar" aria-hidden="true">
+                  <span class="stage-bar-time">9:41</span>
+                  <span class="stage-bar-notch"></span>
+                  <span class="stage-bar-net">5G</span>
+                </div>
+                <div class="stage-body">
+                  <div class="stage-app-icon" id="stage-app-icon" aria-hidden="true">
+                    <img id="stage-app-img" class="hidden" alt="">
+                    <span id="stage-app-letter">W</span>
+                  </div>
+                  <p class="stage-app-name" id="stage-app-name">WebToApp</p>
+                  <p class="stage-app-host" id="stage-app-host">shiaho.sbs</p>
+                </div>
+                <div class="stage-dock" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="stats">
-            <div class="stat"><strong id="stat-generated-apps" data-count="0">0</strong><span data-i18n="stats.generated">apps generated</span></div>
-            <div class="stat"><strong id="stat-downloads" data-count="0">0</strong><span data-i18n="stats.downloads">downloads</span></div>
-            <div class="stat"><strong id="stat-views" data-count="0">0</strong><span data-i18n="stats.views">page views</span></div>
-          </div>
+          <p class="stage-caption" data-i18n="hero.stageCaption">Live preview — type a link to see its icon and name.</p>
         </div>
+      </div>
+
+      <div class="hero-stats" data-reveal>
+        <div class="stat"><strong id="stat-generated-apps" data-count="0">0</strong><span data-i18n="stats.generated">apps generated</span></div>
+        <div class="stat"><strong id="stat-downloads" data-count="0">0</strong><span data-i18n="stats.downloads">downloads</span></div>
+        <div class="stat"><strong id="stat-views" data-count="0">0</strong><span data-i18n="stats.views">page views</span></div>
       </div>
     </section>
 
@@ -506,54 +548,72 @@
     </section>
 
     <section id="history-section">
-      <div class="history-shell panel">
-        <div class="history-head">
-          <div>
-            <p class="history-kicker" data-i18n="history.kicker">History / This device</p>
-            <h2 data-i18n="history.title">Build history</h2>
-            <p class="history-sub" data-i18n="history.sub">Links generated on this device are saved here. You can view visit counts, or export them and import on another device.</p>
+      <div class="panel section-panel">
+        <div class="section-head">
+          <div class="section-head-main">
+            <p class="section-kicker" data-i18n="history.kicker">This device</p>
+            <h2 data-i18n="history.title">Your apps</h2>
+            <p class="section-sub" data-i18n="history.sub">Saved on this device. Open, share or regenerate any build.</p>
           </div>
-          <div class="history-toolbar">
-            <button id="history-manage-btn" class="btn-secondary" type="button" data-i18n="history.manage">Clean up</button>
-            <button id="history-export-btn" class="btn-secondary" type="button" data-i18n="history.export">Export history</button>
-            <button id="history-import-btn" class="btn-secondary" type="button" data-i18n="history.import">Import history</button>
-            <input id="history-import-input" class="sr-only" type="file" accept="application/json">
+          <div class="section-tools">
+            <label class="tool-search">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="history-search" type="search" data-i18n-placeholder="history.searchPlaceholder" placeholder="Search your apps" autocomplete="off">
+            </label>
+            <select id="history-sort" class="tool-select" data-i18n-aria-label="history.sortLabel" aria-label="Sort">
+              <option value="newest" data-i18n="history.sortNewest" selected>Newest</option>
+              <option value="visits" data-i18n="history.sortVisits">Most visits</option>
+              <option value="downloads" data-i18n="history.sortDownloads">Most downloads</option>
+            </select>
+            <div class="section-menu">
+              <button id="history-more-btn" class="icon-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="history-more-panel" data-i18n-aria-label="history.more" aria-label="More options">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+              </button>
+              <div id="history-more-panel" class="menu-panel hidden" role="menu">
+                <button id="history-export-btn" type="button" role="menuitem" data-i18n="history.export">Export history</button>
+                <button id="history-import-btn" type="button" role="menuitem" data-i18n="history.import">Import history</button>
+                <button id="history-manage-btn" type="button" role="menuitem" data-i18n="history.manage">Clean up</button>
+                <input id="history-import-input" class="sr-only" type="file" accept="application/json">
+              </div>
+            </div>
           </div>
         </div>
-        <div class="history-body">
-          <div id="history-empty" class="history-empty">
+        <div class="section-body">
+          <div id="history-empty" class="empty-state">
             <p data-i18n="history.empty">No build history on this device yet. Generate an app first, or import a record exported from another device.</p>
           </div>
-          <div id="history-select-bar" class="history-select-bar hidden">
-            <label class="history-select-all">
+          <div id="history-select-bar" class="select-bar hidden">
+            <label class="select-all">
               <input id="history-select-all" type="checkbox">
               <span data-i18n="history.selectAll">Select all</span>
             </label>
-            <span id="history-select-count" class="history-select-count"></span>
-            <div class="history-select-actions">
-              <button id="history-delete-selected-btn" class="btn-secondary history-delete-selected" type="button" data-i18n="history.deleteSelected">Delete selected</button>
+            <span id="history-select-count" class="select-count"></span>
+            <div class="select-actions">
+              <button id="history-delete-selected-btn" class="btn-secondary btn-danger" type="button" data-i18n="history.deleteSelected">Delete selected</button>
               <button id="history-cancel-select-btn" class="btn-secondary" type="button" data-i18n="history.cancelSelect">Cancel</button>
             </div>
           </div>
-          <div id="history-list" class="history-list"></div>
-          <button id="history-toggle-btn" class="btn-secondary history-toggle-btn hidden" type="button"></button>
+          <div id="history-list" class="app-rows"></div>
+          <button id="history-toggle-btn" class="btn-secondary section-more hidden" type="button"></button>
         </div>
       </div>
     </section>
 
     <!-- ===== PUBLIC MARKET ===== -->
     <section id="market-section">
-      <div class="market-shell panel">
-        <div class="market-head">
-          <div>
-            <p class="history-kicker" data-i18n="market.kicker">Market / Public links</p>
-            <h2 data-i18n="market.title">Public app market</h2>
-            <p class="history-sub" data-i18n="market.sub">Apps published by their creators as public links. Search, filter by tag, and install any of them.</p>
-            <span id="market-count" class="market-count"></span>
+      <div class="panel section-panel">
+        <div class="section-head">
+          <div class="section-head-main">
+            <p class="section-kicker" data-i18n="market.kicker">Public links</p>
+            <h2 data-i18n="market.title">App market</h2>
+            <p class="section-sub" data-i18n="market.sub">Apps published by their creators. Open any of them.</p>
           </div>
-          <div class="market-toolbar">
-            <input id="market-search" class="market-search" type="search" data-i18n-placeholder="market.searchPlaceholder" placeholder="Search apps..." autocomplete="off">
-            <select id="market-sort" class="market-sort" aria-label="Sort">
+          <div class="section-tools">
+            <label class="tool-search">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="market-search" type="search" data-i18n-placeholder="market.searchPlaceholder" placeholder="Search apps..." autocomplete="off">
+            </label>
+            <select id="market-sort" class="tool-select" data-i18n-aria-label="market.sortLabel" aria-label="Sort">
               <option value="newest" data-i18n="market.sortNewest" selected>Newest</option>
               <option value="rating" data-i18n="market.sortRating">Top rated</option>
               <option value="downloads" data-i18n="market.sortDownloads">Most downloads</option>
@@ -569,15 +629,17 @@
           <button class="market-tab" type="button" data-market-tag="news" data-i18n="tags.news">News</button>
           <button class="market-tab" type="button" data-market-tag="entertainment" data-i18n="tags.entertainment">Entertainment</button>
         </div>
-        <div class="market-body">
-          <div id="market-empty" class="history-empty hidden">
+        <div class="section-body">
+          <p id="market-count" class="market-count"></p>
+          <div id="market-empty" class="empty-state hidden">
             <p data-i18n="market.empty">No public apps here yet. Publish one of yours from the build history.</p>
           </div>
-          <div id="market-error" class="history-empty market-error hidden" role="alert">
+          <div id="market-error" class="empty-state market-error hidden" role="alert">
             <p data-i18n="market.loadFailed">Couldn't load the market. Check your connection and try again.</p>
             <button id="market-retry" class="market-retry" type="button" data-i18n="market.retry">Retry</button>
           </div>
-          <div id="market-list" class="market-list"></div>
+          <div id="market-list" class="market-grid"></div>
+          <button id="market-load-more" class="btn-secondary section-more hidden" type="button" data-i18n="market.loadMore">Load more</button>
         </div>
       </div>
     </section>
@@ -634,6 +696,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261013-ads1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261104-build1"></script>
+  <script src="js/app.v5.js?v=20261104-home2"></script>
 </body>
 </html>

@@ -336,5 +336,112 @@ class FrontendBuildFlowTests(unittest.TestCase):
             self.assertEqual(block.count(f"'{key}'"), len(LANGS), key)
 
 
+class HomeHistoryMarketRedesignTests(unittest.TestCase):
+    """Regression guards for the homepage/history/market redesign (#171)."""
+
+    REDESIGN_KEYS = (
+        "hero.pointFree",
+        "hero.pointPlatforms",
+        "hero.pointSize",
+        "hero.stagePhone",
+        "hero.stageDesktop",
+        "hero.stageCaption",
+        "history.searchPlaceholder",
+        "history.sortVisits",
+        "history.delete",
+        "history.confirmDelete",
+        "history.makePublic",
+        "history.noMatches",
+        "market.noMatches",
+        "market.loadMore",
+    )
+
+    def setUp(self):
+        self.html = _read("index.html")
+        self.js = _read("js/app.v5.js")
+        self.css = _read("css/style.css")
+        self.strings = _read("js/i18n.strings.js")
+        self.server = _read("server/main.py")
+
+    def test_home_uses_live_device_preview(self):
+        for marker in (
+            'id="hero-stage"',
+            'data-stage-tab="phone"',
+            'data-stage-tab="desktop"',
+            'id="stage-app-icon"',
+            'id="stage-app-img"',
+            'id="stage-app-name"',
+            'id="stage-app-host"',
+        ):
+            self.assertIn(marker, self.html)
+        self.assertIn("function renderStagePreview()", self.js)
+        self.assertIn("google.com/s2/favicons", self.js)
+        self.assertIn("PREVIEW_DEFAULT", self.js)
+
+    def test_home_drops_the_old_prose_and_platform_pills(self):
+        for marker in ('class="badge"', 'class="hero-platforms"', "hero-platform-list"):
+            self.assertNotIn(marker, self.html)
+        self.assertIn('class="hero-points"', self.html)
+        self.assertIn('class="hero-stats"', self.html)
+
+    def test_history_has_search_sort_and_overflow_menu(self):
+        for marker in (
+            'id="history-search"',
+            'id="history-sort"',
+            'id="history-more-btn"',
+            'id="history-more-panel"',
+        ):
+            self.assertIn(marker, self.html)
+        self.assertIn("function visibleHistoryItems()", self.js)
+        self.assertIn("data-row-menu", self.js)
+        self.assertIn("historyQuery", self.js)
+
+    def test_single_history_delete_uses_existing_endpoint(self):
+        self.assertIn("data-delete=", self.js)
+        self.assertIn("method: 'DELETE'", self.js)
+        self.assertIn("/api/history/${encodeURIComponent(appId)}", self.js)
+        self.assertIn('@app.delete("/api/history/{app_id}")', self.server)
+        self.assertIn("history.confirmDelete", self.strings)
+
+    def test_history_select_all_respects_active_filter(self):
+        self.assertIn("const visible = visibleHistoryItems();", self.js)
+        self.assertIn("visible.every((entry) => historySelected.has(entry.app_id || ''))", self.js)
+
+    def test_market_has_load_more_pagination(self):
+        self.assertIn('id="market-load-more"', self.html)
+        self.assertIn("marketHasMore", self.js)
+        self.assertIn("params.set('offset'", self.js)
+        self.assertIn("data.has_more", self.js)
+
+    def test_market_api_reports_pagination(self):
+        self.assertIn("MARKET_PAGE_MAX = 60", self.server)
+        for marker in (
+            '"offset": page_offset',
+            '"limit": page_limit',
+            '"has_more": page_offset + len(page) < total',
+        ):
+            self.assertIn(marker, self.server)
+
+    def test_redesign_strings_exist_in_every_language(self):
+        blocks = {lang: "" for lang in LANGS}
+        for match in re.finditer(r"R\('(\w+)',\s*\{(.*?)\}\);", self.strings, re.S):
+            if match.group(1) in blocks:
+                blocks[match.group(1)] += match.group(2)
+        for lang in LANGS:
+            for key in self.REDESIGN_KEYS:
+                self.assertIn(f"'{key}'", blocks[lang], f"{key} missing for {lang}")
+
+    def test_new_components_have_styles(self):
+        for cls in (
+            ".hero-stage",
+            ".stage-device",
+            ".app-row",
+            ".row-menu",
+            ".market-card-head",
+            ".section-panel",
+        ):
+            self.assertIn(cls, self.css)
+
+
 if __name__ == "__main__":
     unittest.main()
