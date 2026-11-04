@@ -343,18 +343,6 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
         "hero.pointFree",
         "hero.pointPlatforms",
         "hero.pointSize",
-        "hero.stagePhone",
-        "hero.stageDesktop",
-        "hero.stageCaption",
-        "hero.previewIdle",
-        "hero.previewLoading",
-        "hero.previewUnavailable",
-        "hero.openSite",
-        "hero.previewAlt",
-        "hero.modeLive",
-        "hero.modeSnapshot",
-        "hero.previewToggle",
-        "hero.previewToggleHint",
         "history.searchPlaceholder",
         "history.sortVisits",
         "history.delete",
@@ -372,52 +360,13 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
         self.strings = _read("js/i18n.strings.js")
         self.server = _read("server/main.py")
 
-    def test_home_uses_live_device_preview(self):
-        for marker in (
-            'id="hero-stage"',
-            'data-stage-tab="phone"',
-            'data-stage-tab="desktop"',
-            'id="stage-app-icon"',
-            'id="stage-app-img"',
-            'id="stage-app-name"',
-            'id="stage-app-host"',
-        ):
-            self.assertIn(marker, self.html)
-        self.assertIn("function renderStagePreview(force)", self.js)
-        self.assertIn("google.com/s2/favicons", self.js)
-        self.assertIn("PREVIEW_DEFAULT", self.js)
-
-    def test_home_preview_uses_live_frame_and_snapshot_fallback(self):
-        for marker in (
-            'id="stage-live"',
-            'id="stage-live-frame"',
-            'id="stage-mode"',
-            'id="stage-preview-img"',
-            'id="stage-preview-placeholder"',
-            'id="stage-preview-status"',
-            'id="stage-preview-link"',
-            'id="stage-app-open"',
-        ):
-            self.assertIn(marker, self.html)
-        self.assertIn('sandbox="allow-scripts allow-forms allow-popups', self.html)
-        self.assertIn("/api/live-preview?url=", self.js)
-        self.assertIn("stageLiveFrame.src = liveUrl", self.js)
-        self.assertIn("layoutLiveFrame", self.js)
-        self.assertIn("s.wordpress.com/mshots/v1/", self.js)
-        self.assertIn("PREVIEW_RETRIES", self.js)
-        self.assertIn("naturalWidth === 400", self.js)
-        self.assertIn("hero.previewUnavailable", self.js)
-        self.assertIn("mShots", _read("privacy.html"))
-
-    def test_hero_is_centered_and_preview_is_collapsible(self):
+    def test_hero_is_centered_without_a_preview(self):
         self.assertIn('class="hero-center"', self.html)
         self.assertNotIn('class="hero-grid"', self.html)
-        self.assertIn('<details class="hero-preview" id="hero-preview">', self.html)
-        self.assertNotIn('id="hero-preview" open', self.html)
-        self.assertIn("heroPreview.addEventListener('toggle'", self.js)
-        self.assertIn("if (!previewOpen)", self.js)
+        self.assertNotIn('hero-preview', self.html)
+        self.assertNotIn('hero-stage', self.html)
+        self.assertNotIn('/api/live-preview', self.html + self.js)
         self.assertIn(".hero-center", self.css)
-        self.assertIn(".hero-preview[open]", self.css)
 
     def test_home_drops_the_old_prose_and_platform_pills(self):
         for marker in ('class="badge"', 'class="hero-platforms"', "hero-platform-list"):
@@ -488,8 +437,6 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
 
     def test_new_components_have_styles(self):
         for cls in (
-            ".hero-stage",
-            ".stage-device",
             ".app-row",
             ".row-menu",
             ".market-card-head",

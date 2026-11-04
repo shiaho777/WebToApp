@@ -2748,10 +2748,6 @@
     'hero.pointFree': 'Free, open source, no sign-up',
     'hero.pointPlatforms': 'Five installers from one build',
     'hero.pointSize': 'Kilobyte-sized packages',
-    'hero.stagePhone': 'Phone',
-    'hero.stageDesktop': 'Desktop',
-    'hero.stageCaption': 'Live preview — type a link to see its icon and name.',
-    'hero.stageLabel': 'Preview device',
     'history.sub': 'Saved on this device. Open, share or regenerate any build.',
     'history.searchPlaceholder': 'Search your apps',
     'history.sortLabel': 'Sort apps',
@@ -2775,10 +2771,6 @@
     'hero.pointFree': '免费开源，无需注册',
     'hero.pointPlatforms': '一次生成，五个安装包',
     'hero.pointSize': '体积只有几十 KB',
-    'hero.stagePhone': '手机',
-    'hero.stageDesktop': '桌面',
-    'hero.stageCaption': '实时预览——输入链接即可看到图标和名称。',
-    'hero.stageLabel': '预览设备',
     'history.sub': '保存在本设备。可以打开、分享或重新生成任意一次构建。',
     'history.searchPlaceholder': '搜索你的应用',
     'history.sortLabel': '应用排序',
@@ -2802,10 +2794,6 @@
     'hero.pointFree': '無料・オープンソース・登録不要',
     'hero.pointPlatforms': '1回の生成で5つのインストーラー',
     'hero.pointSize': '数十KBの軽量パッケージ',
-    'hero.stagePhone': 'スマホ',
-    'hero.stageDesktop': 'デスクトップ',
-    'hero.stageCaption': 'ライブプレビュー — リンクを入力するとアイコンと名前が表示されます。',
-    'hero.stageLabel': 'プレビュー端末',
     'history.sub': 'この端末に保存されています。開く・共有・再生成ができます。',
     'history.searchPlaceholder': 'アプリを検索',
     'history.sortLabel': '並び替え',
@@ -2829,10 +2817,6 @@
     'hero.pointFree': 'مجاني ومفتوح المصدر دون تسجيل',
     'hero.pointPlatforms': 'خمس حزم تثبيت من إنشاء واحد',
     'hero.pointSize': 'حزم بحجم كيلوبايتات',
-    'hero.stagePhone': 'هاتف',
-    'hero.stageDesktop': 'سطح المكتب',
-    'hero.stageCaption': 'معاينة مباشرة — اكتب رابطاً لترى الأيقونة والاسم.',
-    'hero.stageLabel': 'جهاز المعاينة',
     'history.sub': 'محفوظة على هذا الجهاز. افتح أو شارك أو أعد إنشاء أي تطبيق.',
     'history.searchPlaceholder': 'ابحث في تطبيقاتك',
     'history.sortLabel': 'ترتيب التطبيقات',
@@ -2856,10 +2840,6 @@
     'hero.pointFree': 'Бесплатно, открытый код, без регистрации',
     'hero.pointPlatforms': 'Пять установщиков за одну сборку',
     'hero.pointSize': 'Пакеты размером в килобайты',
-    'hero.stagePhone': 'Телефон',
-    'hero.stageDesktop': 'Компьютер',
-    'hero.stageCaption': 'Живой предпросмотр — введите ссылку, чтобы увидеть значок и название.',
-    'hero.stageLabel': 'Устройство предпросмотра',
     'history.sub': 'Сохранено на этом устройстве. Открывайте, делитесь и пересобирайте.',
     'history.searchPlaceholder': 'Поиск приложений',
     'history.sortLabel': 'Сортировка',
@@ -2883,10 +2863,6 @@
     'hero.pointFree': 'Gratis, código abierto, sin registro',
     'hero.pointPlatforms': 'Cinco instaladores en una sola generación',
     'hero.pointSize': 'Paquetes de unos pocos KB',
-    'hero.stagePhone': 'Móvil',
-    'hero.stageDesktop': 'Escritorio',
-    'hero.stageCaption': 'Vista previa en vivo: escribe un enlace para ver su icono y nombre.',
-    'hero.stageLabel': 'Dispositivo de vista previa',
     'history.sub': 'Guardadas en este dispositivo. Abre, comparte o regenera cualquier app.',
     'history.searchPlaceholder': 'Buscar tus apps',
     'history.sortLabel': 'Ordenar apps',
@@ -2910,10 +2886,6 @@
     'hero.pointFree': 'Grátis, código aberto, sem cadastro',
     'hero.pointPlatforms': 'Cinco instaladores em uma única geração',
     'hero.pointSize': 'Pacotes de poucos KB',
-    'hero.stagePhone': 'Celular',
-    'hero.stageDesktop': 'Desktop',
-    'hero.stageCaption': 'Prévia ao vivo — digite um link para ver o ícone e o nome.',
-    'hero.stageLabel': 'Dispositivo de prévia',
     'history.sub': 'Salvos neste dispositivo. Abra, compartilhe ou regenere qualquer app.',
     'history.searchPlaceholder': 'Buscar seus apps',
     'history.sortLabel': 'Ordenar apps',
@@ -2937,10 +2909,6 @@
     'hero.pointFree': 'Gratuit, open source, sans inscription',
     'hero.pointPlatforms': 'Cinq installateurs en une seule génération',
     'hero.pointSize': 'Des paquets de quelques Ko',
-    'hero.stagePhone': 'Mobile',
-    'hero.stageDesktop': 'Bureau',
-    'hero.stageCaption': 'Aperçu en direct — saisissez un lien pour voir son icône et son nom.',
-    'hero.stageLabel': 'Appareil d’aperçu',
     'history.sub': 'Enregistrées sur cet appareil. Ouvrez, partagez ou régénérez n’importe quelle app.',
     'history.searchPlaceholder': 'Rechercher vos apps',
     'history.sortLabel': 'Trier les apps',
@@ -2964,10 +2932,6 @@
     'hero.pointFree': 'Kostenlos, Open Source, ohne Anmeldung',
     'hero.pointPlatforms': 'Fünf Installer aus einem Build',
     'hero.pointSize': 'Pakete in Kilobyte-Größe',
-    'hero.stagePhone': 'Handy',
-    'hero.stageDesktop': 'Desktop',
-    'hero.stageCaption': 'Live-Vorschau – Link eingeben, um Symbol und Namen zu sehen.',
-    'hero.stageLabel': 'Vorschaugerät',
     'history.sub': 'Auf diesem Gerät gespeichert. Öffnen, teilen oder neu erstellen.',
     'history.searchPlaceholder': 'Apps durchsuchen',
     'history.sortLabel': 'Apps sortieren',
@@ -2998,139 +2962,5 @@
   R('fr', { 'history.noMatches': 'Aucune app ne correspond à votre recherche.', 'market.noMatches': 'Aucune app ne correspond à cette recherche ou ce filtre.' });
   R('de', { 'history.noMatches': 'Keine Apps passen zu deiner Suche.', 'market.noMatches': 'Keine Apps passen zu dieser Suche oder diesem Filter.' });
 
-
-  // Hero page preview (#173)
-  R('en', {
-    'hero.stageCaption': 'Preview — type a link to see the page.',
-    'hero.previewIdle': 'Type a link to preview the page.',
-    'hero.previewLoading': 'Loading preview…',
-    'hero.previewUnavailable': 'Preview unavailable. Open the site to check it.',
-    'hero.openSite': 'Open site',
-    'hero.previewAlt': 'Preview of {host}'
-  });
-  R('zh', {
-    'hero.stageCaption': '页面预览——输入链接即可看到网站内容。',
-    'hero.previewIdle': '输入链接即可预览页面。',
-    'hero.previewLoading': '正在加载预览…',
-    'hero.previewUnavailable': '预览暂不可用，可打开网站查看。',
-    'hero.openSite': '打开网站',
-    'hero.previewAlt': '{host} 的预览'
-  });
-  R('ja', {
-    'hero.stageCaption': 'プレビュー — リンクを入力するとページが表示されます。',
-    'hero.previewIdle': 'リンクを入力するとページをプレビューできます。',
-    'hero.previewLoading': 'プレビューを読み込み中…',
-    'hero.previewUnavailable': 'プレビューを表示できません。サイトを開いて確認してください。',
-    'hero.openSite': 'サイトを開く',
-    'hero.previewAlt': '{host} のプレビュー'
-  });
-  R('ar', {
-    'hero.stageCaption': 'معاينة — اكتب رابطاً لرؤية الصفحة.',
-    'hero.previewIdle': 'اكتب رابطاً لمعاينة الصفحة.',
-    'hero.previewLoading': 'جارٍ تحميل المعاينة…',
-    'hero.previewUnavailable': 'المعاينة غير متاحة. افتح الموقع للتحقق منه.',
-    'hero.openSite': 'فتح الموقع',
-    'hero.previewAlt': 'معاينة {host}'
-  });
-  R('ru', {
-    'hero.stageCaption': 'Предпросмотр — введите ссылку, чтобы увидеть страницу.',
-    'hero.previewIdle': 'Введите ссылку, чтобы увидеть предпросмотр страницы.',
-    'hero.previewLoading': 'Загрузка предпросмотра…',
-    'hero.previewUnavailable': 'Предпросмотр недоступен. Откройте сайт, чтобы проверить его.',
-    'hero.openSite': 'Открыть сайт',
-    'hero.previewAlt': 'Предпросмотр {host}'
-  });
-  R('es', {
-    'hero.stageCaption': 'Vista previa: escribe un enlace para ver la página.',
-    'hero.previewIdle': 'Escribe un enlace para previsualizar la página.',
-    'hero.previewLoading': 'Cargando vista previa…',
-    'hero.previewUnavailable': 'Vista previa no disponible. Abre el sitio para comprobarlo.',
-    'hero.openSite': 'Abrir sitio',
-    'hero.previewAlt': 'Vista previa de {host}'
-  });
-  R('pt', {
-    'hero.stageCaption': 'Prévia — digite um link para ver a página.',
-    'hero.previewIdle': 'Digite um link para pré-visualizar a página.',
-    'hero.previewLoading': 'Carregando prévia…',
-    'hero.previewUnavailable': 'Prévia indisponível. Abra o site para conferir.',
-    'hero.openSite': 'Abrir site',
-    'hero.previewAlt': 'Prévia de {host}'
-  });
-  R('fr', {
-    'hero.stageCaption': 'Aperçu — saisissez un lien pour voir la page.',
-    'hero.previewIdle': 'Saisissez un lien pour prévisualiser la page.',
-    'hero.previewLoading': 'Chargement de l’aperçu…',
-    'hero.previewUnavailable': 'Aperçu indisponible. Ouvrez le site pour vérifier.',
-    'hero.openSite': 'Ouvrir le site',
-    'hero.previewAlt': 'Aperçu de {host}'
-  });
-  R('de', {
-    'hero.stageCaption': 'Vorschau – Link eingeben, um die Seite zu sehen.',
-    'hero.previewIdle': 'Link eingeben, um die Seite in der Vorschau zu sehen.',
-    'hero.previewLoading': 'Vorschau wird geladen…',
-    'hero.previewUnavailable': 'Vorschau nicht verfügbar. Öffne die Website zur Prüfung.',
-    'hero.openSite': 'Website öffnen',
-    'hero.previewAlt': 'Vorschau von {host}'
-  });
-
-
-  // Live WebView-style preview (#175)
-  R('en', {
-    'hero.stageCaption': 'Live preview — type a link to see the page.',
-    'hero.modeLive': 'Live',
-    'hero.modeSnapshot': 'Snapshot'
-  });
-  R('zh', {
-    'hero.stageCaption': '实时预览——输入链接即可看到网站内容。',
-    'hero.modeLive': '实时',
-    'hero.modeSnapshot': '快照'
-  });
-  R('ja', {
-    'hero.stageCaption': 'ライブプレビュー — リンクを入力するとページが表示されます。',
-    'hero.modeLive': 'ライブ',
-    'hero.modeSnapshot': 'スナップショット'
-  });
-  R('ar', {
-    'hero.stageCaption': 'معاينة مباشرة — اكتب رابطاً لرؤية الصفحة.',
-    'hero.modeLive': 'مباشر',
-    'hero.modeSnapshot': 'لقطة'
-  });
-  R('ru', {
-    'hero.stageCaption': 'Живой предпросмотр — введите ссылку, чтобы увидеть страницу.',
-    'hero.modeLive': 'Онлайн',
-    'hero.modeSnapshot': 'Снимок'
-  });
-  R('es', {
-    'hero.stageCaption': 'Vista previa en vivo: escribe un enlace para ver la página.',
-    'hero.modeLive': 'En vivo',
-    'hero.modeSnapshot': 'Captura'
-  });
-  R('pt', {
-    'hero.stageCaption': 'Prévia ao vivo — digite um link para ver a página.',
-    'hero.modeLive': 'Ao vivo',
-    'hero.modeSnapshot': 'Captura'
-  });
-  R('fr', {
-    'hero.stageCaption': 'Aperçu en direct — saisissez un lien pour voir la page.',
-    'hero.modeLive': 'En direct',
-    'hero.modeSnapshot': 'Capture'
-  });
-  R('de', {
-    'hero.stageCaption': 'Live-Vorschau – Link eingeben, um die Seite zu sehen.',
-    'hero.modeLive': 'Live',
-    'hero.modeSnapshot': 'Snapshot'
-  });
-
-
-  // Collapsible hero preview (#179)
-  R('en', { 'hero.previewToggle': 'Preview the app', 'hero.previewToggleHint': 'Open a phone or desktop frame with the live page.' });
-  R('zh', { 'hero.previewToggle': '预览 App 效果', 'hero.previewToggleHint': '展开手机或桌面框，直接查看实时页面。' });
-  R('ja', { 'hero.previewToggle': 'アプリをプレビュー', 'hero.previewToggleHint': 'スマホまたはデスクトップ枠でライブページを確認できます。' });
-  R('ar', { 'hero.previewToggle': 'معاينة التطبيق', 'hero.previewToggleHint': 'افتح إطار الهاتف أو سطح المكتب لرؤية الصفحة المباشرة.' });
-  R('ru', { 'hero.previewToggle': 'Предпросмотр приложения', 'hero.previewToggleHint': 'Откройте рамку телефона или компьютера с живой страницей.' });
-  R('es', { 'hero.previewToggle': 'Vista previa de la app', 'hero.previewToggleHint': 'Abre un marco de móvil o escritorio con la página en vivo.' });
-  R('pt', { 'hero.previewToggle': 'Prévia do app', 'hero.previewToggleHint': 'Abra uma moldura de celular ou desktop com a página ao vivo.' });
-  R('fr', { 'hero.previewToggle': 'Aperçu de l’app', 'hero.previewToggleHint': 'Ouvrez un cadre mobile ou bureau avec la page en direct.' });
-  R('de', { 'hero.previewToggle': 'App-Vorschau', 'hero.previewToggleHint': 'Öffne einen Handy- oder Desktop-Rahmen mit der Live-Seite.' });
 
 })();
