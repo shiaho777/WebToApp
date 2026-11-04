@@ -460,6 +460,20 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
             for key in self.REDESIGN_KEYS:
                 self.assertIn(f"'{key}'", blocks[lang], f"{key} missing for {lang}")
 
+    def test_market_cards_restore_publish_time_and_visits(self):
+        for marker in (
+            "market-card-host-name",
+            "market-card-time",
+            "market-card-stats",
+            "market-card-stat",
+            "relTime(createdIso)",
+            "absoluteTime(createdIso)",
+            "market.visits",
+        ):
+            self.assertIn(marker, self.js)
+        for cls in (".market-card-time", ".market-card-stat", ".market-card-stats"):
+            self.assertIn(cls, self.css)
+
     def test_new_components_have_styles(self):
         for cls in (
             ".hero-stage",

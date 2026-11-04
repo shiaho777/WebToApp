@@ -4805,3 +4805,53 @@ section {
   padding: 0 5px;
   font-size: 0.54rem;
 }
+
+/* ===== Market card metadata (#177) ===== */
+.market-card-host {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.market-card-host-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-card-dot,
+.market-card-time {
+  flex: none;
+  color: var(--ink-faint);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.market-card-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.market-card-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.market-card-stat svg {
+  flex: none;
+}
+
+.market-card-foot {
+  flex-wrap: wrap;
+}
