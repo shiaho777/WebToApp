@@ -1119,6 +1119,11 @@
       const ratingHtml = item.rating_count
         ? `<span class="market-card-rating"><span class="market-star">★</span>${Number(item.rating_avg).toFixed(1)}<span class="market-rating-cnt">(${Number(item.rating_count).toLocaleString(locale())})</span></span>`
         : `<span class="market-card-rating is-empty"><span class="market-star market-star-off">★</span><span class="market-rating-cnt">${escapeHtml(t('market.noRatings'))}</span></span>`;
+      const createdIso = item.created_at || item.updated_at || '';
+      const publishedRel = relTime(createdIso);
+      const publishedAbs = absoluteTime(createdIso);
+      const visits = Number(item.visit_count || 0).toLocaleString(locale());
+      const downloads = Number(item.download_count || 0).toLocaleString(locale());
       const card = document.createElement('article');
       card.className = 'market-card';
       card.innerHTML = `
@@ -1126,7 +1131,10 @@
           <div class="market-card-icon">${iconHtml}</div>
           <div class="market-card-heading">
             <h3 class="market-card-name">${escapeHtml(item.name || item.app_id)}</h3>
-            <p class="market-card-host">${escapeHtml(marketHostOf(item))}</p>
+            <p class="market-card-host">
+              <span class="market-card-host-name">${escapeHtml(marketHostOf(item))}</span>
+              ${publishedRel ? `<span class="market-card-dot" aria-hidden="true">·</span><span class="market-card-time" title="${escapeHtml(publishedAbs)}">${escapeHtml(publishedRel)}</span>` : ''}
+            </p>
           </div>
           ${ratingHtml}
         </div>
@@ -1135,9 +1143,15 @@
         ${item.icon_review_deadline ? `<span class="market-icon-review">${escapeHtml(t('market.iconReview'))}</span>` : ''}
         <div class="market-card-foot">
           ${creatorHtml || `<span class="market-card-anon">${escapeHtml(t('profile.anon'))}</span>`}
-          <span class="market-card-downloads">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg>
-            ${Number(item.download_count || 0).toLocaleString(locale())}
+          <span class="market-card-stats">
+            <span class="market-card-stat" title="${escapeHtml(t('market.visits', { n: visits }))}">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.6"/></svg>
+              ${visits}
+            </span>
+            <span class="market-card-stat" title="${escapeHtml(t('market.downloads', { n: downloads }))}">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg>
+              ${downloads}
+            </span>
           </span>
         </div>
         <button class="market-card-open" type="button" data-open="${escapeHtml(publicPath)}">${escapeHtml(t('market.open'))}</button>
@@ -1176,6 +1190,19 @@
     const mo = Math.floor(d / 30.44);
     if (mo < 12) return t('time.monthsAgo', { n: mo });
     return t('time.yearsAgo', { n: Math.floor(mo / 12) });
+  }
+
+  function absoluteTime(iso) {
+    const ts = Date.parse(iso || '');
+    if (!ts) return '';
+    try {
+      return new Intl.DateTimeFormat(locale(), {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(ts);
+    } catch (_err) {
+      return String(iso || '');
+    }
   }
 
   const MARKET_PAGE_SIZE = 24;
