@@ -346,6 +346,11 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
         "hero.stagePhone",
         "hero.stageDesktop",
         "hero.stageCaption",
+        "hero.previewIdle",
+        "hero.previewLoading",
+        "hero.previewUnavailable",
+        "hero.openSite",
+        "hero.previewAlt",
         "history.searchPlaceholder",
         "history.sortVisits",
         "history.delete",
@@ -374,9 +379,24 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
             'id="stage-app-host"',
         ):
             self.assertIn(marker, self.html)
-        self.assertIn("function renderStagePreview()", self.js)
+        self.assertIn("function renderStagePreview(force)", self.js)
         self.assertIn("google.com/s2/favicons", self.js)
         self.assertIn("PREVIEW_DEFAULT", self.js)
+
+    def test_home_preview_uses_mshots_with_retry(self):
+        for marker in (
+            'id="stage-preview-img"',
+            'id="stage-preview-placeholder"',
+            'id="stage-preview-status"',
+            'id="stage-preview-link"',
+            'id="stage-app-open"',
+        ):
+            self.assertIn(marker, self.html)
+        self.assertIn("s.wordpress.com/mshots/v1/", self.js)
+        self.assertIn("PREVIEW_RETRIES", self.js)
+        self.assertIn("naturalWidth === 400", self.js)
+        self.assertIn("hero.previewUnavailable", self.js)
+        self.assertIn("mShots", _read("privacy.html"))
 
     def test_home_drops_the_old_prose_and_platform_pills(self):
         for marker in ('class="badge"', 'class="hero-platforms"', "hero-platform-list"):

@@ -385,10 +385,11 @@
     htmlInputWrap.classList.toggle('hidden', inputMode !== 'html');
   }
 
-  // --- Hero live preview ---
-  // Shows what the generated app looks like (icon, name, host) as the user
-  // types. Purely presentational: the favicon lookup is debounced and falls
-  // back to a monogram when it fails.
+  // --- Hero page preview ---
+  // Shows the generated app shell (icon, name, host) plus a real screenshot of
+  // the page as the user types. The screenshot comes from WordPress.com's
+  // mShots service; it returns a small "generating" GIF until the capture is
+  // ready, so we retry the same URL a few times before showing a fallback.
   const stageTabs = Array.from(document.querySelectorAll('[data-stage-tab]'));
   const heroStage = document.getElementById('hero-stage');
   const stageAppIcon = document.getElementById('stage-app-icon');
@@ -396,12 +397,26 @@
   const stageAppLetter = document.getElementById('stage-app-letter');
   const stageAppName = document.getElementById('stage-app-name');
   const stageAppHost = document.getElementById('stage-app-host');
+  const stageAppOpen = document.getElementById('stage-app-open');
+  const stagePreviewImg = document.getElementById('stage-preview-img');
+  const stagePreviewPlaceholder = document.getElementById('stage-preview-placeholder');
+  const stagePreviewSpinner = document.getElementById('stage-preview-spinner');
+  const stagePreviewStatus = document.getElementById('stage-preview-status');
+  const stagePreviewLink = document.getElementById('stage-preview-link');
   const PREVIEW_DEFAULT = {
     name: 'WebToApp',
     host: (window.location.hostname || '').replace(/^www\./, '') || 'shiaho.sbs',
   };
+  const PREVIEW_RETRY_MS = 2600;
+  const PREVIEW_RETRIES = 4;
   let previewTimer = null;
-  let previewHost = '';
+  let previewRetryTimer = null;
+  let previewSeq = 0;
+  let previewAttempt = 0;
+  let previewKey = '';
+  let previewSiteUrl = '';
+  let previewState = 'idle';
+  let faviconHost = '';
 
   function setStageTab(stage, focusTab) {
     const target = stage === 'desktop' ? 'desktop' : 'phone';
@@ -413,6 +428,7 @@
       if (active && focusTab) tab.focus();
     });
     if (heroStage) heroStage.dataset.stage = target;
+    renderStagePreview(true);
   }
 
   stageTabs.forEach((tab) => {
@@ -427,40 +443,108 @@
     });
   });
 
-  function previewHostOf(raw) {
-    const value = String(raw || '').trim();
-    if (!value) return '';
-    try {
-      const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
-      const host = url.hostname.toLowerCase().replace(/^www\./, '');
-      return host.includes('.') ? host : '';
-    } catch (_err) {
-      return '';
-    }
-  }
-
   function previewNameOf(host) {
     if (!host) return '';
     const label = host.split('.')[0] || host;
     return label.charAt(0).toUpperCase() + label.slice(1);
   }
 
-  function renderStagePreview() {
-    const host = previewHostOf(urlInput.value);
-    const name = previewNameOf(host);
-    if (stageAppName) stageAppName.textContent = name || PREVIEW_DEFAULT.name;
-    if (stageAppHost) stageAppHost.textContent = host || PREVIEW_DEFAULT.host;
-    if (stageAppLetter) stageAppLetter.textContent = (name || PREVIEW_DEFAULT.name).charAt(0).toUpperCase();
-    if (!stageAppImg) return;
-    if (!host) {
-      previewHost = '';
-      stageAppImg.classList.add('hidden');
-      stageAppImg.removeAttribute('src');
-      if (stageAppIcon) stageAppIcon.classList.remove('has-image');
-      return;
+  function previewTargetOf(raw) {
+    const value = String(raw || '').trim();
+    if (!value) return null;
+    try {
+      const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+      const host = url.hostname.toLowerCase().replace(/^www\./, '');
+      if (!host.includes('.')) return null;
+      return { url: url.href, host, name: previewNameOf(host) };
+    } catch (_err) {
+      return null;
     }
-    if (host === previewHost) return;
-    previewHost = host;
+  }
+
+  function setPreviewStatus(key) {
+    if (!stagePreviewStatus) return;
+    stagePreviewStatus.setAttribute('data-i18n', key);
+    stagePreviewStatus.textContent = t(key);
+  }
+
+  function setPreviewOpen(url) {
+    if (stageAppOpen) {
+      if (url) {
+        stageAppOpen.href = url;
+        stageAppOpen.classList.remove('is-disabled');
+        stageAppOpen.removeAttribute('aria-disabled');
+        stageAppOpen.tabIndex = 0;
+      } else {
+        stageAppOpen.removeAttribute('href');
+        stageAppOpen.classList.add('is-disabled');
+        stageAppOpen.setAttribute('aria-disabled', 'true');
+        stageAppOpen.tabIndex = -1;
+      }
+    }
+    if (stagePreviewLink) {
+      if (url && previewState === 'error') {
+        stagePreviewLink.href = url;
+        stagePreviewLink.classList.remove('hidden');
+      } else {
+        stagePreviewLink.removeAttribute('href');
+        stagePreviewLink.classList.add('hidden');
+      }
+    }
+  }
+
+  function showPreviewLoading() {
+    previewState = 'loading';
+    if (stagePreviewImg) {
+      stagePreviewImg.classList.add('hidden');
+      stagePreviewImg.removeAttribute('src');
+    }
+    if (stagePreviewPlaceholder) {
+      stagePreviewPlaceholder.classList.remove('hidden', 'is-error');
+    }
+    if (stagePreviewSpinner) stagePreviewSpinner.classList.remove('hidden');
+    if (stagePreviewLink) stagePreviewLink.classList.add('hidden');
+    setPreviewStatus('hero.previewLoading');
+  }
+
+  function showPreviewError() {
+    previewState = 'error';
+    if (stagePreviewImg) {
+      stagePreviewImg.classList.add('hidden');
+      stagePreviewImg.removeAttribute('src');
+    }
+    if (stagePreviewPlaceholder) {
+      stagePreviewPlaceholder.classList.remove('hidden');
+      stagePreviewPlaceholder.classList.add('is-error');
+    }
+    if (stagePreviewSpinner) stagePreviewSpinner.classList.add('hidden');
+    setPreviewStatus('hero.previewUnavailable');
+    if (stagePreviewLink && previewSiteUrl) {
+      stagePreviewLink.href = previewSiteUrl;
+      stagePreviewLink.classList.remove('hidden');
+    }
+  }
+
+  function clearPreview() {
+    previewState = 'idle';
+    previewSeq += 1;
+    previewKey = '';
+    previewSiteUrl = '';
+    window.clearTimeout(previewRetryTimer);
+    if (stagePreviewImg) {
+      stagePreviewImg.classList.add('hidden');
+      stagePreviewImg.removeAttribute('src');
+    }
+    if (stagePreviewPlaceholder) stagePreviewPlaceholder.classList.remove('hidden', 'is-error');
+    if (stagePreviewSpinner) stagePreviewSpinner.classList.add('hidden');
+    if (stagePreviewLink) stagePreviewLink.classList.add('hidden');
+    setPreviewStatus('hero.previewIdle');
+  }
+
+  function updateStageFavicon(host) {
+    if (!stageAppImg || !host || host === faviconHost) return;
+    faviconHost = host;
     if (stageAppIcon) stageAppIcon.classList.remove('has-image');
     stageAppImg.classList.add('hidden');
     stageAppImg.removeAttribute('src');
@@ -476,11 +560,93 @@
     stageAppImg.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
   }
 
+  function loadPreview(target, force) {
+    const stage = heroStage ? heroStage.dataset.stage : 'phone';
+    const width = stage === 'desktop' ? 800 : 360;
+    const height = stage === 'desktop' ? 500 : 740;
+    const key = `${target.url}|${width}x${height}`;
+    if (!force && key === previewKey) return;
+    previewKey = key;
+    previewSiteUrl = target.url;
+    previewAttempt = 0;
+    const seq = ++previewSeq;
+    window.clearTimeout(previewRetryTimer);
+    if (stagePreviewImg) {
+      stagePreviewImg.alt = t('hero.previewAlt', { host: target.host });
+      stagePreviewImg.referrerPolicy = 'no-referrer';
+    }
+    showPreviewLoading();
+
+    const request = () => {
+      if (seq !== previewSeq || !stagePreviewImg) return;
+      const src = `https://s.wordpress.com/mshots/v1/${encodeURIComponent(target.url)}?w=${width}&h=${height}&r=${previewAttempt}`;
+      stagePreviewImg.onload = () => {
+        if (seq !== previewSeq) return;
+        const naturalWidth = stagePreviewImg.naturalWidth;
+        const naturalHeight = stagePreviewImg.naturalHeight;
+        // mShots serves this 400x300 GIF while the screenshot is being made.
+        if (naturalWidth === 400 && naturalHeight === 300) {
+          if (previewAttempt < PREVIEW_RETRIES) {
+            previewAttempt += 1;
+            previewRetryTimer = window.setTimeout(request, PREVIEW_RETRY_MS);
+          } else {
+            showPreviewError();
+          }
+          return;
+        }
+        if (!naturalWidth || !naturalHeight) {
+          showPreviewError();
+          return;
+        }
+        previewState = 'ready';
+        stagePreviewImg.classList.remove('hidden');
+        if (stagePreviewPlaceholder) stagePreviewPlaceholder.classList.add('hidden');
+      };
+      stagePreviewImg.onerror = () => {
+        if (seq !== previewSeq) return;
+        if (previewAttempt < 2) {
+          previewAttempt += 1;
+          previewRetryTimer = window.setTimeout(request, PREVIEW_RETRY_MS);
+          return;
+        }
+        showPreviewError();
+      };
+      stagePreviewImg.src = src;
+    };
+    request();
+  }
+
+  function renderStagePreview(force) {
+    const target = previewTargetOf(urlInput.value);
+    const name = target ? target.name : '';
+    if (stageAppName) stageAppName.textContent = name || PREVIEW_DEFAULT.name;
+    if (stageAppHost) stageAppHost.textContent = target ? target.host : PREVIEW_DEFAULT.host;
+    if (stageAppLetter) stageAppLetter.textContent = (name || PREVIEW_DEFAULT.name).charAt(0).toUpperCase();
+    setPreviewOpen(target ? target.url : '');
+    if (!target) {
+      if (faviconHost) {
+        faviconHost = '';
+        if (stageAppImg) {
+          stageAppImg.classList.add('hidden');
+          stageAppImg.removeAttribute('src');
+        }
+        if (stageAppIcon) stageAppIcon.classList.remove('has-image');
+      }
+      clearPreview();
+      return;
+    }
+    updateStageFavicon(target.host);
+    loadPreview(target, force === true);
+    if (previewState === 'loading') setPreviewStatus('hero.previewLoading');
+    else if (previewState === 'error') setPreviewStatus('hero.previewUnavailable');
+    else if (previewState === 'idle') setPreviewStatus('hero.previewIdle');
+  }
+
   urlInput.addEventListener('input', () => {
     window.clearTimeout(previewTimer);
-    previewTimer = window.setTimeout(renderStagePreview, 450);
+    previewTimer = window.setTimeout(() => renderStagePreview(false), 600);
   });
-  renderStagePreview();
+  renderStagePreview(false);
 
   // --- Platform tabs (per-platform settings) ---
   // Only Android currently exposes extra knobs (they drive the real APK
@@ -2734,6 +2900,7 @@
     // Re-render dynamic (JS-generated) content whenever the language changes.
     window.addEventListener('i18n:changed', () => {
       select.value = window.I18n.current;
+      renderStagePreview(false);
       if (lastHistoryItems.length) renderHistory(lastHistoryItems);
       if (lastMarketItems.length) renderMarket(lastMarketItems);
       if (!profileModal.classList.contains('hidden')) {
