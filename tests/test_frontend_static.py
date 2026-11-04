@@ -351,6 +351,8 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
         "hero.previewUnavailable",
         "hero.openSite",
         "hero.previewAlt",
+        "hero.modeLive",
+        "hero.modeSnapshot",
         "history.searchPlaceholder",
         "history.sortVisits",
         "history.delete",
@@ -383,8 +385,11 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
         self.assertIn("google.com/s2/favicons", self.js)
         self.assertIn("PREVIEW_DEFAULT", self.js)
 
-    def test_home_preview_uses_mshots_with_retry(self):
+    def test_home_preview_uses_live_frame_and_snapshot_fallback(self):
         for marker in (
+            'id="stage-live"',
+            'id="stage-live-frame"',
+            'id="stage-mode"',
             'id="stage-preview-img"',
             'id="stage-preview-placeholder"',
             'id="stage-preview-status"',
@@ -392,6 +397,10 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
             'id="stage-app-open"',
         ):
             self.assertIn(marker, self.html)
+        self.assertIn('sandbox="allow-scripts allow-forms allow-popups', self.html)
+        self.assertIn("/api/live-preview?url=", self.js)
+        self.assertIn("stageLiveFrame.src = liveUrl", self.js)
+        self.assertIn("layoutLiveFrame", self.js)
         self.assertIn("s.wordpress.com/mshots/v1/", self.js)
         self.assertIn("PREVIEW_RETRIES", self.js)
         self.assertIn("naturalWidth === 400", self.js)

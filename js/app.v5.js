@@ -385,19 +385,24 @@
     htmlInputWrap.classList.toggle('hidden', inputMode !== 'html');
   }
 
-  // --- Hero page preview ---
-  // Shows the generated app shell (icon, name, host) plus a real screenshot of
-  // the page as the user types. The screenshot comes from WordPress.com's
-  // mShots service; it returns a small "generating" GIF until the capture is
-  // ready, so we retry the same URL a few times before showing a fallback.
+  // --- Hero live preview ---
+  // Renders the target page inside a sandboxed iframe, scaled from a real
+  // logical viewport (390px phone / 1280px desktop) so the site actually
+  // reflows instead of being cropped. The HTML comes from our proxy because
+  // most sites send X-Frame-Options/frame-ancestors; if the proxy cannot
+  // fetch the page we fall back to a high-resolution snapshot.
   const stageTabs = Array.from(document.querySelectorAll('[data-stage-tab]'));
   const heroStage = document.getElementById('hero-stage');
+  const stageViewport = document.getElementById('stage-viewport');
   const stageAppIcon = document.getElementById('stage-app-icon');
   const stageAppImg = document.getElementById('stage-app-img');
   const stageAppLetter = document.getElementById('stage-app-letter');
   const stageAppName = document.getElementById('stage-app-name');
   const stageAppHost = document.getElementById('stage-app-host');
   const stageAppOpen = document.getElementById('stage-app-open');
+  const stageLive = document.getElementById('stage-live');
+  const stageLiveFrame = document.getElementById('stage-live-frame');
+  const stageMode = document.getElementById('stage-mode');
   const stagePreviewImg = document.getElementById('stage-preview-img');
   const stagePreviewPlaceholder = document.getElementById('stage-preview-placeholder');
   const stagePreviewSpinner = document.getElementById('stage-preview-spinner');
@@ -411,6 +416,7 @@
   const PREVIEW_RETRIES = 4;
   let previewTimer = null;
   let previewRetryTimer = null;
+  let previewLoadTimer = null;
   let previewSeq = 0;
   let previewAttempt = 0;
   let previewKey = '';
@@ -428,7 +434,11 @@
       if (active && focusTab) tab.focus();
     });
     if (heroStage) heroStage.dataset.stage = target;
-    renderStagePreview(true);
+    if (previewState === 'live' || previewState === 'loading-live') {
+      layoutLiveFrame();
+    } else if (previewState !== 'idle') {
+      renderStagePreview(true);
+    }
   }
 
   stageTabs.forEach((tab) => {
@@ -494,8 +504,40 @@
     }
   }
 
-  function showPreviewLoading() {
-    previewState = 'loading';
+  function setStageMode(mode) {
+    if (!stageMode) return;
+    const visible = mode === 'live' || mode === 'snapshot';
+    stageMode.classList.toggle('hidden', !visible);
+    stageMode.classList.toggle('is-snapshot', mode === 'snapshot');
+    stageMode.textContent = visible
+      ? t(mode === 'live' ? 'hero.modeLive' : 'hero.modeSnapshot')
+      : '';
+  }
+
+  function layoutLiveFrame() {
+    if (!stageLiveFrame || !stageViewport) return;
+    const rect = stageViewport.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const logicalWidth = heroStage && heroStage.dataset.stage === 'desktop' ? 1280 : 390;
+    const scale = rect.width / logicalWidth;
+    const logicalHeight = rect.height / scale;
+    stageLiveFrame.style.width = `${logicalWidth}px`;
+    stageLiveFrame.style.height = `${logicalHeight}px`;
+    stageLiveFrame.style.transform = `scale(${scale})`;
+  }
+
+  function hideLiveFrame() {
+    if (stageLive) stageLive.hidden = true;
+    if (stageLiveFrame) {
+      stageLiveFrame.removeAttribute('srcdoc');
+      stageLiveFrame.src = 'about:blank';
+    }
+  }
+
+  function showPreviewLoading(kind) {
+    previewState = kind === 'snapshot' ? 'loading-snapshot' : 'loading-live';
+    window.clearTimeout(previewLoadTimer);
+    hideLiveFrame();
     if (stagePreviewImg) {
       stagePreviewImg.classList.add('hidden');
       stagePreviewImg.removeAttribute('src');
@@ -505,11 +547,33 @@
     }
     if (stagePreviewSpinner) stagePreviewSpinner.classList.remove('hidden');
     if (stagePreviewLink) stagePreviewLink.classList.add('hidden');
+    setStageMode('');
     setPreviewStatus('hero.previewLoading');
+  }
+
+  function showLiveFrame() {
+    previewState = 'live';
+    window.clearTimeout(previewLoadTimer);
+    if (stageLive) stageLive.hidden = false;
+    layoutLiveFrame();
+    if (stagePreviewImg) stagePreviewImg.classList.add('hidden');
+    if (stagePreviewPlaceholder) stagePreviewPlaceholder.classList.add('hidden');
+    setStageMode('live');
+  }
+
+  function showSnapshotImage() {
+    previewState = 'snapshot';
+    window.clearTimeout(previewLoadTimer);
+    hideLiveFrame();
+    if (stagePreviewImg) stagePreviewImg.classList.remove('hidden');
+    if (stagePreviewPlaceholder) stagePreviewPlaceholder.classList.add('hidden');
+    setStageMode('snapshot');
   }
 
   function showPreviewError() {
     previewState = 'error';
+    window.clearTimeout(previewLoadTimer);
+    hideLiveFrame();
     if (stagePreviewImg) {
       stagePreviewImg.classList.add('hidden');
       stagePreviewImg.removeAttribute('src');
@@ -519,6 +583,7 @@
       stagePreviewPlaceholder.classList.add('is-error');
     }
     if (stagePreviewSpinner) stagePreviewSpinner.classList.add('hidden');
+    setStageMode('');
     setPreviewStatus('hero.previewUnavailable');
     if (stagePreviewLink && previewSiteUrl) {
       stagePreviewLink.href = previewSiteUrl;
@@ -532,6 +597,8 @@
     previewKey = '';
     previewSiteUrl = '';
     window.clearTimeout(previewRetryTimer);
+    window.clearTimeout(previewLoadTimer);
+    hideLiveFrame();
     if (stagePreviewImg) {
       stagePreviewImg.classList.add('hidden');
       stagePreviewImg.removeAttribute('src');
@@ -539,6 +606,7 @@
     if (stagePreviewPlaceholder) stagePreviewPlaceholder.classList.remove('hidden', 'is-error');
     if (stagePreviewSpinner) stagePreviewSpinner.classList.add('hidden');
     if (stagePreviewLink) stagePreviewLink.classList.add('hidden');
+    setStageMode('');
     setPreviewStatus('hero.previewIdle');
   }
 
@@ -560,22 +628,57 @@
     stageAppImg.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
   }
 
-  function loadPreview(target, force) {
-    const stage = heroStage ? heroStage.dataset.stage : 'phone';
-    const width = stage === 'desktop' ? 800 : 360;
-    const height = stage === 'desktop' ? 500 : 740;
-    const key = `${target.url}|${width}x${height}`;
-    if (!force && key === previewKey) return;
-    previewKey = key;
+  async function loadLivePreview(target) {
+    const seq = ++previewSeq;
     previewSiteUrl = target.url;
     previewAttempt = 0;
+    showPreviewLoading('live');
+    const liveUrl = `/api/live-preview?url=${encodeURIComponent(target.url)}`;
+    if (stageLiveFrame) {
+      stageLiveFrame.title = t('hero.previewAlt', { host: target.host });
+    }
+    try {
+      // Preflight so a 4xx/5xx proxy response can fall back instead of
+      // showing a JSON error page inside the phone. The iframe request then
+      // hits the server's short-lived HTML cache.
+      const check = await fetch(liveUrl, { headers: { Accept: 'text/html' } });
+      if (seq !== previewSeq) return;
+      if (!check.ok) throw new Error('live preview failed');
+      await check.text();
+      if (seq !== previewSeq) return;
+      if (!stageLiveFrame) throw new Error('missing frame');
+      stageLiveFrame.onload = () => {
+        if (seq !== previewSeq) return;
+        showLiveFrame();
+      };
+      previewLoadTimer = window.setTimeout(() => {
+        if (seq !== previewSeq) return;
+        showLiveFrame();
+      }, 1500);
+      stageLiveFrame.src = liveUrl;
+      if (stageLive) stageLive.hidden = false;
+      layoutLiveFrame();
+    } catch (_err) {
+      if (seq !== previewSeq) return;
+      loadSnapshot(target);
+    }
+  }
+
+  function loadSnapshot(target) {
     const seq = ++previewSeq;
+    const stage = heroStage ? heroStage.dataset.stage : 'phone';
+    // mShots caps at 1280px wide / 960px tall; these are the largest useful
+    // sources for a crisp fallback on retina screens.
+    const width = stage === 'desktop' ? 1280 : 780;
+    const height = 960;
+    previewSiteUrl = target.url;
+    previewAttempt = 0;
     window.clearTimeout(previewRetryTimer);
     if (stagePreviewImg) {
       stagePreviewImg.alt = t('hero.previewAlt', { host: target.host });
       stagePreviewImg.referrerPolicy = 'no-referrer';
     }
-    showPreviewLoading();
+    showPreviewLoading('snapshot');
 
     const request = () => {
       if (seq !== previewSeq || !stagePreviewImg) return;
@@ -598,9 +701,7 @@
           showPreviewError();
           return;
         }
-        previewState = 'ready';
-        stagePreviewImg.classList.remove('hidden');
-        if (stagePreviewPlaceholder) stagePreviewPlaceholder.classList.add('hidden');
+        showSnapshotImage();
       };
       stagePreviewImg.onerror = () => {
         if (seq !== previewSeq) return;
@@ -636,10 +737,16 @@
       return;
     }
     updateStageFavicon(target.host);
-    loadPreview(target, force === true);
-    if (previewState === 'loading') setPreviewStatus('hero.previewLoading');
-    else if (previewState === 'error') setPreviewStatus('hero.previewUnavailable');
-    else if (previewState === 'idle') setPreviewStatus('hero.previewIdle');
+    if (!force && target.url === previewKey && previewState !== 'error') {
+      if (previewState === 'live') layoutLiveFrame();
+      if (previewState === 'loading-live' || previewState === 'loading-snapshot') {
+        setPreviewStatus('hero.previewLoading');
+      }
+      setStageMode(previewState);
+      return;
+    }
+    previewKey = target.url;
+    loadLivePreview(target);
   }
 
   urlInput.addEventListener('input', () => {
@@ -647,6 +754,13 @@
     previewTimer = window.setTimeout(() => renderStagePreview(false), 600);
   });
   renderStagePreview(false);
+
+  if (window.ResizeObserver && stageViewport) {
+    const resizeObserver = new ResizeObserver(() => {
+      if (previewState === 'live') layoutLiveFrame();
+    });
+    resizeObserver.observe(stageViewport);
+  }
 
   // --- Platform tabs (per-platform settings) ---
   // Only Android currently exposes extra knobs (they drive the real APK
