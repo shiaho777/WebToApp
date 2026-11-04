@@ -6,7 +6,6 @@ FastAPI backend: site analysis, content distillation, app generation & download.
 import asyncio
 import base64
 import hashlib
-import html as html_lib
 import ipaddress
 import json
 import mimetypes
@@ -33,7 +32,6 @@ from typing import Dict, List, Optional
 
 from server import config
 from server import html_site
-from server import net
 from server.engine.analyzer import SiteAnalyzer
 from server.engine.distiller import Distiller
 from server.engine.recipe import RecipeStore
@@ -513,174 +511,6 @@ async def analyze_url(req: AnalyzeRequest, request: Request):
         raise HTTPException(status_code=422, detail=str(e))
 
 
-LIVE_PREVIEW_MAX_BYTES = 3 * 1024 * 1024
-LIVE_PREVIEW_TTL = 300
-LIVE_PREVIEW_MAX_ENTRIES = 40
-LIVE_PREVIEW_UA = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
-_LIVE_PREVIEW_CACHE: "OrderedDict[str, tuple[float, str, str]]" = OrderedDict()
-_live_preview_lock = asyncio.Lock()
-
-_LIVE_PREVIEW_BASE_RE = re.compile(r"<base\b[^>]*>", re.I)
-_LIVE_PREVIEW_HEAD_RE = re.compile(r"(<head\b[^>]*>)", re.I)
-_LIVE_PREVIEW_CSP_META_RE = re.compile(
-    r"<meta\b[^>]*http-equiv\s*=\s*['\"]?content-security-policy['\"]?[^>]*>", re.I
-)
-_LIVE_PREVIEW_REFRESH_META_RE = re.compile(
-    r"<meta\b[^>]*http-equiv\s*=\s*['\"]?refresh['\"]?[^>]*>", re.I
-)
-
-_LIVE_PREVIEW_BRIDGE = """
-<script>
-(function () {
-  function absolute(href) {
-    try { return new URL(href, document.baseURI).href; } catch (err) { return ""; }
-  }
-  document.addEventListener("click", function (event) {
-    var anchor = event.target && event.target.closest ? event.target.closest("a[href]") : null;
-    if (!anchor) return;
-    var href = anchor.getAttribute("href") || "";
-    if (!href || href.charAt(0) === "#" || /^javascript:/i.test(href)) return;
-    var url = absolute(href);
-    if (!url) return;
-    event.preventDefault();
-    window.open(url, "_blank", "noopener,noreferrer");
-  }, true);
-})();
-</script>
-"""
-
-
-def _prepare_live_preview_html(markup: str, base_url: str) -> str:
-    """Make a fetched page renderable inside our sandboxed preview frame.
-
-    The proxy serves the HTML from our origin, so the page's own frame
-    restrictions are gone. We add an absolute <base> for relative assets and
-    drop meta tags that would otherwise stop our bridge script or redirect the
-    frame. The response is always served with a CSP sandbox, so this never
-    shares our origin even if the page is opened directly.
-    """
-    text = str(markup or "")
-    text = _LIVE_PREVIEW_BASE_RE.sub("", text)
-    text = _LIVE_PREVIEW_CSP_META_RE.sub("", text)
-    text = _LIVE_PREVIEW_REFRESH_META_RE.sub("", text)
-    base_tag = f'<base href="{html_lib.escape(base_url, quote=True)}">'
-    if _LIVE_PREVIEW_HEAD_RE.search(text):
-        text = _LIVE_PREVIEW_HEAD_RE.sub(lambda match: match.group(1) + base_tag, text, count=1)
-    else:
-        text = base_tag + text
-    return text + _LIVE_PREVIEW_BRIDGE
-
-
-async def _fetch_live_preview_html(url: str) -> tuple[str, str]:
-    current = await net.avalidate_public_http_url(url)
-    headers = {
-        "User-Agent": LIVE_PREVIEW_UA,
-        "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    }
-    timeout = httpx.Timeout(12.0, connect=6.0)
-    async with httpx.AsyncClient(
-        follow_redirects=False, timeout=timeout, headers=headers, trust_env=False
-    ) as client:
-        for _ in range(6):
-            targets = await net.apinned_targets(current)
-            response = None
-            context = None
-            last_error = None
-            for pinned_url, request_headers, extensions in targets:
-                try:
-                    context = client.stream(
-                        "GET", pinned_url, headers=request_headers, extensions=extensions
-                    )
-                    response = await context.__aenter__()
-                    break
-                except httpx.TransportError as exc:
-                    last_error = exc
-                    context = None
-            if response is None:
-                raise HTTPException(status_code=502, detail="Could not reach the page") from last_error
-            try:
-                if response.status_code in (301, 302, 303, 307, 308):
-                    location = response.headers.get("location")
-                    if not location:
-                        raise HTTPException(status_code=502, detail="Invalid redirect")
-                    current = await asyncio.to_thread(net.redirect_target, current, location)
-                    continue
-                if response.status_code >= 400:
-                    raise HTTPException(status_code=502, detail="The site refused the preview request")
-                content_type = (response.headers.get("content-type") or "").lower()
-                if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
-                    raise HTTPException(status_code=415, detail="The URL is not an HTML page")
-                try:
-                    raw = await net.aread_limited_response(response, LIVE_PREVIEW_MAX_BYTES)
-                except ValueError as exc:
-                    raise HTTPException(status_code=413, detail="The page is too large to preview") from exc
-                encoding = getattr(response, "charset_encoding", None)
-                if not encoding:
-                    match = re.search(rb"charset\s*=\s*[\"']?([\w-]+)", raw[:4096], re.I)
-                    encoding = match.group(1).decode("ascii", "ignore") if match else "utf-8"
-                try:
-                    text = raw.decode(encoding, errors="ignore")
-                except LookupError:
-                    text = raw.decode("utf-8", errors="ignore")
-                head = text[:8000].lower()
-                if "cf-chl" in head or "challenge-platform" in head:
-                    raise HTTPException(status_code=502, detail="The site blocks automated previews")
-                if not text.strip():
-                    raise HTTPException(status_code=502, detail="The page is empty")
-                return text, current
-            finally:
-                await context.__aexit__(None, None, None)
-    raise HTTPException(status_code=502, detail="Too many redirects")
-
-
-async def _live_preview_html(url: str) -> tuple[str, str]:
-    now = time.time()
-    async with _live_preview_lock:
-        cached = _LIVE_PREVIEW_CACHE.get(url)
-        if cached and now - cached[0] < LIVE_PREVIEW_TTL:
-            _LIVE_PREVIEW_CACHE.move_to_end(url)
-            return cached[1], cached[2]
-    markup, final_url = await _fetch_live_preview_html(url)
-    prepared = _prepare_live_preview_html(markup, final_url)
-    async with _live_preview_lock:
-        _LIVE_PREVIEW_CACHE[url] = (time.time(), prepared, final_url)
-        _LIVE_PREVIEW_CACHE.move_to_end(url)
-        while len(_LIVE_PREVIEW_CACHE) > LIVE_PREVIEW_MAX_ENTRIES:
-            _LIVE_PREVIEW_CACHE.popitem(last=False)
-    return prepared, final_url
-
-
-@app.get("/api/live-preview")
-async def live_preview(url: str, request: Request):
-    # The endpoint is for the embedded frame (and its fetch). Opening it as a
-    # top-level document would serve third-party HTML from our origin, so
-    # refuse that even before the CSP sandbox is applied.
-    if (request.headers.get("sec-fetch-dest") or "").lower() == "document":
-        raise HTTPException(status_code=403, detail="Preview endpoint is only for embedded frames")
-    if not await live_preview_rate_limiter.allow(_client_ip(request)):
-        raise HTTPException(status_code=429, detail="Too many preview requests, please slow down.")
-    try:
-        markup, _final_url = await _live_preview_html(url)
-    except net.UnsafeOutboundTarget as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except (OSError, httpx.HTTPError) as exc:
-        raise HTTPException(status_code=502, detail="Could not fetch the page") from exc
-    headers = {
-        "Cache-Control": "private, max-age=60",
-        "Content-Security-Policy": (
-            "sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-        ),
-        "Referrer-Policy": "no-referrer",
-        "X-Content-Type-Options": "nosniff",
-        "X-Robots-Tag": "noindex, nofollow",
-    }
-    return HTMLResponse(content=markup, headers=headers)
-
-
 def _resolve_base_url(request: Request) -> str:
     configured = config.public_base_url()
     if configured:
@@ -905,8 +735,6 @@ import_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl
 analyze_rate_limiter = IPRateLimiter(max_requests=20, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
 # Comments are unauthenticated (fingerprint identity) — cap writes.
 comment_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
-# Live previews fetch a page on the user's behalf; keep the same anti-abuse shape.
-live_preview_rate_limiter = IPRateLimiter(max_requests=30, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
 retention_task = None
 
 

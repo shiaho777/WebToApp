@@ -18,9 +18,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261104-hero1">
+  <link rel="stylesheet" href="css/style.css?v=20261104-hero2">
   <script src="js/i18n.js?v=20261013-ads1"></script>
-  <script src="js/i18n.strings.js?v=20261104-hero1"></script>
+  <script src="js/i18n.strings.js?v=20261104-hero2"></script>
 </head>
 <body>
   <header id="nav">
@@ -137,75 +137,6 @@
             </li>
           </ul>
       </div>
-
-      <details class="hero-preview" id="hero-preview">
-        <summary class="hero-preview-summary">
-          <span class="hero-preview-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/><path d="M18 6h4"/><path d="M20 4v4"/></svg>
-          </span>
-          <span class="hero-preview-summary-text">
-            <strong data-i18n="hero.previewToggle">Preview the app</strong>
-            <small data-i18n="hero.previewToggleHint">Open a phone or desktop frame with the live page.</small>
-          </span>
-          <svg class="hero-preview-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        </summary>
-        <div class="hero-preview-body">
-          <div class="hero-stage">
-          <div class="stage-tabs" role="tablist" data-i18n-aria-label="hero.stageLabel" aria-label="Preview device">
-            <button class="stage-tab active" type="button" role="tab" aria-selected="true" data-stage-tab="phone">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg>
-              <span data-i18n="hero.stagePhone">Phone</span>
-            </button>
-            <button class="stage-tab" type="button" role="tab" aria-selected="false" tabindex="-1" data-stage-tab="desktop">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
-              <span data-i18n="hero.stageDesktop">Desktop</span>
-            </button>
-          </div>
-
-          <div class="stage-frame" id="hero-stage" data-stage="phone">
-            <div class="stage-device">
-              <div class="stage-screen">
-                <div class="stage-bar" aria-hidden="true">
-                  <span class="stage-bar-time">9:41</span>
-                  <span class="stage-bar-notch"></span>
-                  <span class="stage-bar-net">5G</span>
-                </div>
-                <div class="stage-appbar">
-                  <div class="stage-app-icon" id="stage-app-icon" aria-hidden="true">
-                    <img id="stage-app-img" class="hidden" alt="">
-                    <span id="stage-app-letter">W</span>
-                  </div>
-                  <div class="stage-appbar-text">
-                    <p class="stage-app-name" id="stage-app-name">WebToApp</p>
-                    <p class="stage-app-host" id="stage-app-host">shiaho.sbs</p>
-                  </div>
-                  <span class="stage-mode hidden" id="stage-mode"></span>
-                  <a class="stage-app-open is-disabled" id="stage-app-open" href="#" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="hero.openSite" aria-label="Open site" aria-disabled="true" tabindex="-1">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>
-                  </a>
-                </div>
-                <div class="stage-viewport" id="stage-viewport">
-                  <div class="stage-live" id="stage-live" hidden>
-                    <iframe id="stage-live-frame" class="stage-live-frame" title="Live preview" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
-                  </div>
-                  <img id="stage-preview-img" class="stage-preview-img hidden" alt="">
-                  <div class="stage-placeholder" id="stage-preview-placeholder">
-                    <span class="stage-spinner" id="stage-preview-spinner" aria-hidden="true"></span>
-                    <p id="stage-preview-status" aria-live="polite" data-i18n="hero.previewIdle">Type a link to preview the page.</p>
-                    <a class="stage-preview-link hidden" id="stage-preview-link" href="#" target="_blank" rel="noopener noreferrer" data-i18n="hero.openSite">Open site</a>
-                  </div>
-                </div>
-                <div class="stage-dock" aria-hidden="true">
-                  <span></span><span></span><span></span><span></span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-            <p class="stage-caption" data-i18n="hero.stageCaption">Live preview — type a link to see the page.</p>
-          </div>
-        </div>
-      </details>
 
       <div class="hero-stats" data-reveal>
         <div class="stat"><strong id="stat-generated-apps" data-count="0">0</strong><span data-i18n="stats.generated">apps generated</span></div>
@@ -725,6 +656,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261013-ads1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261104-hero1"></script>
+  <script src="js/app.v5.js?v=20261104-hero2"></script>
 </body>
 </html>
