@@ -3073,4 +3073,52 @@
     'hero.previewAlt': 'Vorschau von {host}'
   });
 
+
+  // Live WebView-style preview (#175)
+  R('en', {
+    'hero.stageCaption': 'Live preview — type a link to see the page.',
+    'hero.modeLive': 'Live',
+    'hero.modeSnapshot': 'Snapshot'
+  });
+  R('zh', {
+    'hero.stageCaption': '实时预览——输入链接即可看到网站内容。',
+    'hero.modeLive': '实时',
+    'hero.modeSnapshot': '快照'
+  });
+  R('ja', {
+    'hero.stageCaption': 'ライブプレビュー — リンクを入力するとページが表示されます。',
+    'hero.modeLive': 'ライブ',
+    'hero.modeSnapshot': 'スナップショット'
+  });
+  R('ar', {
+    'hero.stageCaption': 'معاينة مباشرة — اكتب رابطاً لرؤية الصفحة.',
+    'hero.modeLive': 'مباشر',
+    'hero.modeSnapshot': 'لقطة'
+  });
+  R('ru', {
+    'hero.stageCaption': 'Живой предпросмотр — введите ссылку, чтобы увидеть страницу.',
+    'hero.modeLive': 'Онлайн',
+    'hero.modeSnapshot': 'Снимок'
+  });
+  R('es', {
+    'hero.stageCaption': 'Vista previa en vivo: escribe un enlace para ver la página.',
+    'hero.modeLive': 'En vivo',
+    'hero.modeSnapshot': 'Captura'
+  });
+  R('pt', {
+    'hero.stageCaption': 'Prévia ao vivo — digite um link para ver a página.',
+    'hero.modeLive': 'Ao vivo',
+    'hero.modeSnapshot': 'Captura'
+  });
+  R('fr', {
+    'hero.stageCaption': 'Aperçu en direct — saisissez un lien pour voir la page.',
+    'hero.modeLive': 'En direct',
+    'hero.modeSnapshot': 'Capture'
+  });
+  R('de', {
+    'hero.stageCaption': 'Live-Vorschau – Link eingeben, um die Seite zu sehen.',
+    'hero.modeLive': 'Live',
+    'hero.modeSnapshot': 'Snapshot'
+  });
+
 })();

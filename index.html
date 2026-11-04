@@ -18,9 +18,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261104-preview1">
+  <link rel="stylesheet" href="css/style.css?v=20261104-live1">
   <script src="js/i18n.js?v=20261013-ads1"></script>
-  <script src="js/i18n.strings.js?v=20261104-preview1"></script>
+  <script src="js/i18n.strings.js?v=20261104-live1"></script>
 </head>
 <body>
   <header id="nav">
@@ -168,11 +168,15 @@
                     <p class="stage-app-name" id="stage-app-name">WebToApp</p>
                     <p class="stage-app-host" id="stage-app-host">shiaho.sbs</p>
                   </div>
+                  <span class="stage-mode hidden" id="stage-mode"></span>
                   <a class="stage-app-open is-disabled" id="stage-app-open" href="#" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="hero.openSite" aria-label="Open site" aria-disabled="true" tabindex="-1">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>
                   </a>
                 </div>
                 <div class="stage-viewport" id="stage-viewport">
+                  <div class="stage-live" id="stage-live" hidden>
+                    <iframe id="stage-live-frame" class="stage-live-frame" title="Live preview" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
+                  </div>
                   <img id="stage-preview-img" class="stage-preview-img hidden" alt="">
                   <div class="stage-placeholder" id="stage-preview-placeholder">
                     <span class="stage-spinner" id="stage-preview-spinner" aria-hidden="true"></span>
@@ -709,6 +713,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261013-ads1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261104-preview1"></script>
+  <script src="js/app.v5.js?v=20261104-live1"></script>
 </body>
 </html>
