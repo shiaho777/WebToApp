@@ -120,12 +120,12 @@ class FrontendPerformanceTests(unittest.TestCase):
                 self.assertNotIn("Spectral:wght@400", url, rel)
 
     def test_nav_logo_uses_small_asset_with_dimensions(self):
-        self.assertTrue((ROOT / "assets/logo.svg").is_file())
+        self.assertTrue((ROOT / "assets/site-logo-96.jpg").is_file())
         for rel in ("index.html", "server/engine/distiller.py"):
             src = _read(rel)
             self.assertRegex(
                 src,
-                r'<img src="/?assets/logo\.svg\?v=[\w-]+" alt="WebToApp" width="28" height="28">',
+                r'<img src="/?assets/site-logo-96\.jpg\?v=[\w-]+" alt="WebToApp" width="28" height="28">',
                 rel,
             )
             self.assertNotIn('src="assets/site-logo.jpg"', src, rel)
@@ -211,12 +211,11 @@ class BrandAndComponentSystemTests(unittest.TestCase):
     """Guards for the Anthropic-style component system and brand icon set (#165)."""
 
     ICONS = (
-        "assets/logo.svg",
-        "assets/favicon-32.png",
+        "assets/site-logo.jpg",
+        "assets/site-logo-96.jpg",
         "assets/apple-touch-icon.png",
         "assets/icon-192.png",
         "assets/icon-512.png",
-        "assets/icon-maskable-512.png",
     )
 
     def setUp(self):
@@ -229,11 +228,13 @@ class BrandAndComponentSystemTests(unittest.TestCase):
 
     def test_pages_reference_new_icon_set(self):
         html = _read("index.html")
-        self.assertIn('href="assets/logo.svg', html)
+        self.assertIn('href="assets/site-logo-96.jpg', html)
         self.assertIn('rel="apple-touch-icon"', html)
         self.assertIn('rel="manifest"', html)
-        self.assertIn("assets/logo.svg", _read("privacy.html"))
-        self.assertIn("/assets/logo.svg", _read("server/engine/distiller.py"))
+        self.assertIn("assets/site-logo-96.jpg", _read("privacy.html"))
+        self.assertIn("/assets/site-logo-96.jpg", _read("server/engine/distiller.py"))
+        for rel in ("index.html", "privacy.html", "server/engine/distiller.py", "manifest.webmanifest"):
+            self.assertNotIn("logo.svg", _read(rel), rel)
 
     def test_manifest_declares_installable_icons(self):
         import json
@@ -241,7 +242,6 @@ class BrandAndComponentSystemTests(unittest.TestCase):
         manifest = json.loads(_read("manifest.webmanifest"))
         sizes = {icon.get("sizes") for icon in manifest.get("icons", [])}
         self.assertTrue({"192x192", "512x512"} <= sizes)
-        self.assertTrue(any("maskable" in icon.get("purpose", "") for icon in manifest["icons"]))
         for icon in manifest["icons"]:
             self.assertTrue((ROOT / icon["src"].lstrip("/").split("?")[0]).is_file(), icon["src"])
 
@@ -249,13 +249,15 @@ class BrandAndComponentSystemTests(unittest.TestCase):
         self.assertIn("application/manifest+json", _read("server/main.py"))
 
     def test_palette_matches_reference_tokens(self):
-        self.assertIn("--paper: #faf9f5;", self.root)
-        self.assertIn("--paper-deep: #f0eee6;", self.root)
-        self.assertRegex(self.root, r"--ink-rgb:\s*20,\s*20,\s*19;")
+        # Original WebToApp palette (#169): warm paper, ink, terracotta.
+        self.assertIn("--paper: #f7f3ec;", self.root)
+        self.assertIn("--paper-deep: #efe7db;", self.root)
+        self.assertRegex(self.root, r"--ink-rgb:\s*30,\s*25,\s*20;")
+        self.assertRegex(self.root, r"--accent-rgb:\s*201,\s*121,\s*83;")
 
     def test_tertiary_text_meets_contrast(self):
         faint = re.search(r"--ink-faint:\s*(#[0-9a-fA-F]{6});", self.root).group(1)
-        for surface in ("#faf9f5", "#f0eee6", "#ffffff"):
+        for surface in ("#f7f3ec", "#efe7db", "#fbf8f3", "#efe5d6"):
             self.assertGreaterEqual(_contrast(faint, surface), 4.5, surface)
 
     def test_no_heavy_weights_or_glass_effects(self):

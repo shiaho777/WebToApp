@@ -27,7 +27,7 @@
     '.wta-confirm-actions button{min-height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line-strong,rgba(30,25,20,.16));background:transparent;color:var(--ink,#1e1914);font:500 .9rem var(--font-sans,-apple-system,BlinkMacSystemFont,sans-serif);cursor:pointer;transition:background .16s ease,border-color .16s ease}',
     '.wta-confirm-actions button:hover{background:var(--paper-deep,rgba(30,25,20,.06))}',
     '.wta-confirm-actions .wta-confirm-ok{border-color:var(--ink,#1e1914);background:var(--ink,#1e1914);color:var(--on-ink,#fbf8f3)}',
-    '.wta-confirm-actions .wta-confirm-ok:hover{border-color:var(--ink-hover,#3d3d3a);background:var(--ink-hover,#3d3d3a)}',
+    '.wta-confirm-actions .wta-confirm-ok:hover{border-color:var(--ink-hover,#2e2620);background:var(--ink-hover,#2e2620)}',
     '.wta-confirm-actions .wta-confirm-ok.is-danger,.wta-confirm-actions .wta-confirm-ok.is-danger:hover{border-color:var(--danger,#a0533d);background:var(--danger,#a0533d)}',
     '.wta-confirm-actions button:focus-visible,.wta-toast-close:focus-visible{outline:2px solid var(--accent,#c97953);outline-offset:2px}',
     '@media (prefers-reduced-motion:reduce){.wta-toast{transition:none}}'

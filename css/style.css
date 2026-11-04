@@ -2,39 +2,41 @@
   color-scheme: light;
   /* Channel tokens: components use rgba(var(--x-rgb), alpha) so a scheme
      only has to swap channels, not every literal. */
-  --ink-rgb: 20, 20, 19;
+  --ink-rgb: 30, 25, 20;
   --glass-rgb: 255, 255, 255;
-  --surface-rgb: 255, 255, 255;
-  --paper-strong-rgb: 255, 255, 255;
-  --paper-deep-rgb: 240, 238, 230;
-  --accent-rgb: 217, 119, 87;
-  --success-rgb: 74, 120, 86;
-  --danger-rgb: 181, 51, 51;
-  --shadow-rgb: 20, 20, 19;
+  --surface-rgb: 255, 252, 247;
+  --paper-strong-rgb: 251, 248, 243;
+  --paper-deep-rgb: 243, 234, 223;
+  --accent-rgb: 201, 121, 83;
+  --success-rgb: 79, 113, 90;
+  --danger-rgb: 160, 83, 61;
+  --shadow-rgb: 30, 25, 20;
 
-  /* Anthropic ivory surfaces: page, raised, sunk. */
-  --paper: #faf9f5;
-  --paper-deep: #f0eee6;
-  --paper-strong: #ffffff;
-  --paper-sunk: #e8e6dc;
+  /* Original WebToApp palette: warm paper, ink, terracotta. */
+  --paper: #f7f3ec;
+  --paper-deep: #efe7db;
+  --paper-strong: #fbf8f3;
+  --paper-sunk: #efe5d6;
   --ink: rgb(var(--ink-rgb));
-  --ink-hover: #3d3d3a;
-  --ink-soft: #5e5d59;
-  --ink-faint: #6b6a64;
-  --ink-muted: #6b6a64;
+  --ink-hover: #2e2620;
+  --ink-soft: rgba(var(--ink-rgb), 0.72);
+  /* Same warm ink hue as the original 46% tint, darkened just enough for
+     small text to stay readable (>= 4.5:1) on every paper surface. */
+  --ink-faint: #6a6560;
+  --ink-muted: #8a7a64;
   --line: rgba(var(--ink-rgb), 0.1);
-  --line-strong: rgba(var(--ink-rgb), 0.2);
+  --line-strong: rgba(var(--ink-rgb), 0.16);
   --accent: rgb(var(--accent-rgb));
-  --accent-warm: #c6613f;
-  --accent-text: #b05730;
-  --on-ink: #faf9f5;
-  --on-accent: #ffffff;
+  --accent-warm: #a85c3a;
+  --accent-text: #8a4b2d;
+  --on-ink: #fffaf4;
+  --on-accent: #fff8f2;
   --success: rgb(var(--success-rgb));
   --danger: rgb(var(--danger-rgb));
-  --danger-text: #b53333;
-  --surface: #ffffff;
-  --surface-strong: #ffffff;
-  --scrim: rgba(var(--shadow-rgb), 0.32);
+  --danger-text: #9f4b42;
+  --surface: rgba(var(--surface-rgb), 0.76);
+  --surface-strong: rgba(var(--surface-rgb), 0.9);
+  --scrim: rgba(var(--shadow-rgb), 0.4);
   --shadow-pop: 0 8px 28px -12px rgba(var(--shadow-rgb), 0.18), 0 0 0 1px var(--line);
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -57,33 +59,28 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --ink-rgb: 250, 249, 245;
-    --glass-rgb: 48, 48, 46;
-    --surface-rgb: 48, 48, 46;
-    --paper-strong-rgb: 48, 48, 46;
-    --paper-deep-rgb: 31, 30, 29;
-    --accent-rgb: 217, 119, 87;
+    --ink-rgb: 236, 228, 216;
+    --glass-rgb: 52, 45, 38;
+    --surface-rgb: 36, 31, 26;
+    --paper-strong-rgb: 34, 29, 24;
+    --paper-deep-rgb: 28, 24, 20;
+    --accent-rgb: 214, 139, 103;
     --success-rgb: 132, 176, 144;
-    --danger-rgb: 232, 120, 110;
+    --danger-rgb: 222, 128, 104;
     --shadow-rgb: 0, 0, 0;
 
-    --paper: #262624;
-    --paper-deep: #1f1e1d;
-    --paper-strong: #30302e;
-    --paper-sunk: #1f1e1d;
-    --ink-hover: #e8e6dc;
-    --ink-soft: #c2c0b6;
-    --ink-faint: #9c9a92;
-    --ink-muted: #9c9a92;
-    --line: rgba(var(--ink-rgb), 0.12);
-    --line-strong: rgba(var(--ink-rgb), 0.24);
-    --accent-warm: #e08a6a;
-    --accent-text: #e8957a;
-    --on-ink: #1f1e1d;
-    --on-accent: #1f1e1d;
-    --danger-text: #f0948a;
-    --surface: #30302e;
-    --surface-strong: #30302e;
+    --paper: #17130f;
+    --paper-deep: #1d1915;
+    --paper-strong: #221d18;
+    --paper-sunk: #2c261f;
+    --ink-hover: #fffaf2;
+    --ink-faint: #979088;
+    --ink-muted: #a8977f;
+    --accent-warm: #e09a74;
+    --accent-text: #e8a684;
+    --on-ink: #17130f;
+    --on-accent: #1b140f;
+    --danger-text: #e88d79;
     --scrim: rgba(0, 0, 0, 0.55);
     --shadow-pop: 0 8px 28px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line);
   }
