@@ -392,6 +392,7 @@
   // most sites send X-Frame-Options/frame-ancestors; if the proxy cannot
   // fetch the page we fall back to a high-resolution snapshot.
   const stageTabs = Array.from(document.querySelectorAll('[data-stage-tab]'));
+  const heroPreview = document.getElementById('hero-preview');
   const heroStage = document.getElementById('hero-stage');
   const stageViewport = document.getElementById('stage-viewport');
   const stageAppIcon = document.getElementById('stage-app-icon');
@@ -422,6 +423,7 @@
   let previewKey = '';
   let previewSiteUrl = '';
   let previewState = 'idle';
+  let previewOpen = !!(heroPreview && heroPreview.open);
   let faviconHost = '';
 
   function setStageTab(stage, focusTab) {
@@ -737,6 +739,11 @@
       return;
     }
     updateStageFavicon(target.host);
+    if (!previewOpen) {
+      previewKey = target.url;
+      previewSiteUrl = target.url;
+      return;
+    }
     if (!force && target.url === previewKey && previewState !== 'error') {
       if (previewState === 'live') layoutLiveFrame();
       if (previewState === 'loading-live' || previewState === 'loading-snapshot') {
@@ -754,6 +761,33 @@
     previewTimer = window.setTimeout(() => renderStagePreview(false), 600);
   });
   renderStagePreview(false);
+
+  if (heroPreview) {
+    heroPreview.addEventListener('toggle', () => {
+      previewOpen = heroPreview.open;
+      if (previewOpen) {
+        renderStagePreview(true);
+        return;
+      }
+      // Collapsing is also a pause: stop the iframe, cancel pending fetches
+      // and clear the snapshot so a closed preview does not keep networking.
+      previewSeq += 1;
+      window.clearTimeout(previewRetryTimer);
+      window.clearTimeout(previewLoadTimer);
+      hideLiveFrame();
+      if (stagePreviewImg) {
+        stagePreviewImg.classList.add('hidden');
+        stagePreviewImg.removeAttribute('src');
+      }
+      if (stagePreviewPlaceholder) {
+        stagePreviewPlaceholder.classList.remove('is-error');
+        stagePreviewPlaceholder.classList.add('hidden');
+      }
+      if (stagePreviewSpinner) stagePreviewSpinner.classList.add('hidden');
+      previewState = 'idle';
+      setStageMode('');
+    });
+  }
 
   if (window.ResizeObserver && stageViewport) {
     const resizeObserver = new ResizeObserver(() => {

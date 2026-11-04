@@ -18,9 +18,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261104-live2">
+  <link rel="stylesheet" href="css/style.css?v=20261104-hero1">
   <script src="js/i18n.js?v=20261013-ads1"></script>
-  <script src="js/i18n.strings.js?v=20261104-live2"></script>
+  <script src="js/i18n.strings.js?v=20261104-hero1"></script>
 </head>
 <body>
   <header id="nav">
@@ -93,8 +93,7 @@
   <main>
     <!-- ===== HERO ===== -->
     <section id="hero">
-      <div class="hero-grid">
-        <div class="hero-copy" data-reveal>
+      <div class="hero-center" data-reveal>
           <p class="hero-kicker" data-i18n="hero.kicker">WEBTOAPP / WEBSITE TO APP</p>
           <h1><span data-i18n="hero.titleLine1">Turn websites</span><br><span data-i18n="hero.titleLine2">into apps.</span></h1>
           <p class="subtitle" data-i18n="hero.subtitle">Paste a link. Get an installable app for iPhone, Android, Windows, macOS and Linux.</p>
@@ -137,9 +136,21 @@
               <span data-i18n="hero.pointSize">Kilobyte-sized packages</span>
             </li>
           </ul>
-        </div>
+      </div>
 
-        <div class="hero-stage" data-reveal>
+      <details class="hero-preview" id="hero-preview">
+        <summary class="hero-preview-summary">
+          <span class="hero-preview-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/><path d="M18 6h4"/><path d="M20 4v4"/></svg>
+          </span>
+          <span class="hero-preview-summary-text">
+            <strong data-i18n="hero.previewToggle">Preview the app</strong>
+            <small data-i18n="hero.previewToggleHint">Open a phone or desktop frame with the live page.</small>
+          </span>
+          <svg class="hero-preview-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="hero-preview-body">
+          <div class="hero-stage">
           <div class="stage-tabs" role="tablist" data-i18n-aria-label="hero.stageLabel" aria-label="Preview device">
             <button class="stage-tab active" type="button" role="tab" aria-selected="true" data-stage-tab="phone">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg>
@@ -191,9 +202,10 @@
             </div>
           </div>
 
-          <p class="stage-caption" data-i18n="hero.stageCaption">Preview — type a link to see the page.</p>
+            <p class="stage-caption" data-i18n="hero.stageCaption">Live preview — type a link to see the page.</p>
+          </div>
         </div>
-      </div>
+      </details>
 
       <div class="hero-stats" data-reveal>
         <div class="stat"><strong id="stat-generated-apps" data-count="0">0</strong><span data-i18n="stats.generated">apps generated</span></div>
@@ -713,6 +725,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261013-ads1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261104-live2"></script>
+  <script src="js/app.v5.js?v=20261104-hero1"></script>
 </body>
 </html>
