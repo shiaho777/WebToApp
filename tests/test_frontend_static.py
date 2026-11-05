@@ -73,6 +73,33 @@ class FrontendFeedbackTests(unittest.TestCase):
         self.assertIn(".analysis-item .value.warn", css)
 
 
+class AnnouncementTests(unittest.TestCase):
+    """Guards for the 2026-11-05 site update notice."""
+
+    TITLES = {
+        "en": "A calmer homepage, cleaner market and no ads",
+        "zh": "首页更简洁，市场信息更完整，广告已移除",
+        "ja": "ホームを整理、マーケットを充実、広告を廃止",
+        "ar": "صفحة رئيسية أهدأ وسوق أوضح وبلا إعلانات",
+        "ru": "Спокойнее главная, понятнее рынок, без рекламы",
+        "es": "Inicio más limpio, mercado más claro y sin anuncios",
+        "pt": "Início mais limpo, mercado mais claro e sem anúncios",
+        "fr": "Accueil plus sobre, marché plus clair, sans publicité",
+        "de": "Ruhigere Startseite, klarerer Markt, keine Werbung",
+    }
+
+    def test_notice_is_published_in_every_language(self):
+        src = _read("js/announcements.js")
+        self.assertIn("2026-11-05-site-refresh", src)
+        self.assertIn("2026-11-05T16:30:00Z", src)
+        for lang, title in self.TITLES.items():
+            self.assertIn(f'"{lang}": "{title}"', src, lang)
+
+    def test_notice_script_is_cache_busted(self):
+        html = _read("index.html")
+        self.assertIn("js/announcements.js?v=20261105-notices1", html)
+
+
 class FrontendResilienceTests(unittest.TestCase):
     """Regression guards for issue #159."""
 

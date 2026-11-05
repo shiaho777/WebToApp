@@ -26,6 +26,77 @@
 
   var NOTICES = [
     {
+      "id": "2026-11-05-site-refresh",
+      "publishedAt": "2026-11-05T16:30:00Z",
+      "title": {
+        "en": "A calmer homepage, cleaner market and no ads",
+        "zh": "首页更简洁，市场信息更完整，广告已移除",
+        "ja": "ホームを整理、マーケットを充実、広告を廃止",
+        "ar": "صفحة رئيسية أهدأ وسوق أوضح وبلا إعلانات",
+        "ru": "Спокойнее главная, понятнее рынок, без рекламы",
+        "es": "Inicio más limpio, mercado más claro y sin anuncios",
+        "pt": "Início mais limpo, mercado mais claro e sem anúncios",
+        "fr": "Accueil plus sobre, marché plus clair, sans publicité",
+        "de": "Ruhigere Startseite, klarerer Markt, keine Werbung"
+      },
+      "paragraphs": {
+        "en": [
+          "The homepage is back to one centered column: paste a link, pick URL or HTML, and generate. The device preview experiment has been removed.",
+          "Market cards show the publish time, visit count and download count again, and you can keep loading more apps.",
+          "Ads and the privacy page are gone. The site no longer loads AdSense, and generated download pages no longer include ad scripts.",
+          "App download pages now use the same centered layout, with a five-platform card grid and dark mode."
+        ],
+        "zh": [
+          "首页回到单列居中：粘贴链接，选择网址或 HTML，然后生成。之前的设备预览功能已经移除。",
+          "市场卡片重新显示发布时间、访问量和下载量，也可以继续加载更多应用。",
+          "广告和隐私说明页已移除。站点不再加载 AdSense，生成的下载页也不再包含广告脚本。",
+          "应用下载页也换成了同样的居中布局，五个平台改成卡片网格，并支持暗色模式。"
+        ],
+        "ja": [
+          "ホームは中央揃えの1列に戻りました。リンクを貼り、URLかHTMLを選んで生成するだけです。デバイスプレビューは削除しました。",
+          "マーケットのカードに公開日時・アクセス数・ダウンロード数が戻り、さらに多くのアプリを読み込めます。",
+          "広告とプライバシーページを削除しました。サイトはAdSenseを読み込まず、生成されたダウンロードページにも広告スクリプトはありません。",
+          "アプリのダウンロードページも同じ中央揃えのレイアウトになり、5プラットフォームのカードグリッドとダークモードに対応しました。"
+        ],
+        "ar": [
+          "عادت الصفحة الرئيسية إلى عمود واحد في الوسط: الصق رابطاً، اختر URL أو HTML، ثم أنشئ. أُزيلت معاينة الجهاز التجريبية.",
+          "تعرض بطاقات السوق وقت النشر وعدد الزيارات والتنزيلات مجدداً، ويمكنك تحميل المزيد من التطبيقات.",
+          "أُزيلت الإعلانات وصفحة الخصوصية. لم يعد الموقع يحمّل AdSense، ولم تعد صفحات التنزيل المُنشأة تتضمن نصوصاً إعلانية.",
+          "تستخدم صفحات تنزيل التطبيقات الآن التخطيط المركزي نفسه، مع شبكة بطاقات للمنصات الخمس ووضع داكن."
+        ],
+        "ru": [
+          "Главная снова одна колонка по центру: вставьте ссылку, выберите URL или HTML и создайте приложение. Экспериментальный предпросмотр устройства убран.",
+          "Карточки рынка снова показывают дату публикации, посещения и загрузки, а список можно загружать дальше.",
+          "Реклама и страница конфиденциальности удалены. Сайт больше не загружает AdSense, а созданные страницы загрузки не содержат рекламных скриптов.",
+          "Страницы загрузки приложений теперь используют тот же центрированный макет, сетку из пяти платформ и тёмную тему."
+        ],
+        "es": [
+          "La portada vuelve a una sola columna centrada: pega un enlace, elige URL o HTML y genera. La vista previa del dispositivo se ha eliminado.",
+          "Las fichas del mercado vuelven a mostrar la fecha de publicación, las visitas y las descargas, y puedes seguir cargando apps.",
+          "Los anuncios y la página de privacidad ya no están. El sitio no carga AdSense y las páginas de descarga generadas ya no incluyen scripts de anuncios.",
+          "Las páginas de descarga de apps usan ahora el mismo diseño centrado, con una cuadrícula de cinco plataformas y modo oscuro."
+        ],
+        "pt": [
+          "A página inicial voltou a uma coluna centralizada: cole um link, escolha URL ou HTML e gere. A prévia do dispositivo foi removida.",
+          "Os cards do mercado voltaram a mostrar a data de publicação, as visitas e os downloads, e você pode continuar carregando apps.",
+          "Os anúncios e a página de privacidade foram removidos. O site não carrega mais o AdSense e as páginas de download geradas não incluem scripts de anúncios.",
+          "As páginas de download dos apps agora usam o mesmo layout centralizado, com uma grade de cinco plataformas e modo escuro."
+        ],
+        "fr": [
+          "L’accueil revient à une seule colonne centrée : collez un lien, choisissez URL ou HTML, puis générez. L’aperçu d’appareil a été retiré.",
+          "Les fiches du marché affichent de nouveau la date de publication, les visites et les téléchargements, et vous pouvez charger plus d’apps.",
+          "Les annonces et la page de confidentialité ont disparu. Le site ne charge plus AdSense et les pages de téléchargement générées n’incluent plus de scripts publicitaires.",
+          "Les pages de téléchargement des apps utilisent désormais la même mise en page centrée, avec une grille de cinq plateformes et un mode sombre."
+        ],
+        "de": [
+          "Die Startseite ist wieder eine zentrierte Spalte: Link einfügen, URL oder HTML wählen, fertig. Die Gerätevorschau wurde entfernt.",
+          "Marktkarten zeigen wieder Veröffentlichungsdatum, Aufrufe und Downloads; weitere Apps lassen sich nachladen.",
+          "Werbung und Datenschutzseite sind weg. Die Website lädt kein AdSense mehr, und generierte Download-Seiten enthalten keine Werbeskripte.",
+          "App-Download-Seiten nutzen jetzt dasselbe zentrierte Layout, mit einem Kartenraster für fünf Plattformen und Dark Mode."
+        ]
+      }
+    },
+    {
       id: '2026-10-13-market-icons',
       publishedAt: '2026-10-13T16:00:00Z',
       title: {
