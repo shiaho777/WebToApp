@@ -125,43 +125,13 @@ def _js_literal(value) -> str:
     return json.dumps(str(value or ""), ensure_ascii=False).replace("<", "\\u003c")
 
 
-# Public AdSense publisher id. Auto ads, not a hand-placed slot.
-ADSENSE_CLIENT = "ca-pub-7023716352718601"
-ADSENSE_SCRIPT = (
-    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
-    f'?client={ADSENSE_CLIENT}" crossorigin="anonymous"></script>'
-)
-# Hosts Google's auto-ads loader pulls in. Kept off the in-app shell so a
-# wrapped site does not carry this site's ads.
-_ADSENSE_SCRIPT_HOSTS = " ".join((
-    "https://pagead2.googlesyndication.com",
-    "https://partner.googleadservices.com",
-    "https://www.googletagservices.com",
-    "https://adservice.google.com",
-    "https://tpc.googlesyndication.com",
-    "https://www.googletagmanager.com",
-    "https://fundingchoicesmessages.google.com",
-    "https://www.google.com",
-))
-_ADSENSE_FRAME_HOSTS = " ".join((
-    "https://googleads.g.doubleclick.net",
-    "https://tpc.googlesyndication.com",
-    "https://pagead2.googlesyndication.com",
-    "https://www.google.com",
-    "https://fundingchoicesmessages.google.com",
-))
-
-
-def _csp_meta(script_body: str, extra: str = "", self_scripts: bool = False, allow_ads: bool = False) -> str:
+def _csp_meta(script_body: str, extra: str = "", self_scripts: bool = False) -> str:
     """Hash-pinned CSP meta tag: only the exact inline script body we emit may
     execute — injected scripts, javascript: URLs and inline handlers die here.
     ``self_scripts`` additionally allows same-origin <script src> files
-    (the download page loads /js/mdmini.js + /js/community.js).
-    ``allow_ads`` opens the Google ad hosts used by the download page only."""
+    (the download page loads /js/mdmini.js + /js/community.js)."""
     digest = base64.b64encode(hashlib.sha256(script_body.encode("utf-8")).digest()).decode("ascii")
     script_src = f"script-src 'sha256-{digest}'" + (" 'self'" if self_scripts else "")
-    if allow_ads:
-        script_src += " " + _ADSENSE_SCRIPT_HOSTS
     policy = (
         "default-src 'self'; img-src 'self' data: https:; "
         "style-src 'unsafe-inline' https://fonts.googleapis.com; "
@@ -169,8 +139,6 @@ def _csp_meta(script_body: str, extra: str = "", self_scripts: bool = False, all
         f"{script_src}; connect-src 'self' http: https:; "
         "object-src 'none'; base-uri 'none'; form-action 'none'"
     )
-    if allow_ads:
-        policy += "; frame-src " + _ADSENSE_FRAME_HOSTS
     if extra:
         policy += "; " + extra
     return f'<meta http-equiv="Content-Security-Policy" content="{policy}">'
@@ -1169,14 +1137,13 @@ class Distiller:
   apply();
 }})();"""
         script_body = f"\n{inline_js}\n"
-        csp_meta = _csp_meta(script_body, self_scripts=True, allow_ads=True)
+        csp_meta = _csp_meta(script_body, self_scripts=True)
         html = f"""{self.DOWNLOAD_PAGE_MARKER}
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-{ADSENSE_SCRIPT}
 {csp_meta}
 <title>{name_esc} — Download | WebToApp</title>
 <meta name="description" content="Download the installer or config profile of {name_esc} for your device. Works on iPhone, Android, Windows, macOS and Linux.">
@@ -1340,7 +1307,6 @@ a{{color:inherit;text-decoration:none}}
     </a>
     <div class="nav-right">
       <span class="brand-note" data-i18n="navDownload">Download</span>
-      <a href="/privacy.html">Privacy</a>
       <select id="dl-lang" aria-label="Language"></select>
     </div>
   </div>
