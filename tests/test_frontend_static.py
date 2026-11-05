@@ -231,10 +231,17 @@ class BrandAndComponentSystemTests(unittest.TestCase):
         self.assertIn('href="assets/site-logo-96.jpg', html)
         self.assertIn('rel="apple-touch-icon"', html)
         self.assertIn('rel="manifest"', html)
-        self.assertIn("assets/site-logo-96.jpg", _read("privacy.html"))
         self.assertIn("/assets/site-logo-96.jpg", _read("server/engine/distiller.py"))
-        for rel in ("index.html", "privacy.html", "server/engine/distiller.py", "manifest.webmanifest"):
+        for rel in ("index.html", "server/engine/distiller.py", "manifest.webmanifest"):
             self.assertNotIn("logo.svg", _read(rel), rel)
+
+    def test_no_ads_or_privacy_page(self):
+        html = _read("index.html")
+        self.assertNotIn("googlesyndication", html)
+        self.assertNotIn("adsbygoogle", html)
+        self.assertNotIn("/privacy.html", html)
+        self.assertFalse((ROOT / "privacy.html").exists())
+        self.assertFalse((ROOT / "ads.txt").exists())
 
     def test_manifest_declares_installable_icons(self):
         import json

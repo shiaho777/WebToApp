@@ -176,16 +176,6 @@ main {
   z-index: 1;
 }
 
-.site-footer {
-  padding: 8px clamp(22px, 4vw, 52px) 36px;
-  color: var(--ink-faint);
-  font-size: 0.85rem;
-}
-
-.site-footer a:hover {
-  color: var(--accent);
-}
-
 .history-icon-review {
   margin-top: 6px;
   color: var(--danger);

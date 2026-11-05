@@ -363,6 +363,12 @@ class DownloadPageHardeningTests(unittest.TestCase):
             pwa = (Path(tmp) / "pwa.html").read_text()
         self.assertIn("navigator.languages", pwa)
 
+    def test_download_page_has_no_ads_or_privacy_link(self):
+        page = self._page()
+        self.assertNotIn("googlesyndication", page)
+        self.assertNotIn("adsbygoogle", page)
+        self.assertNotIn("/privacy.html", page)
+
     def test_page_mounts_community_scripts(self):
         # Download pages load the shared community component: mount point,
         # WTA_APP_ID bootstrap before the script, and 'self' in the CSP so
@@ -383,27 +389,6 @@ class DownloadPageHardeningTests(unittest.TestCase):
         # community.js uses the shared toast/confirm helpers (issue #157).
         self.assertIn('/js/ui.js', page)
         self.assertLess(page.index("/js/ui.js"), page.index("/js/community.js"))
-        self.assertIn("ca-pub-7023716352718601", page)
-        self.assertIn("pagead2.googlesyndication.com", script_src)
-        self.assertIn("googleads.g.doubleclick.net", page)
-
-    def test_ads_txt_names_the_publisher(self):
-        from pathlib import Path
-        text = Path("ads.txt").read_text(encoding="utf-8")
-        self.assertIn("google.com, pub-7023716352718601, DIRECT, f08c47fec0942fa0", text)
-
-    def test_pwa_shell_does_not_load_ads(self):
-        import tempfile
-        from pathlib import Path
-
-        recipe = {
-            "id": "abcd1234", "name": "App", "url": "https://example.com",
-            "color": "#7c3aed", "display": "standalone", "orientation": "any",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            Distiller()._write_pwa_files(Path(tmp), recipe, "https://example.com")
-            pwa = (Path(tmp) / "pwa.html").read_text()
-        self.assertNotIn("googlesyndication.com", pwa)
 
 
 class ArtifactSanitizationTests(unittest.TestCase):
