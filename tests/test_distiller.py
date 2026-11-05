@@ -364,7 +364,7 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertIn("navigator.languages", pwa)
 
     def test_download_page_marker_invalidates_old_ads_cache(self):
-        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v6-noads -->")
+        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v7-download-redesign -->")
 
     def test_download_page_has_no_ads_or_privacy_link(self):
         page = self._page()
@@ -562,18 +562,27 @@ class DownloadPageLayoutTests(unittest.TestCase):
     def test_prose_is_collapsed_not_inline(self):
         page = self._page()
         body = page[page.find("<body>"):]
-        self.assertIn('<details class="fold">', body)
+        self.assertIn('<details class="fold about-fold">', body)
         self.assertIn('data-i18n="aboutTitle"', body)
         self.assertIn('ios-fold', body)
         self.assertNotIn('class="desc"', body)
         self.assertNotIn('class="footnote"', body)
         self.assertNotIn('app-sub', body)
 
+    def test_download_page_uses_centered_layout(self):
+        page = self._page()
+        body = page[page.find("<body>"):]
+        self.assertIn('class="download-page"', body)
+        self.assertIn('class="app-hero"', body)
+        self.assertIn('class="hero-panel"', body)
+        self.assertIn('class="community-sec"', body)
+        self.assertIn('class="app-actions"', body)
+
     def test_platforms_render_before_ios_fold(self):
         page = self._page()
         body = page[page.find("<body>"):]
         self.assertLess(body.find('class="platforms"'), body.find('ios-fold'))
-        self.assertLess(body.find('id="community-sec"'), body.find('class="hero-panel"'))
+        self.assertLess(body.find('class="hero-panel"'), body.find('id="community-sec"'))
 
 
 class IconPipelineTests(unittest.TestCase):

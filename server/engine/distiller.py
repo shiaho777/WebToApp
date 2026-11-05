@@ -190,7 +190,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v6-noads -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v7-download-redesign -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")
@@ -1173,7 +1173,7 @@ body{{
   background:var(--paper);
 }}
 a{{color:inherit;text-decoration:none}}
-.page{{max-width:1360px;margin:0 auto;padding:28px 28px 44px}}
+.page{{max-width:1100px;margin:0 auto;padding:26px 28px 52px}}
 .nav{{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid var(--line)}}
 .brand{{display:inline-flex;align-items:center;gap:12px;font-size:1.15rem;font-weight:700}}
 .brand img{{display:block;width:28px;height:28px;border-radius:8px;object-fit:cover}}
@@ -1181,55 +1181,48 @@ a{{color:inherit;text-decoration:none}}
 .nav-right{{display:inline-flex;align-items:center;gap:14px}}
 #dl-lang{{appearance:none;-webkit-appearance:none;font:inherit;font-size:.9rem;color:var(--ink);background-color:rgba(255,251,246,.72);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23736357' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;border:1px solid var(--line-strong);border-radius:8px;padding:7px 32px 7px 14px;cursor:pointer}}
 [dir="rtl"] #dl-lang{{background-position:left 12px center;padding:7px 14px 7px 32px}}
-.hero{{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(420px,.98fr);gap:36px;align-items:start;padding-top:44px}}
-.hero-copy{{padding:8px 0 0}}
-.eyebrow{{margin-bottom:14px;font-size:.78rem;letter-spacing:.16em;color:rgba(30,25,20,.46);text-transform:uppercase}}
-.title{{max-width:14ch;font-family:'Spectral','Noto Serif SC','Songti SC',serif;font-size:clamp(2.2rem,4.2vw,3.4rem);font-weight:600;line-height:1.1;letter-spacing:0}}
-.app-desc{{margin-top:14px;font-size:16px;line-height:1.55;color:var(--ink-soft)}}
-.meta-row{{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}}
-.meta-chip{{display:inline-flex;align-items:center;padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:transparent;font-size:.86rem;color:var(--ink-soft)}}
+.download-page{{max-width:920px;margin:0 auto;padding-top:46px}}
+.app-hero{{text-align:center;padding:4px 0 0}}
+.icon{{display:block;width:84px;height:84px;margin:0 auto 18px;border-radius:20px;flex-shrink:0;object-fit:contain;background:rgba(255,255,255,.7);border:1px solid rgba(30,25,20,.08);padding:8px}}
+.eyebrow{{margin-bottom:12px;font-size:.78rem;letter-spacing:.16em;color:rgba(30,25,20,.46);text-transform:uppercase;text-align:center}}
+.title{{max-width:none;font-family:'Spectral','Noto Serif SC','Songti SC',serif;font-size:clamp(2.4rem,5vw,4rem);font-weight:600;line-height:1.08;letter-spacing:0;text-align:center}}
+.app-desc{{max-width:42rem;margin:16px auto 0;font-size:1.02rem;line-height:1.6;color:var(--ink-soft);text-align:center}}
+.meta-row{{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:18px}}
+.meta-chip{{display:inline-flex;align-items:center;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:.82rem;color:var(--ink-soft)}}
 .meta-chip-tag{{border-color:rgba(201,121,83,.4);background:rgba(201,121,83,.1);color:#8a4b2d;font-weight:700}}
-.tags-row{{margin-top:14px}}
-.desc{{max-width:30rem;margin-top:20px;font-size:1rem;line-height:1.78;color:var(--ink-soft)}}
-.source{{margin-top:16px;font-size:.9rem;color:rgba(24,20,18,.48);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}}
-.hero-panel{{display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-radius:16px;background:var(--surface-strong);overflow:hidden}}
-.app-top{{padding:26px 26px 20px;border-bottom:1px solid var(--line)}}
-.app-head{{display:flex;align-items:center;gap:18px}}
-.icon{{width:72px;height:72px;border-radius:14px;flex-shrink:0;object-fit:contain;background:rgba(255,255,255,.7);border:1px solid rgba(30,25,20,.08);padding:8px}}
-.app-title{{font-family:'Spectral','Noto Serif SC','Songti SC',serif;font-size:1.6rem;line-height:1.15;letter-spacing:0}}
-.app-sub{{margin-top:8px;font-size:.95rem;color:var(--ink-soft);line-height:1.7}}
-.app-actions{{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}}
-.action{{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--line-strong);background:rgba(255,255,255,.6);font-size:.95rem;font-weight:600}}
+.tags-row{{margin-top:16px}}
+.source{{margin-top:10px;font-size:.86rem;color:rgba(24,20,18,.48);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center}}
+.app-actions{{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:22px}}
+.action{{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line-strong);background:rgba(255,255,255,.6);font-size:.94rem;font-weight:600;transition:border-color .18s ease,background .18s ease}}
+.action:hover{{border-color:rgba(30,25,20,.3);background:rgba(255,255,255,.9)}}
 .action.primary{{background:var(--accent-deep);border-color:transparent;color:#fff8f2}}
-  .platform-wrap{{padding:24px 24px 26px}}
-  .ios-install{{margin-bottom:18px;padding:18px;border:1px solid rgba(30,25,20,.08);border-radius:12px;background:rgba(255,255,255,.5)}}
-  .ios-top{{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}}
-  .ios-title{{font-size:1rem;font-weight:700}}
-  .ios-badge{{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:6px;font-size:.78rem;font-weight:700;white-space:nowrap}}
-  .ios-badge-ok{{background:#d9f4e4;color:#17603d}}
-  .ios-badge-warn{{background:#f8ebc7;color:#8b6114}}
-  .android-badge{{display:inline-flex;align-items:center;height:22px;margin-left:8px;padding:0 8px;border-radius:6px;font-size:.72rem;font-weight:700;vertical-align:middle;white-space:nowrap}}
-  .android-badge-ok{{background:#d9f4e4;color:#17603d}}
-  .android-badge-warn{{background:#f8ebc7;color:#8b6114}}
-  .plat-name{{display:flex;align-items:center;flex-wrap:wrap;gap:4px}}
-  .ios-copy{{font-size:.9rem;line-height:1.7;color:rgba(24,20,18,.62)}}
-  .ios-steps{{margin-top:12px;padding-left:18px;color:rgba(24,20,18,.56);font-size:.84rem;line-height:1.7}}
-  .section-label{{margin-bottom:14px;font-size:.82rem;letter-spacing:.14em;color:rgba(24,20,18,.42);text-transform:uppercase}}
-.platforms{{display:flex;flex-direction:column;gap:12px}}
-.plat{{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid rgba(30,25,20,.08);border-radius:12px;background:rgba(255,255,255,.5);transition:border-color .18s ease, background .18s ease}}
-.plat:hover{{border-color:rgba(30,25,20,.16);background:rgba(255,255,255,.85)}}
-.plat-icon{{width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px;background:rgba(255,255,255,.7);border:1px solid rgba(30,25,20,.08)}}
-.plat-icon svg{{width:24px;height:24px;fill:currentColor;display:block}}
+.action.primary:hover{{background:#2e2620}}
+.app-hero .app-rating{{justify-content:center;margin:18px 0 0}}
+.hero-panel{{width:100%;margin-top:34px;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--surface-strong)}}
+.section-label{{margin-bottom:16px;font-size:.8rem;letter-spacing:.14em;color:rgba(24,20,18,.42);text-transform:uppercase;text-align:center}}
+.platforms{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}}
+.plat{{display:flex;flex-direction:column;align-items:flex-start;gap:12px;height:100%;padding:16px;border:1px solid rgba(30,25,20,.08);border-radius:14px;background:rgba(255,255,255,.55);transition:border-color .18s ease,background .18s ease}}
+.plat:hover{{border-color:rgba(30,25,20,.18);background:rgba(255,255,255,.9)}}
+.plat-icon{{width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px;background:rgba(255,255,255,.7);border:1px solid rgba(30,25,20,.08)}}
+.plat-icon svg{{width:22px;height:22px;fill:currentColor;display:block}}
 .plat-icon-windows{{color:#1889d6}}
 .plat-icon-apple{{color:#181412}}
 .plat-icon-linux{{color:#3f6b4c}}
 .plat-icon-android{{color:#4f8f4b}}
-.plat-info{{flex:1;min-width:0}}
-.plat-name{{font-size:1rem;font-weight:700}}
-.plat-detail{{margin-top:4px;font-size:.86rem;color:rgba(24,20,18,.52);line-height:1.55}}
-.plat-badge{{display:inline-flex;align-items:center;justify-content:center;min-width:74px;height:38px;padding:0 14px;border-radius:8px;background:var(--accent);color:#fff8f2;font-size:.86rem;font-weight:700;white-space:nowrap}}
-.footnote{{margin-top:16px;font-size:.84rem;color:rgba(24,20,18,.48);line-height:1.7}}
-.fold{{margin-top:18px;border:1px solid rgba(30,25,20,.08);border-radius:12px;background:rgba(255,255,255,.5)}}
+.plat-info{{width:100%;flex:1;min-width:0}}
+.plat-name{{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:.96rem;font-weight:700}}
+.plat-detail{{margin-top:4px;font-size:.8rem;color:rgba(24,20,18,.52);line-height:1.5}}
+.plat-badge{{display:inline-flex;align-items:center;justify-content:center;width:100%;min-width:0;height:34px;margin-top:auto;padding:0 12px;border-radius:8px;background:var(--accent);color:#fff8f2;font-size:.82rem;font-weight:700;white-space:nowrap}}
+.ios-badge{{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap}}
+.ios-badge-ok{{background:#d9f4e4;color:#17603d}}
+.ios-badge-warn{{background:#f8ebc7;color:#8b6114}}
+.android-badge{{display:inline-flex;align-items:center;height:21px;margin-left:4px;padding:0 7px;border-radius:999px;font-size:.68rem;font-weight:700;vertical-align:middle;white-space:nowrap}}
+.android-badge-ok{{background:#d9f4e4;color:#17603d}}
+.android-badge-warn{{background:#f8ebc7;color:#8b6114}}
+.ios-copy{{font-size:.88rem;line-height:1.7;color:rgba(24,20,18,.62)}}
+.ios-steps{{margin-top:12px;padding-left:18px;color:rgba(24,20,18,.56);font-size:.82rem;line-height:1.7}}
+.fold{{margin-top:16px;border:1px solid rgba(30,25,20,.08);border-radius:14px;background:rgba(255,255,255,.5)}}
+.about-fold{{margin-top:20px}}
 .fold>summary{{display:flex;align-items:center;gap:10px;padding:13px 16px;font-size:.9rem;font-weight:700;cursor:pointer;list-style:none;color:var(--ink)}}
 .fold>summary::-webkit-details-marker{{display:none}}
 .fold>summary::after{{content:"";margin-left:auto;width:7px;height:7px;flex:none;border-right:2px solid rgba(30,25,20,.4);border-bottom:2px solid rgba(30,25,20,.4);transform:rotate(45deg);transition:transform .18s ease}}
@@ -1240,21 +1233,19 @@ a{{color:inherit;text-decoration:none}}
 .about-text{{white-space:pre-line;font-size:.92rem;color:var(--ink)}}
 .about-imgs{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}}
 .about-imgs img{{width:100%;display:block;border-radius:10px;border:1px solid rgba(30,25,20,.08)}}
-@media (max-width:1080px){{
-  .hero{{grid-template-columns:1fr}}
-}}
 @media (max-width:720px){{
-  .page{{padding:20px 20px 36px}}
-  .hero{{padding-top:28px;gap:24px}}
-  .app-top{{padding:20px 20px 16px}}
-  .platform-wrap{{padding:18px}}
-  .app-head{{align-items:flex-start}}
-  .icon{{width:60px;height:60px;border-radius:12px}}
-  .app-title{{font-size:1.35rem}}
-  .title{{font-size:clamp(1.9rem,8vw,2.6rem)}}
+  .page{{padding:18px 18px 40px}}
+  .download-page{{padding-top:30px}}
+  .icon{{width:72px;height:72px;border-radius:18px}}
+  .title{{font-size:clamp(2rem,9vw,2.8rem)}}
+  .platforms{{grid-template-columns:1fr}}
+  .app-actions{{flex-direction:column}}
+  .action{{width:100%}}
+  .hero-panel,.community-sec{{padding:18px}}
 }}
 /* --- community: creator card / comments / ratings --- */
-.community-sec{{margin-top:26px;border-top:1px solid var(--line);padding-top:20px}}
+.community-sec{{width:100%;margin-top:20px;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}}
+.community-sec .section-label{{text-align:left}}
 .app-rating{{display:flex;align-items:center;gap:8px;margin-bottom:16px}}
 .stars{{color:#ddd3c4;letter-spacing:2px;font-size:1rem}}
 .stars .on{{color:#e8a33d}}
@@ -1311,66 +1302,58 @@ a{{color:inherit;text-decoration:none}}
     </div>
   </div>
 
-  <main class="hero">
-    <section class="hero-copy">
-      <div class="eyebrow" data-i18n="eyebrow">INSTALLATION / DOWNLOAD</div>
+  <main class="download-page">
+    <section class="app-hero">
+      <img src="{favicon}" alt="{name_esc}" class="icon">
+      <p class="eyebrow" data-i18n="eyebrow">INSTALLATION / DOWNLOAD</p>
       <h1 class="title">{name_esc}</h1>
       {desc_html}
       {tags_row}
       <p class="source">{source_host}</p>
-      <details class="fold">
-        <summary data-i18n="aboutTitle">About this page</summary>
-        <div class="fold-body">
-          {about_fold_body}
-        </div>
-      </details>
-      <section class="community-sec" id="community-sec">
-        <div id="app-rating" class="app-rating"></div>
-        <div class="creator-wrap"><div id="creator-card"></div></div>
-        <div id="creator-apps"></div>
-        <div class="comments-wrap">
-          <div class="section-label" id="comments-title"></div>
-          <form id="comment-form" class="comment-form">
-            <div id="rating-picker"></div>
-            <textarea id="comment-body" rows="3" maxlength="2000"></textarea>
-            <button type="submit"></button>
-          </form>
-          <div id="comments-list"></div>
-        </div>
-      </section>
+      <div class="app-actions">
+        <a class="action primary" href="{url_esc}" target="_blank" rel="noopener noreferrer" data-i18n="{open_site_key}">Open original site</a>
+        <a class="action" href="{base}/download/ios" data-i18n="downloadIosProfile">Download iPhone profile</a>
+      </div>
+      <div id="app-rating" class="app-rating"></div>
     </section>
 
     <section class="hero-panel">
-      <div class="app-top">
-        <div class="app-head">
-          <img src="{favicon}" alt="{name_esc}" class="icon">
-          <div>
-            <h2 class="app-title">{name_esc}</h2>
-          </div>
-        </div>
-        <div class="app-actions">
-          <a class="action primary" href="{url_esc}" target="_blank" rel="noopener noreferrer" data-i18n="{open_site_key}">Open original site</a>
-          <a class="action" href="{base}/download/ios" data-i18n="downloadIosProfile">Download iPhone profile</a>
-        </div>
-      </div>
-
-      <div class="platform-wrap">
-        <p class="section-label" data-i18n="chooseDevice">Choose your device</p>
-        <div class="platforms">
+      <p class="section-label" data-i18n="chooseDevice">Choose your device</p>
+      <div class="platforms">
 {platform_links}
+      </div>
+      <details class="fold ios-fold">
+        <summary><span data-i18n="iosTitle">iPhone install guide</span>{ios_badge}</summary>
+        <div class="fold-body">
+          <p class="ios-copy" data-i18n="iosCopy">iPhone and iPad don't need a separate page. Download the profile right in Safari, then finish installing in Settings and the icon appears on your home screen.</p>
+          <ol class="ios-steps">
+            <li data-i18n="iosStep1">In Safari, tap the iPhone install entry above or below</li>
+            <li data-i18n="iosStep2">Download the <code>.mobileconfig</code> profile</li>
+            <li data-i18n="iosStep3">Open "Profile Downloaded" in Settings and finish installing</li>
+            <li data-i18n="iosStep4">Return to the home screen and tap the icon to open</li>
+          </ol>
         </div>
-        <details class="fold ios-fold">
-          <summary><span data-i18n="iosTitle">iPhone install guide</span>{ios_badge}</summary>
-          <div class="fold-body">
-            <p class="ios-copy" data-i18n="iosCopy">iPhone and iPad don't need a separate page. Download the profile right in Safari, then finish installing in Settings and the icon appears on your home screen.</p>
-            <ol class="ios-steps">
-              <li data-i18n="iosStep1">In Safari, tap the iPhone install entry above or below</li>
-              <li data-i18n="iosStep2">Download the <code>.mobileconfig</code> profile</li>
-              <li data-i18n="iosStep3">Open "Profile Downloaded" in Settings and finish installing</li>
-              <li data-i18n="iosStep4">Return to the home screen and tap the icon to open</li>
-            </ol>
-          </div>
-        </details>
+      </details>
+    </section>
+
+    <details class="fold about-fold">
+      <summary data-i18n="aboutTitle">About this page</summary>
+      <div class="fold-body">
+        {about_fold_body}
+      </div>
+    </details>
+
+    <section class="community-sec" id="community-sec">
+      <div class="creator-wrap"><div id="creator-card"></div></div>
+      <div id="creator-apps"></div>
+      <div class="comments-wrap">
+        <div class="section-label" id="comments-title"></div>
+        <form id="comment-form" class="comment-form">
+          <div id="rating-picker"></div>
+          <textarea id="comment-body" rows="3" maxlength="2000"></textarea>
+          <button type="submit"></button>
+        </form>
+        <div id="comments-list"></div>
       </div>
     </section>
   </main>
