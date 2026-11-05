@@ -190,7 +190,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v5-ads -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v6-noads -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")

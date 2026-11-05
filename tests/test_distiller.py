@@ -363,6 +363,9 @@ class DownloadPageHardeningTests(unittest.TestCase):
             pwa = (Path(tmp) / "pwa.html").read_text()
         self.assertIn("navigator.languages", pwa)
 
+    def test_download_page_marker_invalidates_old_ads_cache(self):
+        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v6-noads -->")
+
     def test_download_page_has_no_ads_or_privacy_link(self):
         page = self._page()
         self.assertNotIn("googlesyndication", page)
