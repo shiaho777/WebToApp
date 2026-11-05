@@ -364,7 +364,14 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertIn("navigator.languages", pwa)
 
     def test_download_page_marker_invalidates_old_ads_cache(self):
-        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v7-download-redesign -->")
+        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v8-download-dark -->")
+
+    def test_download_page_supports_dark_mode(self):
+        page = self._page()
+        self.assertIn("@media (prefers-color-scheme: dark)", page)
+        self.assertIn("--paper:#17130f", page)
+        self.assertIn("color-scheme:dark", page)
+        self.assertNotIn("rgba(30,25,20,.08)", page)
 
     def test_download_page_has_no_ads_or_privacy_link(self):
         page = self._page()

@@ -190,7 +190,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v7-download-redesign -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v8-download-dark -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")
@@ -1154,15 +1154,63 @@ class Distiller:
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Noto+Serif+SC:wght@600;700&family=Spectral:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{{
+  color-scheme:light;
   --paper:#f7f3ec;
+  --paper-strong:#fbf8f3;
+  --paper-deep:#efe7db;
+  --surface:#fbf8f3;
+  --surface-strong:#fbf8f3;
   --ink:#1e1914;
+  --ink-hover:#2e2620;
   --ink-soft:rgba(30,25,20,.68);
+  --ink-faint:#6a6560;
   --line:rgba(30,25,20,.1);
   --line-strong:rgba(30,25,20,.16);
   --accent:#c97953;
-  --accent-deep:#1e1914;
-  --surface:#fbf8f3;
-  --surface-strong:#fbf8f3;
+  --accent-text:#8a4b2d;
+  --on-accent:#fff8f2;
+  --success-bg:#d9f4e4;
+  --success-fg:#17603d;
+  --warn-bg:#f8ebc7;
+  --warn-fg:#8b6114;
+  --avatar-bg:#efe5d6;
+  --avatar-fg:#8a7a64;
+  --star-off:#ddd3c4;
+  --star-on:#e8a33d;
+}}
+@media (prefers-color-scheme: dark){{
+  :root{{
+    color-scheme:dark;
+    --paper:#17130f;
+    --paper-strong:#221d18;
+    --paper-deep:#1d1915;
+    --surface:#241f1a;
+    --surface-strong:#241f1a;
+    --ink:#ece4d8;
+    --ink-hover:#fffaf2;
+    --ink-soft:rgba(236,228,216,.72);
+    --ink-faint:#979088;
+    --line:rgba(236,228,216,.12);
+    --line-strong:rgba(236,228,216,.2);
+    --accent:#d68b67;
+    --accent-text:#e8a684;
+    --on-accent:#1b140f;
+    --success-bg:rgba(132,176,144,.18);
+    --success-fg:#9fd0ac;
+    --warn-bg:rgba(230,190,90,.16);
+    --warn-fg:#e6c27a;
+    --avatar-bg:#2c261f;
+    --avatar-fg:#a8977f;
+    --star-off:#3a332c;
+    --star-on:#e8a33d;
+  }}
+  #dl-lang{{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8977f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  }}
+  .plat-icon-windows{{color:#5ab0f0}}
+  .plat-icon-apple{{color:var(--ink)}}
+  .plat-icon-linux{{color:#8fbf9f}}
+  .plat-icon-android{{color:#8fcf8b}}
 }}
 *{{margin:0;padding:0;box-sizing:border-box}}
 html{{-webkit-font-smoothing:antialiased}}
@@ -1179,31 +1227,31 @@ a{{color:inherit;text-decoration:none}}
 .brand img{{display:block;width:28px;height:28px;border-radius:8px;object-fit:cover}}
 .brand-note{{font-size:.82rem;color:var(--ink-soft);letter-spacing:.14em;text-transform:uppercase}}
 .nav-right{{display:inline-flex;align-items:center;gap:14px}}
-#dl-lang{{appearance:none;-webkit-appearance:none;font:inherit;font-size:.9rem;color:var(--ink);background-color:rgba(255,251,246,.72);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23736357' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;border:1px solid var(--line-strong);border-radius:8px;padding:7px 32px 7px 14px;cursor:pointer}}
+#dl-lang{{appearance:none;-webkit-appearance:none;font:inherit;font-size:.9rem;color:var(--ink);background-color:var(--surface);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23736357' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;border:1px solid var(--line-strong);border-radius:8px;padding:7px 32px 7px 14px;cursor:pointer}}
 [dir="rtl"] #dl-lang{{background-position:left 12px center;padding:7px 14px 7px 32px}}
 .download-page{{max-width:920px;margin:0 auto;padding-top:46px}}
 .app-hero{{text-align:center;padding:4px 0 0}}
-.icon{{display:block;width:84px;height:84px;margin:0 auto 18px;border-radius:20px;flex-shrink:0;object-fit:contain;background:rgba(255,255,255,.7);border:1px solid rgba(30,25,20,.08);padding:8px}}
-.eyebrow{{margin-bottom:12px;font-size:.78rem;letter-spacing:.16em;color:rgba(30,25,20,.46);text-transform:uppercase;text-align:center}}
+.icon{{display:block;width:84px;height:84px;margin:0 auto 18px;border-radius:20px;flex-shrink:0;object-fit:contain;background:var(--paper-strong);border:1px solid var(--line);padding:8px}}
+.eyebrow{{margin-bottom:12px;font-size:.78rem;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase;text-align:center}}
 .title{{max-width:none;font-family:'Spectral','Noto Serif SC','Songti SC',serif;font-size:clamp(2.4rem,5vw,4rem);font-weight:600;line-height:1.08;letter-spacing:0;text-align:center}}
 .app-desc{{max-width:42rem;margin:16px auto 0;font-size:1.02rem;line-height:1.6;color:var(--ink-soft);text-align:center}}
 .meta-row{{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:18px}}
 .meta-chip{{display:inline-flex;align-items:center;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:.82rem;color:var(--ink-soft)}}
-.meta-chip-tag{{border-color:rgba(201,121,83,.4);background:rgba(201,121,83,.1);color:#8a4b2d;font-weight:700}}
+.meta-chip-tag{{border-color:var(--line-strong);background:var(--paper-deep);color:var(--accent-text);font-weight:700}}
 .tags-row{{margin-top:16px}}
-.source{{margin-top:10px;font-size:.86rem;color:rgba(24,20,18,.48);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center}}
+.source{{margin-top:10px;font-size:.86rem;color:var(--ink-faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center}}
 .app-actions{{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:22px}}
-.action{{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line-strong);background:rgba(255,255,255,.6);font-size:.94rem;font-weight:600;transition:border-color .18s ease,background .18s ease}}
-.action:hover{{border-color:rgba(30,25,20,.3);background:rgba(255,255,255,.9)}}
-.action.primary{{background:var(--accent-deep);border-color:transparent;color:#fff8f2}}
-.action.primary:hover{{background:#2e2620}}
+.action{{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface);font-size:.94rem;font-weight:600;transition:border-color .18s ease,background .18s ease}}
+.action:hover{{border-color:var(--line-strong);background:var(--paper-strong)}}
+.action.primary{{background:var(--ink);border-color:transparent;color:var(--paper)}}
+.action.primary:hover{{background:var(--ink-hover)}}
 .app-hero .app-rating{{justify-content:center;margin:18px 0 0}}
 .hero-panel{{width:100%;margin-top:34px;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--surface-strong)}}
-.section-label{{margin-bottom:16px;font-size:.8rem;letter-spacing:.14em;color:rgba(24,20,18,.42);text-transform:uppercase;text-align:center}}
+.section-label{{margin-bottom:16px;font-size:.8rem;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;text-align:center}}
 .platforms{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}}
-.plat{{display:flex;flex-direction:column;align-items:flex-start;gap:12px;height:100%;padding:16px;border:1px solid rgba(30,25,20,.08);border-radius:14px;background:rgba(255,255,255,.55);transition:border-color .18s ease,background .18s ease}}
-.plat:hover{{border-color:rgba(30,25,20,.18);background:rgba(255,255,255,.9)}}
-.plat-icon{{width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px;background:rgba(255,255,255,.7);border:1px solid rgba(30,25,20,.08)}}
+.plat{{display:flex;flex-direction:column;align-items:flex-start;gap:12px;height:100%;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);transition:border-color .18s ease,background .18s ease}}
+.plat:hover{{border-color:var(--line-strong);background:var(--paper-strong)}}
+.plat-icon{{width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px;background:var(--paper-strong);border:1px solid var(--line)}}
 .plat-icon svg{{width:22px;height:22px;fill:currentColor;display:block}}
 .plat-icon-windows{{color:#1889d6}}
 .plat-icon-apple{{color:#181412}}
@@ -1211,28 +1259,28 @@ a{{color:inherit;text-decoration:none}}
 .plat-icon-android{{color:#4f8f4b}}
 .plat-info{{width:100%;flex:1;min-width:0}}
 .plat-name{{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:.96rem;font-weight:700}}
-.plat-detail{{margin-top:4px;font-size:.8rem;color:rgba(24,20,18,.52);line-height:1.5}}
-.plat-badge{{display:inline-flex;align-items:center;justify-content:center;width:100%;min-width:0;height:34px;margin-top:auto;padding:0 12px;border-radius:8px;background:var(--accent);color:#fff8f2;font-size:.82rem;font-weight:700;white-space:nowrap}}
+.plat-detail{{margin-top:4px;font-size:.8rem;color:var(--ink-soft);line-height:1.5}}
+.plat-badge{{display:inline-flex;align-items:center;justify-content:center;width:100%;min-width:0;height:34px;margin-top:auto;padding:0 12px;border-radius:8px;background:var(--accent);color:var(--on-accent);font-size:.82rem;font-weight:700;white-space:nowrap}}
 .ios-badge{{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap}}
-.ios-badge-ok{{background:#d9f4e4;color:#17603d}}
-.ios-badge-warn{{background:#f8ebc7;color:#8b6114}}
+.ios-badge-ok{{background:var(--success-bg);color:var(--success-fg)}}
+.ios-badge-warn{{background:var(--warn-bg);color:var(--warn-fg)}}
 .android-badge{{display:inline-flex;align-items:center;height:21px;margin-left:4px;padding:0 7px;border-radius:999px;font-size:.68rem;font-weight:700;vertical-align:middle;white-space:nowrap}}
-.android-badge-ok{{background:#d9f4e4;color:#17603d}}
-.android-badge-warn{{background:#f8ebc7;color:#8b6114}}
-.ios-copy{{font-size:.88rem;line-height:1.7;color:rgba(24,20,18,.62)}}
-.ios-steps{{margin-top:12px;padding-left:18px;color:rgba(24,20,18,.56);font-size:.82rem;line-height:1.7}}
-.fold{{margin-top:16px;border:1px solid rgba(30,25,20,.08);border-radius:14px;background:rgba(255,255,255,.5)}}
+.android-badge-ok{{background:var(--success-bg);color:var(--success-fg)}}
+.android-badge-warn{{background:var(--warn-bg);color:var(--warn-fg)}}
+.ios-copy{{font-size:.88rem;line-height:1.7;color:var(--ink-soft)}}
+.ios-steps{{margin-top:12px;padding-left:18px;color:var(--ink-soft);font-size:.82rem;line-height:1.7}}
+.fold{{margin-top:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}}
 .about-fold{{margin-top:20px}}
 .fold>summary{{display:flex;align-items:center;gap:10px;padding:13px 16px;font-size:.9rem;font-weight:700;cursor:pointer;list-style:none;color:var(--ink)}}
 .fold>summary::-webkit-details-marker{{display:none}}
-.fold>summary::after{{content:"";margin-left:auto;width:7px;height:7px;flex:none;border-right:2px solid rgba(30,25,20,.4);border-bottom:2px solid rgba(30,25,20,.4);transform:rotate(45deg);transition:transform .18s ease}}
+.fold>summary::after{{content:"";margin-left:auto;width:7px;height:7px;flex:none;border-right:2px solid var(--ink-faint);border-bottom:2px solid var(--ink-faint);transform:rotate(45deg);transition:transform .18s ease}}
 .fold[open]>summary::after{{transform:rotate(225deg)}}
-.fold-body{{padding:0 16px 14px;font-size:.86rem;line-height:1.7;color:rgba(24,20,18,.56)}}
+.fold-body{{padding:0 16px 14px;font-size:.86rem;line-height:1.7;color:var(--ink-soft)}}
 .fold-body p+p{{margin-top:8px}}
 .fold-body .ios-steps{{margin-top:10px}}
 .about-text{{white-space:pre-line;font-size:.92rem;color:var(--ink)}}
 .about-imgs{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}}
-.about-imgs img{{width:100%;display:block;border-radius:10px;border:1px solid rgba(30,25,20,.08)}}
+.about-imgs img{{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}}
 @media (max-width:720px){{
   .page{{padding:18px 18px 40px}}
   .download-page{{padding-top:30px}}
@@ -1247,36 +1295,36 @@ a{{color:inherit;text-decoration:none}}
 .community-sec{{width:100%;margin-top:20px;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}}
 .community-sec .section-label{{text-align:left}}
 .app-rating{{display:flex;align-items:center;gap:8px;margin-bottom:16px}}
-.stars{{color:#ddd3c4;letter-spacing:2px;font-size:1rem}}
-.stars .on{{color:#e8a33d}}
+.stars{{color:var(--star-off);letter-spacing:2px;font-size:1rem}}
+.stars .on{{color:var(--star-on)}}
 .rating-num{{font-weight:700}}
 .rating-cnt,.rating-none{{color:var(--ink-soft);font-size:.85rem}}
 .creator-wrap{{margin-bottom:18px}}
 #creator-card{{display:block}}
 .creator-head{{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}}
 .creator-avatar{{width:46px;height:46px;border-radius:50%;object-fit:cover;border:1px solid var(--line-strong)}}
-.avatar-fallback{{display:inline-flex;align-items:center;justify-content:center;background:#efe5d6;color:#8a7a64;font-weight:700;font-size:.95rem}}
+.avatar-fallback{{display:inline-flex;align-items:center;justify-content:center;background:var(--avatar-bg);color:var(--avatar-fg);font-weight:700;font-size:.95rem}}
 .creator-meta{{display:flex;flex-direction:column;min-width:0}}
 .creator-label{{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}}
 .creator-name{{font-weight:700;font-size:1.02rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .creator-num{{font-style:normal;color:var(--ink-soft);font-weight:500;font-size:.85rem}}
 .creator-bio{{margin-top:10px;font-size:.9rem;line-height:1.7;color:var(--ink-soft);max-width:34rem}}
-.creator-bio code{{background:rgba(30,25,20,.07);padding:1px 5px;border-radius:4px;font-size:.85em}}
+.creator-bio code{{background:var(--paper-deep);padding:1px 5px;border-radius:4px;font-size:.85em}}
 .creator-bio a{{color:var(--accent)}}
 .other-apps{{display:flex;flex-wrap:wrap;gap:8px}}
 .other-app{{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border:1px solid var(--line);border-radius:999px;background:var(--surface);text-decoration:none;color:var(--ink);font-size:.85rem;max-width:220px}}
 .other-app img{{width:22px;height:22px;border-radius:6px;object-fit:cover}}
-.other-app-dot{{width:22px;height:22px;border-radius:6px;background:#e7ddcf}}
+.other-app-dot{{width:22px;height:22px;border-radius:6px;background:var(--paper-deep)}}
 .other-app-name{{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .comments-wrap{{margin-top:20px}}
 .comment-form{{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}}
 .comment-form textarea{{font:inherit;font-size:.92rem;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);resize:vertical;min-height:64px}}
-.comment-form button[type=submit]{{align-self:flex-end;font:inherit;font-size:.88rem;font-weight:600;padding:8px 20px;border:none;border-radius:8px;background:var(--accent-deep);color:#fff;cursor:pointer}}
+.comment-form button[type=submit]{{align-self:flex-end;font:inherit;font-size:.88rem;font-weight:600;padding:8px 20px;border:none;border-radius:8px;background:var(--ink);color:var(--paper);cursor:pointer}}
 .comment-form button[disabled]{{opacity:.5;cursor:default}}
 .picker-label{{font-size:.85rem;color:var(--ink-soft)}}
 .picker-label em{{font-style:normal;opacity:.7}}
-.pick-star{{background:none;border:none;font-size:1.25rem;color:#ddd3c4;cursor:pointer;padding:0 2px}}
-.pick-star.on{{color:#e8a33d}}
+.pick-star{{background:none;border:none;font-size:1.25rem;color:var(--star-off);cursor:pointer;padding:0 2px}}
+.pick-star.on{{color:var(--star-on)}}
 .comment{{border-top:1px solid var(--line);padding:12px 0}}
 .comment-head{{display:flex;align-items:center;gap:10px}}
 .comment-head-link{{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-decoration:none;color:inherit}}
