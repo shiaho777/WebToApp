@@ -90,16 +90,16 @@ class AnnouncementTests(unittest.TestCase):
     }
 
     PERF_TITLES = {
-        "en": "History and market now load progressively",
-        "zh": "「你的应用」和市场改为渐进加载",
-        "ja": "「あなたのアプリ」とマーケットを段階的に読み込み",
-        "ko": "내 앱과 마켓이 점진적으로 로드됩니다",
-        "ar": "تطبيقاتك والسوق يُحمّلان تدريجياً",
-        "ru": "История и рынок загружаются постепенно",
-        "es": "Tus apps y el mercado cargan de forma progresiva",
-        "pt": "Seus apps e o mercado carregam de forma progressiva",
-        "fr": "Vos apps et le marché se chargent progressivement",
-        "de": "Deine Apps und der Markt laden schrittweise",
+        "en": "Faster homepage, Korean support and market language filters",
+        "zh": "首页更快、韩语上线、市场支持语言筛选",
+        "ja": "ホーム高速化、韓国語対応、マーケットの言語フィルター",
+        "ko": "홈 속도 개선, 한국어 지원, 마켓 언어 필터",
+        "ar": "صفحة أسرع ودعم الكورية ومرشح لغة السوق",
+        "ru": "Быстрее главная, корейский язык и фильтр рынка по языку",
+        "es": "Portada más rápida, coreano y filtro de idioma del mercado",
+        "pt": "Início mais rápido, coreano e filtro de idioma do mercado",
+        "fr": "Accueil plus rapide, coréen et filtre de langue du marché",
+        "de": "Schnellere Startseite, Koreanisch und Sprachfilter im Markt",
     }
 
     def test_notice_is_published_in_every_language(self):
@@ -120,6 +120,26 @@ class AnnouncementTests(unittest.TestCase):
         for lang, title in self.PERF_TITLES.items():
             self.assertIn(f'"{lang}": "{title}"', src, lang)
 
+    def test_progressive_loading_notice_covers_all_recent_changes(self):
+        src = _read("js/announcements.js")
+        block = src[
+            src.index('"id": "2026-11-06-faster-homepage"'):
+            src.index('"id": "2026-11-05-site-refresh"')
+        ]
+        for marker in (
+            "Korean is now available",
+            "language categories and a language filter",
+            "first screen is faster",
+            "start loading before the main script",
+            "next page automatically",
+            "cached on this device",
+        ):
+            self.assertIn(marker, block)
+        for lang in ("en", "zh", "ja", "ko", "ar", "ru", "es", "pt", "fr", "de"):
+            match = re.search(rf'"{lang}": \[\n(.*?)\n\s+\]', block, re.S)
+            self.assertIsNotNone(match, lang)
+            self.assertEqual(len(re.findall(r'^\s+"', match.group(1), re.M)), 6, lang)
+
     def test_korean_is_available_everywhere(self):
         self.assertIn("'ko'", _read("js/i18n.js"))
         self.assertIn("ko: '한국어'", _read("js/i18n.js"))
@@ -128,7 +148,7 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261106-perf1", html)
+        self.assertIn("js/announcements.js?v=20261106-perf2", html)
 
 
 class FrontendResilienceTests(unittest.TestCase):
