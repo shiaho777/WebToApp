@@ -28,6 +28,7 @@ from server.engine.cache import html_cache, icon_cache, icon_miss_cache
 from server.engine.icon_quality import is_unusable_icon
 from server.engine.storage import r2_storage
 from server import html_site
+from server.languages import normalize_languages
 from server.htmlmeta import parse_html_metadata
 from server.logging_util import log_event
 from server.net import fetch_public_url_bytes
@@ -214,6 +215,7 @@ class Distiller:
             "android_package_prefix": package_prefix,
             "visibility": self._visibility(options),
             "tags": self._tags(options),
+            "languages": self._languages(options),
             "description": self._description(options),
             "_about_text": self._about_text(options),
             "_about_images": self._about_images(options),
@@ -418,6 +420,12 @@ class Distiller:
                 seen.add(value.lower())
                 cleaned.append(value)
         return cleaned[:5]
+
+    def _languages(self, options):
+        raw = options.get("languages")
+        if raw is None:
+            raw = [options.get("language")] if options.get("language") else []
+        return normalize_languages(raw)
 
     def _description(self, options):
         raw = str(options.get("description") or "").strip()

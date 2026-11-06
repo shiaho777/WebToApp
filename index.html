@@ -17,9 +17,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261105-noads1">
+  <link rel="stylesheet" href="css/style.css?v=20261106-lang1">
   <script src="js/i18n.js?v=20261106-ko1"></script>
-  <script src="js/i18n.strings.js?v=20261106-ko1"></script>
+  <script src="js/i18n.strings.js?v=20261106-lang1"></script>
 </head>
 <body>
   <header id="nav">
@@ -429,6 +429,48 @@
               </div>
             </div>
 
+            <div class="field field-full language-field">
+              <span data-i18n="config.languageLabel">App language</span>
+              <div class="language-picker" id="language-picker">
+                <div class="lang-primary-grid" id="lang-primary-grid" role="group" data-i18n-aria-label="config.languagePrimary" aria-label="Primary language">
+                    <button type="button" class="lang-chip" data-lang="en" aria-pressed="false">English</button>
+                    <button type="button" class="lang-chip" data-lang="zh" aria-pressed="false">中文</button>
+                    <button type="button" class="lang-chip" data-lang="ja" aria-pressed="false">日本語</button>
+                    <button type="button" class="lang-chip" data-lang="ko" aria-pressed="false">한국어</button>
+                    <button type="button" class="lang-chip" data-lang="ar" aria-pressed="false">العربية</button>
+                    <button type="button" class="lang-chip" data-lang="ru" aria-pressed="false">Русский</button>
+                    <button type="button" class="lang-chip" data-lang="es" aria-pressed="false">Español</button>
+                    <button type="button" class="lang-chip" data-lang="pt" aria-pressed="false">Português</button>
+                    <button type="button" class="lang-chip" data-lang="fr" aria-pressed="false">Français</button>
+                    <button type="button" class="lang-chip" data-lang="de" aria-pressed="false">Deutsch</button>
+                    <button type="button" class="lang-chip" data-lang="other" data-i18n="language.other" aria-pressed="false">Other</button>
+                    <button type="button" class="lang-chip" data-lang="und" data-i18n="language.und" aria-pressed="false">Unspecified</button>
+                </div>
+                <label class="lang-multi-toggle">
+                  <input id="lang-multilingual" type="checkbox">
+                  <span class="switch-ui"></span>
+                  <span data-i18n="config.languageMultilingual">Multilingual app</span>
+                </label>
+                <div class="lang-additional hidden" id="lang-additional-wrap">
+                  <span class="lang-additional-label" data-i18n="config.languageAdditional">Additional languages</span>
+                  <div class="lang-additional-grid" id="lang-additional-grid" role="group" data-i18n-aria-label="config.languageAdditional" aria-label="Additional languages">
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="en" aria-pressed="false">English</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="zh" aria-pressed="false">中文</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ja" aria-pressed="false">日本語</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ko" aria-pressed="false">한국어</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ar" aria-pressed="false">العربية</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ru" aria-pressed="false">Русский</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="es" aria-pressed="false">Español</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="pt" aria-pressed="false">Português</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="fr" aria-pressed="false">Français</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="de" aria-pressed="false">Deutsch</button>
+                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="other" data-i18n="language.other" aria-pressed="false">Other</button>
+                  </div>
+                </div>
+              </div>
+              <small class="field-note" data-i18n="config.languageNote">Choose the app's main language. Add more to mark it multilingual.</small>
+            </div>
+
             <button id="generate-btn" class="btn-primary" type="button" data-i18n="config.generateBtn">Generate app</button>
             <div id="build-progress" class="build-progress hidden">
               <span id="build-progress-live" class="sr-only" role="status" aria-live="polite"></span>
@@ -572,6 +614,22 @@
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
               <input id="market-search" type="search" data-i18n-placeholder="market.searchPlaceholder" placeholder="Search apps..." autocomplete="off">
             </label>
+            <select id="market-language" class="tool-select" data-i18n-aria-label="market.languageFilter" aria-label="Filter by language">
+              <option value="" data-i18n="market.allLanguages" selected>All languages</option>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="ar">العربية</option>
+              <option value="ru">Русский</option>
+              <option value="es">Español</option>
+              <option value="pt">Português</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="mul" data-i18n="language.mul">Multilingual</option>
+              <option value="other" data-i18n="language.other">Other</option>
+              <option value="und" data-i18n="language.und">Unspecified</option>
+            </select>
             <select id="market-sort" class="tool-select" data-i18n-aria-label="market.sortLabel" aria-label="Sort">
               <option value="newest" data-i18n="market.sortNewest" selected>Newest</option>
               <option value="rating" data-i18n="market.sortRating">Top rated</option>
@@ -651,6 +709,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261106-ko1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261105-noads1"></script>
+  <script src="js/app.v5.js?v=20261106-lang1"></script>
 </body>
 </html>

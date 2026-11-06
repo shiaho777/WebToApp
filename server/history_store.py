@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
+from server.languages import language_category, normalize_languages
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -516,6 +518,7 @@ class HistoryStore:
             tags = json.loads(raw_tags or "[]")
         except Exception:
             tags = []
+        languages = normalize_languages(recipe.get("languages"))
         return {
             "app_id": row["app_id"],
             "name": row["name"] or row["app_id"],
@@ -525,6 +528,8 @@ class HistoryStore:
             "color": row["color"] or "#7c3aed",
             "visibility": (row["visibility"] if "visibility" in keys else None) or "private",
             "tags": [str(tag) for tag in tags],
+            "languages": languages,
+            "language_category": language_category(languages),
             "description": str(recipe.get("description") or ""),
             "recipe": recipe,
             "created_at": row["created_at"],

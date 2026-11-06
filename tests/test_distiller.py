@@ -363,6 +363,13 @@ class DownloadPageHardeningTests(unittest.TestCase):
             pwa = (Path(tmp) / "pwa.html").read_text()
         self.assertIn("navigator.languages", pwa)
 
+    def test_recipe_stores_language_selection(self):
+        recipe = Distiller().create_recipe(
+            "abcd1234", "https://example.com", "App", "#7c3aed",
+            "fullscreen", "any", {"languages": ["zh", "en"]},
+        )
+        self.assertEqual(recipe["languages"], ["zh", "en"])
+
     def test_download_page_marker_invalidates_old_ads_cache(self):
         self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v9-korean -->")
 

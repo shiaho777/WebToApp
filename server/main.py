@@ -41,6 +41,7 @@ from server.engine.storage import r2_storage
 from server.community_store import CommunityStore, MAX_BIO_LEN, MAX_COMMENT_LEN
 from server.compression import TextCompressionMiddleware
 from server.history_store import HistoryStore
+from server.languages import MARKET_LANGUAGE_CODES
 from server.engine.icon_quality import is_unusable_icon
 from server.icon_review import review_deadline_passed, run_icon_review_pass
 from server.market_dedupe import conflicts_with_newer, dedupe_creator, dedupe_public_market
@@ -1494,6 +1495,7 @@ def market_listing(
     tag: Optional[str] = None,
     search: Optional[str] = None,
     sort: str = "newest",
+    language: Optional[str] = None,
     limit: int = MARKET_PAGE_MAX,
     offset: int = 0,
 ):
@@ -1536,6 +1538,8 @@ def market_listing(
                 return True
             return False
         items = [it for it in items if _market_hit(it)]
+    if language and language in MARKET_LANGUAGE_CODES:
+        items = [it for it in items if it.get("language_category") == language]
     if sort == "rating":
         # Highest average first; ties break toward the app with more
         # ratings (a 5.0 from 20 votes outranks a 5.0 from one). Unrated
@@ -1552,6 +1556,7 @@ def market_listing(
     return {
         "items": page,
         "sort": sort,
+        "language": language if language in MARKET_LANGUAGE_CODES else None,
         "total": total,
         "offset": page_offset,
         "limit": page_limit,
