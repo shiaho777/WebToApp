@@ -190,7 +190,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v8-download-dark -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v9-korean -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")
@@ -1101,9 +1101,9 @@ class Distiller:
 (function(){{
   var T = {dl_i18n_json};
   var APP_NAME = {app_name_js};
-  var SUPPORTED = ["en","zh","ja","ar","ru","es","pt","fr","de"];
+  var SUPPORTED = ["en","zh","ja","ko","ar","ru","es","pt","fr","de"];
   var RTL = ["ar"];
-  var NAMES = {{en:"English",zh:"\\u4e2d\\u6587",ja:"\\u65e5\\u672c\\u8a9e",ar:"\\u0627\\u0644\\u0639\\u0631\\u0628\\u064a\\u0629",ru:"\\u0420\\u0443\\u0441\\u0441\\u043a\\u0438\\u0439",es:"Espa\\u00f1ol",pt:"Portugu\\u00eas",fr:"Fran\\u00e7ais",de:"Deutsch"}};
+  var NAMES = {{en:"English",zh:"\\u4e2d\\u6587",ja:"\\u65e5\\u672c\\u8a9e",ko:"\\ud55c\\uad6d\\uc5b4",ar:"\\u0627\\u0644\\u0639\\u0631\\u0628\\u064a\\u0629",ru:"\\u0420\\u0443\\u0441\\u0441\\u043a\\u0438\\u0439",es:"Espa\\u00f1ol",pt:"Portugu\\u00eas",fr:"Fran\\u00e7ais",de:"Deutsch"}};
   var KEY = "webtoapp-lang-v1";
   function pick(){{
     try{{ var s=localStorage.getItem(KEY); if(s&&SUPPORTED.indexOf(s)!==-1) return s; }}catch(e){{}}
@@ -1409,14 +1409,14 @@ a{{color:inherit;text-decoration:none}}
 <script>{script_body}</script>
 <script src="/js/ui.js?v=20261104-ui3"></script>
 <script src="/js/mdmini.js"></script>
-<script src="/js/community.js?v=20261014-ux1"></script>
+<script src="/js/community.js?v=20261106-ko1"></script>
 </body>
 </html>"""
         return html
 
     def _download_page_translations(self) -> dict:
         """Translation tables for the in-page language switcher on the download
-        page (9 languages). '{name}' in pageTitle is filled in by the page JS."""
+        page (10 languages). '{name}' in pageTitle is filled in by the page JS."""
         return {
             "en": {
                 "pageTitle": "{name} — Download | WebToApp",
@@ -1733,6 +1733,41 @@ a{{color:inherit;text-decoration:none}}
                 "platWinDetail": ".zip · natives Icon · entpacken und ausführen",
                 "platLinuxDetail": ".tar.gz · Desktop-Icon enthalten · entpacken und ausführen",
             },
+            "ko": {
+                "pageTitle": "{name} — 다운로드 | WebToApp",
+                "navDownload": "다운로드",
+                "eyebrow": "INSTALLATION / 다운로드",
+                "aboutTitle": "이 페이지 소개",
+                "chipPlatforms": "5개 플랫폼 준비됨",
+                "chipIcons": "실제 아이콘 내장",
+                "chipShare": "링크 공유 가능",
+                "heroDesc": "앱 스토어 페이지가 아니라 이 사이트의 설치 입구입니다. 기기를 선택한 뒤 다운로드하여 설치하거나 압축을 풀거나 iPhone 홈 화면에 추가하세요.",
+                "appSub": "이 사이트용으로 생성된 멀티 플랫폼 설치 파일과 구성 프로필입니다. 다운로드 경로를 설명하지 않고 이 페이지를 사용자에게 바로 보낼 수 있습니다.",
+                "openSite": "원본 사이트 열기",
+                "openApp": "앱 열기",
+                "downloadIosProfile": "iPhone 프로필 다운로드",
+                "iosTitle": "iPhone 설치 안내",
+                "iosBadgeSigned": "서명됨",
+                "iosBadgeUnsigned": "서명되지 않았지만 설치 가능",
+                "iosCopy": "iPhone과 iPad는 별도 페이지가 필요 없습니다. Safari에서 프로필을 다운로드한 뒤 설정에서 설치를 마치면 홈 화면에 아이콘이 나타납니다.",
+                "iosStep1": "Safari에서 위 또는 아래의 iPhone 설치 항목을 탭하세요",
+                "iosStep2": ".mobileconfig 프로필 다운로드",
+                "iosStep3": "설정의 “다운로드된 프로필”을 열고 설치를 완료하세요",
+                "iosStep4": "홈 화면으로 돌아가 아이콘을 탭해 여세요",
+                "chooseDevice": "기기 선택",
+                "footnote": "iPhone은 Safari에서 설치하고, 데스크톱은 다운로드 후 압축을 풀면 됩니다. Android는 설치 파일을 제공하며 macOS와 Windows는 앱 아이콘을 유지합니다.",
+                "actionInstall": "설치",
+                "actionDownload": "다운로드",
+                "platIosDetail": ".mobileconfig · Safari로 다운로드 및 설치",
+                "platAndroidDetail": ".apk / .zip · 바로 설치하거나 압축 해제",
+                "platAndroidApkDetail": ".apk · 서명된 WebView 설치 파일",
+                "platAndroidZipDetail": ".zip · 경량 PWA 패키지",
+                "androidBadgeApk": "서명된 APK",
+                "androidBadgeZip": "PWA 패키지",
+                "platMacDetail": ".zip · 네이티브 .app 아이콘 · Applications로 드래그",
+                "platWinDetail": ".zip · 네이티브 아이콘 · 압축 해제 후 실행",
+                "platLinuxDetail": ".tar.gz · 데스크톱 아이콘 포함 · 압축 해제 후 실행",
+            },
         }
 
     def _pwa_translations(self) -> dict:
@@ -1802,6 +1837,13 @@ a{{color:inherit;text-decoration:none}}
                 "noticeBody": "Manche Seiten blockieren iframes oder verlangen den System-Browser für Login, Zahlung oder Weiterleitungen. Gehe in dem Fall zurück und nutze \u201eVollständig öffnen\u201c oben rechts in der Seitenvorschau.",
                 "retry": "Neu laden",
             },
+            "ko": {
+                "loadingTitle": "{name} 여는 중",
+                "loadingSub": "대상 사이트를 불러오는 중입니다",
+                "noticeTitle": "이 사이트는 이 창에서 직접 표시할 수 없습니다",
+                "noticeBody": "일부 사이트는 iframe을 차단하거나 로그인, 결제, 리디렉션을 시스템 브라우저에서 완료하도록 요구합니다. 그런 경우 뒤로 가서 사이트 미리보기 오른쪽 위의 \u201c전체 열기\u201d를 사용하세요.",
+                "retry": "새로고침",
+            },
         }
 
     def _write_pwa_files(self, app_dir: Path, r: dict, launch_url: str):
@@ -1850,7 +1892,7 @@ a{{color:inherit;text-decoration:none}}
 (function(){{
   var T = {pwa_i18n_json};
   var APP_NAME = {app_name_js};
-  var SUPPORTED = ["en","zh","ja","ar","ru","es","pt","fr","de"];
+  var SUPPORTED = ["en","zh","ja","ko","ar","ru","es","pt","fr","de"];
   var RTL = ["ar"];
   var KEY = "webtoapp-lang-v1";
   var cur = (function(){{

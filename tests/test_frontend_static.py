@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LANGS = ("en", "zh", "ja", "ar", "ru", "es", "pt", "fr", "de")
+LANGS = ("en", "zh", "ja", "ko", "ar", "ru", "es", "pt", "fr", "de")
 NEW_KEYS = (
     "ui.close",
     "ui.cancel",
@@ -86,6 +86,7 @@ class AnnouncementTests(unittest.TestCase):
         "pt": "Início mais limpo, mercado mais claro e sem anúncios",
         "fr": "Accueil plus sobre, marché plus clair, sans publicité",
         "de": "Ruhigere Startseite, klarerer Markt, keine Werbung",
+        "ko": "홈을 정리하고 마켓을 보강했으며 광고를 없앴습니다",
     }
 
     def test_notice_is_published_in_every_language(self):
@@ -95,9 +96,15 @@ class AnnouncementTests(unittest.TestCase):
         for lang, title in self.TITLES.items():
             self.assertIn(f'"{lang}": "{title}"', src, lang)
 
+    def test_korean_is_available_everywhere(self):
+        self.assertIn("'ko'", _read("js/i18n.js"))
+        self.assertIn("ko: '한국어'", _read("js/i18n.js"))
+        self.assertIn("'ko'", _read("js/community.js"))
+        self.assertIn('"ko": {', _read("server/engine/distiller.py"))
+
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261105-notices1", html)
+        self.assertIn("js/announcements.js?v=20261106-ko1", html)
 
 
 class FrontendResilienceTests(unittest.TestCase):

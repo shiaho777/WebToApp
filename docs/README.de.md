@@ -85,7 +85,7 @@ Open Source · Kostenlos · Keine Registrierung. Live ausprobieren: **[shiaho.sb
 - **Verlauf pro Gerät**: Builds werden gegen den Geräte-Fingerprint gespeichert, mit Besuchs-/Download-Statistiken, Neu-Generieren und Export/Import zwischen Geräten. Einträge zu löschen entfernt die App vollständig.
 - **Automatische Bereinigung**: Apps ohne Besuche seit 30 Tagen werden automatisch eingesammelt.
 - **Optionaler Cloudflare-R2-Offload**: Downloads werden ans CDN umgeleitet und schonen die Origin-Bandbreite.
-- **Mehrsprachige UI**: 9 Sprachen — English, 简体中文, 日本語, العربية (RTL), Русский, Español, Português, Français, Deutsch — mit ebenfalls lokalisierten generierten Download-Seiten.
+- **Mehrsprachige UI**: 10 Sprachen — English, 简体中文, 日本語, العربية (RTL), Русский, Español, Português, Français, Deutsch, 한국어 — mit ebenfalls lokalisierten generierten Download-Seiten.
 
 ## Community ohne Anmeldung
 
@@ -120,7 +120,7 @@ Jedes Paket ist ein dünner Einstiegspunkt zu deiner Seite — es bündelt keine
 .
 ├── index.html                 Landing Page + Build-Formular
 ├── css/ js/ assets/           Statische Frontend-Assets
-│   ├── js/i18n.js             Leichtes i18n-Runtime (9 Sprachen)
+│   ├── js/i18n.js             Leichtes i18n-Runtime (10 Sprachen)
 │   ├── js/i18n.strings.js     Alle Übersetzungen
 │   ├── js/community.js        Kommentare / Bewertungen / Creator-Block auf App-Seiten
 │   └── js/mdmini.js           Winziges Markdown-Rendering für Bios
