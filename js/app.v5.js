@@ -6,12 +6,6 @@
 (function () {
   'use strict';
 
-  // --- Scroll Reveal ---
-  const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('revealed'); revealObserver.unobserve(e.target); } });
-  }, { threshold: 0.15 });
-  document.querySelectorAll('[data-reveal]').forEach(el => revealObserver.observe(el));
-
   // --- Counter Animation ---
   const reducedMotionQuery = window.matchMedia
     ? window.matchMedia('(prefers-reduced-motion: reduce)')
