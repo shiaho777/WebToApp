@@ -526,6 +526,9 @@ class StreamingFirstLoadTests(unittest.TestCase):
         self.assertIn("window.__wtaPrefetch", self.html)
         for endpoint in ("/api/stats", "/api/history", "/api/me", "/api/market"):
             self.assertIn(endpoint, self.html)
+        # Must run before the render-blocking stylesheet, or the browser waits
+        # for CSSOM before starting the API calls.
+        self.assertLess(self.html.index("window.__wtaPrefetch"), self.html.index("css/style.css"))
         self.assertLess(self.html.index("window.__wtaPrefetch"), self.html.index("js/app.v5.js"))
 
     def test_app_consumes_prefetched_promises(self):
