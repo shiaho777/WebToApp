@@ -6,6 +6,33 @@
 (function () {
   'use strict';
 
+  // --- Short-lived render cache ---
+  // The APIs are fast at the origin but can spend seconds behind the CDN.
+  // Paint the last real response immediately, then replace it with fresh data.
+  const RENDER_CACHE_PREFIX = 'webtoapp-render-cache-v1:';
+  const RENDER_CACHE_TTL_MS = 10 * 60 * 1000;
+
+  function readRenderCache(name) {
+    try {
+      const raw = window.localStorage.getItem(RENDER_CACHE_PREFIX + name);
+      if (!raw) return null;
+      const entry = JSON.parse(raw);
+      if (!entry || typeof entry.ts !== 'number') return null;
+      if (Date.now() - entry.ts > RENDER_CACHE_TTL_MS) return null;
+      return entry.value;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function writeRenderCache(name, value) {
+    try {
+      window.localStorage.setItem(RENDER_CACHE_PREFIX + name, JSON.stringify({ ts: Date.now(), value }));
+    } catch (_err) {
+      // Storage may be unavailable or full; the cache is optional.
+    }
+  }
+
   // --- Counter Animation ---
   const reducedMotionQuery = window.matchMedia
     ? window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -42,28 +69,41 @@
   }, { threshold: 0.5 });
   document.querySelectorAll('[data-count]').forEach(el => counterObserver.observe(el));
 
+  function paintHomepageStats(stats, animate) {
+    const mappings = [
+      ['stat-generated-apps', stats.generatedApps],
+      ['stat-downloads', stats.downloads],
+      ['stat-views', stats.views],
+    ];
+    mappings.forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (!el || Number.isNaN(Number(value))) return;
+      const target = Number(value);
+      el.dataset.count = String(target);
+      if (animate) {
+        el.textContent = '0';
+        animatedCounters.delete(el);
+        animateCount(el, target);
+      } else {
+        el.textContent = target.toLocaleString('en-US');
+      }
+      // A painted (cached) value must not be animated from zero later.
+      animatedCounters.add(el);
+    });
+  }
+
   async function loadHomepageStats() {
+    const cached = readRenderCache('stats');
+    if (cached) paintHomepageStats(cached, false);
     try {
       const prefetched = takePrefetch('stats');
       const res = prefetched ? await prefetched : await fetch('/api/stats');
       if (!res.ok) throw new Error('Failed to load stats');
       const stats = await res.json();
-      const mappings = [
-        ['stat-generated-apps', stats.generatedApps],
-        ['stat-downloads', stats.downloads],
-        ['stat-views', stats.views],
-      ];
-      mappings.forEach(([id, value]) => {
-        const el = document.getElementById(id);
-        if (!el || Number.isNaN(Number(value))) return;
-        el.dataset.count = String(value);
-        el.textContent = '0';
-        animatedCounters.delete(el);
-        animateCount(el, Number(value));
-        animatedCounters.add(el);
-      });
+      paintHomepageStats(stats, !cached);
+      writeRenderCache('stats', stats);
     } catch (_err) {
-      // Leave zero values in place rather than showing made-up numbers.
+      // Leave the cached/zero values in place rather than inventing numbers.
     }
   }
   loadHomepageStats();
@@ -796,6 +836,10 @@
   }
 
   async function loadHistory() {
+    // Only the initial load may paint the cached list. Reloads after a
+    // delete/visibility change must not flash the pre-action rows.
+    const cached = lastHistoryItems.length ? null : readRenderCache('history');
+    if (cached && Array.isArray(cached.items)) renderHistory(cached.items);
     try {
       const prefetched = takePrefetch('history');
       let res;
@@ -810,11 +854,13 @@
       }
       if (!res.ok) throw new Error('failed');
       const data = await res.json();
-      renderHistory(data.items || []);
-      return data.items || [];
+      const items = data.items || [];
+      renderHistory(items);
+      writeRenderCache('history', { items });
+      return items;
     } catch (_err) {
-      renderHistory([]);
-      return [];
+      if (!cached) renderHistory([]);
+      return cached && Array.isArray(cached.items) ? cached.items : [];
     }
   }
 
@@ -971,6 +1017,13 @@
     params.set('sort', marketSortSelect.value || 'newest');
     params.set('limit', String(MARKET_PAGE_SIZE));
     params.set('offset', String(append ? lastMarketItems.length : 0));
+    const defaultQuery = !append
+      && !tag
+      && !marketSearchInput.value.trim()
+      && !(marketLanguageSelect && marketLanguageSelect.value)
+      && (marketSortSelect.value || 'newest') === 'newest';
+    const cached = defaultQuery ? readRenderCache('market') : null;
+    const cachedItems = cached && Array.isArray(cached.items) ? cached.items : null;
     // Only the newest request may paint: a slow response for an older query
     // must not overwrite results the user has already moved past.
     const seq = ++marketRequestSeq;
@@ -979,12 +1032,13 @@
     marketAbort = controller;
     marketList.setAttribute('aria-busy', 'true');
     if (marketLoadMoreBtn) marketLoadMoreBtn.disabled = true;
+    if (cachedItems && cachedItems.length) {
+      marketHasMore = cached.has_more === true;
+      marketCount.textContent = t('market.count', { n: cached.total != null ? cached.total : cachedItems.length });
+      marketError.classList.add('hidden');
+      renderMarket(cachedItems, false);
+    }
     try {
-      const defaultQuery = !append
-        && !tag
-        && !marketSearchInput.value.trim()
-        && !(marketLanguageSelect && marketLanguageSelect.value)
-        && (marketSortSelect.value || 'newest') === 'newest';
       const prefetched = defaultQuery ? takePrefetch('market') : null;
       let res;
       try {
@@ -1000,10 +1054,16 @@
       marketCount.textContent = t('market.count', { n: data.total != null ? data.total : items.length });
       marketError.classList.add('hidden');
       renderMarket(items, append);
+      if (defaultQuery) {
+        writeRenderCache('market', { items, total: data.total, has_more: marketHasMore });
+      }
     } catch (err) {
       if (seq !== marketRequestSeq || (err && err.name === 'AbortError')) return;
       if (append && lastMarketItems.length) {
         notify(t('market.loadFailed'), 'error');
+      } else if (cachedItems && cachedItems.length) {
+        // Keep the cached cards visible; the retry button still works.
+        marketError.classList.remove('hidden');
       } else {
         marketCount.textContent = '';
         marketHasMore = false;

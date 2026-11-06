@@ -550,9 +550,25 @@ class StreamingFirstLoadTests(unittest.TestCase):
         self.assertIn("rootMargin: '320px'", self.js)
         self.assertIn("loadMarket({ append: true })", self.js)
 
+    def test_last_render_is_painted_from_a_short_lived_cache(self):
+        for marker in (
+            "RENDER_CACHE_PREFIX",
+            "RENDER_CACHE_TTL_MS",
+            "readRenderCache('stats')",
+            "readRenderCache('history')",
+            "readRenderCache('market')",
+            "writeRenderCache('stats'",
+            "writeRenderCache('history'",
+            "writeRenderCache('market'",
+        ):
+            self.assertIn(marker, self.js)
+
+    def test_prefetch_rejections_are_handled(self):
+        self.assertIn("promise.catch(function () {})", self.html)
+
     def test_streaming_assets_are_cache_busted(self):
         self.assertIn("css/style.css?v=20261106-stream1", self.html)
-        self.assertIn("js/app.v5.js?v=20261106-stream1", self.html)
+        self.assertIn("js/app.v5.js?v=20261106-cache1", self.html)
 
 
 if __name__ == "__main__":
