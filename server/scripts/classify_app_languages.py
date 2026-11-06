@@ -48,10 +48,14 @@ SCRIPT_PATTERNS = (
 LATIN_STOPWORDS = {
     "en": set("the and with for you your this that from app apps website online free best home news shop store more about".split()),
     "es": set("el la los las de del para con una un por que y en tu tus aplicacion aplicación tienda noticias juegos comprar mejor".split()),
-    "pt": set("o a os as de do da para com uma um por que e em seu sua aplicativo aplicação loja notícias jogos comprar melhor".split()),
-    "fr": set("le la les de des du pour avec une un par que et en votre vos application boutique actualités jeux acheter meilleur".split()),
+    "pt": set("o a os as de do da para com uma um por que e em seu sua aplicativo aplicação loja notícias jogos comprar melhor jogo corrida treinos musculação".split()),
+    "fr": set("le la les de des du pour avec une un par que et en votre vos application boutique actualités jeux acheter meilleur adresses extracteur éditeur tournée beauté sécurité".split()),
     "de": set("der die das und mit für eine ein von zu den dem app website shop nachrichten spiele kaufen besser".split()),
 }
+OTHER_WORDS = set(
+    "aplikasi karyawan absensi simile migliore spagnolo italiano atölyesi yeniden yapım "
+    "phần mềm đăng ký nhân viên marathi shayari".split()
+)
 
 TLD_LANGUAGE = {
     "cn": "zh", "jp": "ja", "kr": "ko", "ru": "ru", "su": "ru",
@@ -107,10 +111,23 @@ def infer_languages(recipe: dict) -> list[str]:
     best_score = scores.get(best, 0) if scores else 0
     tld = _host_tld(recipe.get("url"))
     hinted = TLD_LANGUAGE.get(tld)
+    words = set(re.findall(r"[a-zà-ÿ]+", text.lower()))
+    strong = {
+        lang: sum(1 for word in words if len(word) >= 6 and word in stopwords)
+        for lang, stopwords in LATIN_STOPWORDS.items()
+    }
+    if max(strong.values(), default=0) >= 1:
+        return [max(strong, key=strong.get)]
     if best_score >= 2:
         return [best]
     if hinted:
         return [hinted]
+    if words & OTHER_WORDS:
+        return ["other"]
+    # Latin-script text with diacritics but no recognised function words is
+    # more likely Italian/Turkish/Vietnamese/etc. than English.
+    if re.search(r"[à-ÿ]", text.lower()):
+        return ["other"]
     if len(re.findall(r"[A-Za-z]", text)) >= 3:
         return ["en"]
     return ["und"]

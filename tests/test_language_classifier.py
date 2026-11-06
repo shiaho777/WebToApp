@@ -24,6 +24,12 @@ class LanguageClassifierTests(unittest.TestCase):
         )
         self.assertEqual(infer_languages({"name": "Site", "url": "https://example.jp"}), ["ja"])
 
+    def test_accented_latin_and_other_languages(self):
+        self.assertEqual(infer_languages({"name": "Extracteur d’adresses"}), ["fr"])
+        self.assertEqual(infer_languages({"name": "Treinos e Musculação"}), ["pt"])
+        self.assertEqual(infer_languages({"name": "Motor Atölyesi"}), ["other"])
+        self.assertEqual(infer_languages({"name": "Absensi MBG", "description": "Aplikasi absensi karyawan"}), ["other"])
+
     def test_empty_text_is_unspecified(self):
         self.assertEqual(infer_languages({"name": "π"}), ["und"])
 
