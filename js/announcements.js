@@ -27,6 +27,84 @@
 
   var NOTICES = [
     {
+      "id": "2026-11-06-faster-homepage",
+      "publishedAt": "2026-11-06T06:20:00Z",
+      "title": {
+        "en": "History and market now load progressively",
+        "zh": "「你的应用」和市场改为渐进加载",
+        "ja": "「あなたのアプリ」とマーケットを段階的に読み込み",
+        "ko": "내 앱과 마켓이 점진적으로 로드됩니다",
+        "ar": "تطبيقاتك والسوق يُحمّلان تدريجياً",
+        "ru": "История и рынок загружаются постепенно",
+        "es": "Tus apps y el mercado cargan de forma progresiva",
+        "pt": "Seus apps e o mercado carregam de forma progressiva",
+        "fr": "Vos apps et le marché se chargent progressivement",
+        "de": "Deine Apps und der Markt laden schrittweise"
+      },
+      "paragraphs": {
+        "en": [
+          "The homepage now starts loading stats, history and market data before the main script runs, so it no longer waits for everything to finish before showing content.",
+          "History and market show lightweight placeholders first, then fill in as soon as the data arrives. The market also loads the next page automatically as you scroll.",
+          "Your last stats, history and market page are cached on this device for 10 minutes. A repeat visit shows them immediately while fresh data is fetched in the background.",
+          "If the network is slow, the page may still take a moment to arrive, but the content area is no longer blank while it waits."
+        ],
+        "zh": [
+          "首页现在会在主脚本运行前就开始请求统计、历史和市场数据，不再等所有资源加载完才显示内容。",
+          "「你的应用」和市场会先显示轻量的占位骨架，数据一到就填入。市场滚动到接近底部时还会自动加载下一页。",
+          "最近一次的统计、历史和市场首页会在这台设备上缓存 10 分钟。再次打开时先立即显示，再在后台刷新。",
+          "网络较慢时，页面本身仍可能需要一点时间到达，但等待期间内容区域不再是空白。"
+        ],
+        "ja": [
+          "ホームはメインスクリプトの実行前に統計・履歴・マーケットの取得を始めるようになり、すべての読み込みを待たずに内容を表示します。",
+          "「あなたのアプリ」とマーケットは先に軽いプレースホルダーを表示し、データが届き次第埋まります。マーケットは下までスクロールすると次のページを自動で読み込みます。",
+          "直近の統計・履歴・マーケットの1ページ目はこの端末に10分間キャッシュされます。再訪問時はすぐに表示し、裏で最新データに更新します。",
+          "回線が遅いとページ自体の到着に時間がかかることがありますが、待っている間も内容エリアが空白になることはありません。"
+        ],
+        "ko": [
+          "홈페이지가 메인 스크립트 실행 전에 통계, 기록, 마켓 데이터를 먼저 요청하므로 모든 로딩이 끝날 때까지 기다리지 않고 내용을 표시합니다.",
+          "내 앱과 마켓은 가벼운 자리 표시자를 먼저 보여 주고 데이터가 도착하는 대로 채웁니다. 마켓은 아래로 스크롤하면 다음 페이지를 자동으로 불러옵니다.",
+          "최근 통계, 기록, 마켓 첫 페이지는 이 기기에 10분 동안 캐시됩니다. 다시 방문하면 즉시 보여 주고 백그라운드에서 최신 데이터로 갱신합니다.",
+          "네트워크가 느리면 페이지 자체가 도착하는 데 시간이 걸릴 수 있지만, 기다리는 동안 내용 영역이 비어 있지는 않습니다."
+        ],
+        "ar": [
+          "تبدأ الصفحة الرئيسية الآن بطلب الإحصاءات والسجل وبيانات السوق قبل تشغيل البرنامج النصي الرئيسي، فلا تنتظر اكتمال كل شيء لعرض المحتوى.",
+          "يعرض قسم تطبيقاتك والسوق عناصر مكانية خفيفة أولاً، ثم يملؤها فور وصول البيانات. كما يحمّل السوق الصفحة التالية تلقائياً عند التمرير إلى الأسفل.",
+          "تُخزَّن آخر إحصاءات وسجل وصفحة سوق أولى على هذا الجهاز لمدة 10 دقائق. عند الزيارة التالية تظهر فوراً ثم تُحدَّث في الخلفية.",
+          "إذا كانت الشبكة بطيئة فقد يستغرق وصول الصفحة نفسها بعض الوقت، لكن منطقة المحتوى لن تبقى فارغة أثناء الانتظار."
+        ],
+        "ru": [
+          "Главная теперь начинает загружать статистику, историю и данные рынка до запуска основного скрипта, поэтому не ждёт завершения всех загрузок, чтобы показать содержимое.",
+          "История и рынок сначала показывают лёгкие заглушки, а затем заполняются, как только приходят данные. Рынок также автоматически подгружает следующую страницу при прокрутке вниз.",
+          "Последние статистика, история и первая страница рынка кэшируются на этом устройстве на 10 минут. При повторном визите они показываются сразу, а свежие данные загружаются в фоне.",
+          "При медленной сети сама страница может идти дольше, но область содержимого больше не остаётся пустой во время ожидания."
+        ],
+        "es": [
+          "La portada ahora empieza a pedir las estadísticas, el historial y los datos del mercado antes de ejecutar el script principal, así que no espera a que todo termine para mostrar contenido.",
+          "Tus apps y el mercado muestran primero marcadores ligeros y se rellenan en cuanto llegan los datos. El mercado también carga la página siguiente automáticamente al desplazarte hacia abajo.",
+          "Las últimas estadísticas, el historial y la primera página del mercado se guardan en este dispositivo durante 10 minutos. En una nueva visita se muestran al instante y se actualizan en segundo plano.",
+          "Con una red lenta, la página en sí puede tardar un poco en llegar, pero la zona de contenido ya no queda vacía mientras espera."
+        ],
+        "pt": [
+          "A página inicial agora começa a pedir estatísticas, histórico e dados do mercado antes de executar o script principal, então não espera tudo terminar para mostrar conteúdo.",
+          "Seus apps e o mercado mostram primeiro marcadores leves e são preenchidos assim que os dados chegam. O mercado também carrega a próxima página automaticamente ao rolar para baixo.",
+          "As últimas estatísticas, o histórico e a primeira página do mercado ficam em cache neste dispositivo por 10 minutos. Numa nova visita, aparecem na hora e são atualizados em segundo plano.",
+          "Com uma rede lenta, a página em si ainda pode demorar um pouco a chegar, mas a área de conteúdo não fica mais vazia enquanto espera."
+        ],
+        "fr": [
+          "L’accueil commence désormais à charger les statistiques, l’historique et les données du marché avant l’exécution du script principal : la page n’attend plus la fin de tous les chargements pour afficher du contenu.",
+          "Vos apps et le marché affichent d’abord des repères légers, puis se remplissent dès que les données arrivent. Le marché charge aussi automatiquement la page suivante quand vous faites défiler vers le bas.",
+          "Les dernières statistiques, l’historique et la première page du marché sont mis en cache sur cet appareil pendant 10 minutes. Lors d’une nouvelle visite, ils s’affichent immédiatement puis se mettent à jour en arrière-plan.",
+          "Si le réseau est lent, la page elle-même peut mettre un moment à arriver, mais la zone de contenu ne reste plus vide pendant l’attente."
+        ],
+        "de": [
+          "Die Startseite beginnt jetzt schon vor dem Hauptskript mit dem Laden von Statistiken, Verlauf und Marktdaten und wartet nicht mehr auf alle Ressourcen, bevor Inhalte erscheinen.",
+          "Deine Apps und der Markt zeigen zuerst leichte Platzhalter und füllen sich, sobald die Daten da sind. Der Markt lädt beim Scrollen nach unten außerdem automatisch die nächste Seite.",
+          "Die letzten Statistiken, der Verlauf und die erste Marktseite werden 10 Minuten lang auf diesem Gerät zwischengespeichert. Beim nächsten Besuch erscheinen sie sofort und werden im Hintergrund aktualisiert.",
+          "Bei langsamem Netz kann die Seite selbst noch einen Moment brauchen, aber der Inhaltsbereich bleibt währenddessen nicht mehr leer."
+        ]
+      }
+    },
+    {
       "id": "2026-11-05-site-refresh",
       "publishedAt": "2026-11-05T16:30:00Z",
       "title": {

@@ -89,11 +89,35 @@ class AnnouncementTests(unittest.TestCase):
         "ko": "홈을 정리하고 마켓을 보강했으며 광고를 없앴습니다",
     }
 
+    PERF_TITLES = {
+        "en": "History and market now load progressively",
+        "zh": "「你的应用」和市场改为渐进加载",
+        "ja": "「あなたのアプリ」とマーケットを段階的に読み込み",
+        "ko": "내 앱과 마켓이 점진적으로 로드됩니다",
+        "ar": "تطبيقاتك والسوق يُحمّلان تدريجياً",
+        "ru": "История и рынок загружаются постепенно",
+        "es": "Tus apps y el mercado cargan de forma progresiva",
+        "pt": "Seus apps e o mercado carregam de forma progressiva",
+        "fr": "Vos apps et le marché se chargent progressivement",
+        "de": "Deine Apps und der Markt laden schrittweise",
+    }
+
     def test_notice_is_published_in_every_language(self):
         src = _read("js/announcements.js")
         self.assertIn("2026-11-05-site-refresh", src)
         self.assertIn("2026-11-05T16:30:00Z", src)
         for lang, title in self.TITLES.items():
+            self.assertIn(f'"{lang}": "{title}"', src, lang)
+
+    def test_progressive_loading_notice_is_newest_and_translated(self):
+        src = _read("js/announcements.js")
+        self.assertIn("2026-11-06-faster-homepage", src)
+        self.assertIn("2026-11-06T06:20:00Z", src)
+        self.assertLess(
+            src.index("2026-11-06-faster-homepage"),
+            src.index("2026-11-05-site-refresh"),
+        )
+        for lang, title in self.PERF_TITLES.items():
             self.assertIn(f'"{lang}": "{title}"', src, lang)
 
     def test_korean_is_available_everywhere(self):
@@ -104,7 +128,7 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261106-ko1", html)
+        self.assertIn("js/announcements.js?v=20261106-perf1", html)
 
 
 class FrontendResilienceTests(unittest.TestCase):
