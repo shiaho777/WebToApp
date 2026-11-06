@@ -28,11 +28,17 @@
         localStorage.setItem(key, fp);
       }
       document.cookie = 'webtoapp_device_fingerprint=' + encodeURIComponent(fp) + '; Max-Age=31536000; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+      function optional(promise) {
+        // Keep the original promise (consumers fall back on rejection) but
+        // mark it handled in case the app script never gets to consume it.
+        promise.catch(function () {});
+        return promise;
+      }
       window.__wtaPrefetch = {
-        stats: fetch('/api/stats'),
-        history: fetch('/api/history', { headers: { 'X-Device-Fingerprint': fp } }),
-        me: fetch('/api/me'),
-        market: fetch('/api/market?sort=newest&limit=24&offset=0')
+        stats: optional(fetch('/api/stats')),
+        history: optional(fetch('/api/history', { headers: { 'X-Device-Fingerprint': fp } })),
+        me: optional(fetch('/api/me')),
+        market: optional(fetch('/api/market?sort=newest&limit=24&offset=0'))
       };
     } catch (_err) { /* prefetch is optional */ }
   })();
@@ -746,6 +752,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261106-ko1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261106-stream1"></script>
+  <script src="js/app.v5.js?v=20261106-cache1"></script>
 </body>
 </html>
