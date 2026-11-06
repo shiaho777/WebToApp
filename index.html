@@ -16,8 +16,10 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261106-lang1">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="css/style.css?v=20261106-fast1">
   <script src="js/i18n.js?v=20261106-ko1"></script>
   <script src="js/i18n.strings.js?v=20261106-lang1"></script>
 </head>
@@ -92,7 +94,7 @@
   <main>
     <!-- ===== HERO ===== -->
     <section id="hero">
-      <div class="hero-center" data-reveal>
+      <div class="hero-center">
           <p class="hero-kicker" data-i18n="hero.kicker">WEBTOAPP / WEBSITE TO APP</p>
           <h1><span data-i18n="hero.titleLine1">Turn websites</span><br><span data-i18n="hero.titleLine2">into apps.</span></h1>
           <p class="subtitle" data-i18n="hero.subtitle">Paste a link. Get an installable app for iPhone, Android, Windows, macOS and Linux.</p>
@@ -137,7 +139,7 @@
           </ul>
       </div>
 
-      <div class="hero-stats" data-reveal>
+      <div class="hero-stats">
         <div class="stat"><strong id="stat-generated-apps" data-count="0">0</strong><span data-i18n="stats.generated">apps generated</span></div>
         <div class="stat"><strong id="stat-downloads" data-count="0">0</strong><span data-i18n="stats.downloads">downloads</span></div>
         <div class="stat"><strong id="stat-views" data-count="0">0</strong><span data-i18n="stats.views">page views</span></div>
@@ -709,6 +711,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261106-ko1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261106-lang1"></script>
+  <script src="js/app.v5.js?v=20261106-fast1"></script>
 </body>
 </html>
