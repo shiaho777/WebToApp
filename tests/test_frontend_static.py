@@ -514,5 +514,43 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
             self.assertIn(cls, self.css)
 
 
+class StreamingFirstLoadTests(unittest.TestCase):
+    """Guards for issue #203: prefetch + skeletons + infinite market scroll."""
+
+    def setUp(self):
+        self.html = _read("index.html")
+        self.js = _read("js/app.v5.js")
+        self.css = _read("css/style.css")
+
+    def test_api_requests_start_in_head_before_app_js(self):
+        self.assertIn("window.__wtaPrefetch", self.html)
+        for endpoint in ("/api/stats", "/api/history", "/api/me", "/api/market"):
+            self.assertIn(endpoint, self.html)
+        self.assertLess(self.html.index("window.__wtaPrefetch"), self.html.index("js/app.v5.js"))
+
+    def test_app_consumes_prefetched_promises(self):
+        self.assertIn("function takePrefetch(name)", self.js)
+        for name in ("stats", "history", "me", "market"):
+            self.assertIn(f"takePrefetch('{name}')", self.js)
+
+    def test_skeletons_render_before_the_api_answers(self):
+        self.assertIn('id="history-list" class="app-rows" aria-busy="true"', self.html)
+        self.assertIn('id="market-list" class="market-grid" aria-busy="true"', self.html)
+        self.assertIn('class="skeleton-row"', self.html)
+        self.assertIn('class="skeleton-card"', self.html)
+        self.assertIn('id="history-empty" class="empty-state hidden"', self.html)
+        self.assertIn("@keyframes skeleton-shimmer", self.css)
+
+    def test_market_auto_loads_the_next_page_near_the_bottom(self):
+        self.assertIn("IntersectionObserver", self.js)
+        self.assertIn("marketMoreObserver", self.js)
+        self.assertIn("rootMargin: '320px'", self.js)
+        self.assertIn("loadMarket({ append: true })", self.js)
+
+    def test_streaming_assets_are_cache_busted(self):
+        self.assertIn("css/style.css?v=20261106-stream1", self.html)
+        self.assertIn("js/app.v5.js?v=20261106-stream1", self.html)
+
+
 if __name__ == "__main__":
     unittest.main()
