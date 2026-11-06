@@ -19,7 +19,30 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20261106-fast1">
+  <link rel="stylesheet" href="css/style.css?v=20261106-stream1">
+  <script>
+  // Start the dynamic API calls while the page/CSS/JS are still downloading.
+  // app.v5.js consumes these promises instead of issuing a second round-trip.
+  (function () {
+    try {
+      var key = 'webtoapp-device-fingerprint-v1';
+      var fp = localStorage.getItem(key);
+      if (!fp) {
+        var bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        fp = Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+        localStorage.setItem(key, fp);
+      }
+      document.cookie = 'webtoapp_device_fingerprint=' + encodeURIComponent(fp) + '; Max-Age=31536000; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+      window.__wtaPrefetch = {
+        stats: fetch('/api/stats'),
+        history: fetch('/api/history', { headers: { 'X-Device-Fingerprint': fp } }),
+        me: fetch('/api/me'),
+        market: fetch('/api/market?sort=newest&limit=24&offset=0')
+      };
+    } catch (_err) { /* prefetch is optional */ }
+  })();
+  </script>
   <script src="js/i18n.js?v=20261106-ko1"></script>
   <script src="js/i18n.strings.js?v=20261106-lang1"></script>
 </head>
@@ -582,7 +605,7 @@
           </div>
         </div>
         <div class="section-body">
-          <div id="history-empty" class="empty-state">
+          <div id="history-empty" class="empty-state hidden">
             <p data-i18n="history.empty">No build history on this device yet. Generate an app first, or import a record exported from another device.</p>
           </div>
           <div id="history-select-bar" class="select-bar hidden">
@@ -596,7 +619,11 @@
               <button id="history-cancel-select-btn" class="btn-secondary" type="button" data-i18n="history.cancelSelect">Cancel</button>
             </div>
           </div>
-          <div id="history-list" class="app-rows"></div>
+          <div id="history-list" class="app-rows" aria-busy="true">
+            <div class="skeleton-row" aria-hidden="true"><span class="skeleton skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line w60"></span><span class="skeleton skeleton-line w40"></span></div></div>
+            <div class="skeleton-row" aria-hidden="true"><span class="skeleton skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line w50"></span><span class="skeleton skeleton-line w30"></span></div></div>
+            <div class="skeleton-row" aria-hidden="true"><span class="skeleton skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line w70"></span><span class="skeleton skeleton-line w35"></span></div></div>
+          </div>
           <button id="history-toggle-btn" class="btn-secondary section-more hidden" type="button"></button>
         </div>
       </div>
@@ -657,7 +684,14 @@
             <p data-i18n="market.loadFailed">Couldn't load the market. Check your connection and try again.</p>
             <button id="market-retry" class="market-retry" type="button" data-i18n="market.retry">Retry</button>
           </div>
-          <div id="market-list" class="market-grid"></div>
+          <div id="market-list" class="market-grid" aria-busy="true">
+            <div class="skeleton-card" aria-hidden="true"><span class="skeleton skeleton-icon"></span><span class="skeleton skeleton-line w70"></span><span class="skeleton skeleton-line w45"></span><span class="skeleton skeleton-line w90"></span><span class="skeleton skeleton-button"></span></div>
+            <div class="skeleton-card" aria-hidden="true"><span class="skeleton skeleton-icon"></span><span class="skeleton skeleton-line w60"></span><span class="skeleton skeleton-line w35"></span><span class="skeleton skeleton-line w80"></span><span class="skeleton skeleton-button"></span></div>
+            <div class="skeleton-card" aria-hidden="true"><span class="skeleton skeleton-icon"></span><span class="skeleton skeleton-line w75"></span><span class="skeleton skeleton-line w40"></span><span class="skeleton skeleton-line w85"></span><span class="skeleton skeleton-button"></span></div>
+            <div class="skeleton-card" aria-hidden="true"><span class="skeleton skeleton-icon"></span><span class="skeleton skeleton-line w65"></span><span class="skeleton skeleton-line w30"></span><span class="skeleton skeleton-line w75"></span><span class="skeleton skeleton-button"></span></div>
+            <div class="skeleton-card" aria-hidden="true"><span class="skeleton skeleton-icon"></span><span class="skeleton skeleton-line w70"></span><span class="skeleton skeleton-line w45"></span><span class="skeleton skeleton-line w80"></span><span class="skeleton skeleton-button"></span></div>
+            <div class="skeleton-card" aria-hidden="true"><span class="skeleton skeleton-icon"></span><span class="skeleton skeleton-line w55"></span><span class="skeleton skeleton-line w35"></span><span class="skeleton skeleton-line w70"></span><span class="skeleton skeleton-button"></span></div>
+          </div>
           <button id="market-load-more" class="btn-secondary section-more hidden" type="button" data-i18n="market.loadMore">Load more</button>
         </div>
       </div>
@@ -712,6 +746,6 @@
   <script src="js/ui.js?v=20261104-ui3"></script>
   <script src="js/announcements.js?v=20261106-ko1"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/app.v5.js?v=20261106-fast1"></script>
+  <script src="js/app.v5.js?v=20261106-stream1"></script>
 </body>
 </html>

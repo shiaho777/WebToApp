@@ -44,7 +44,8 @@
 
   async function loadHomepageStats() {
     try {
-      const res = await fetch('/api/stats');
+      const prefetched = takePrefetch('stats');
+      const res = prefetched ? await prefetched : await fetch('/api/stats');
       if (!res.ok) throw new Error('Failed to load stats');
       const stats = await res.json();
       const mappings = [
@@ -316,6 +317,13 @@
   const DEVICE_COOKIE_KEY = 'webtoapp_device_fingerprint';
   const t = (key, params) => (window.I18n ? window.I18n.t(key, params) : key);
   const locale = () => (window.I18n ? window.I18n.locale() : 'en-US');
+  function takePrefetch(name) {
+    const bucket = window.__wtaPrefetch;
+    if (!bucket || !bucket[name]) return null;
+    const promise = bucket[name];
+    try { delete bucket[name]; } catch (_err) { bucket[name] = null; }
+    return promise;
+  }
   restoreIconButtonLabel = t('icon.noRestore');
 
   function normalizeFeatureOptions(raw) {
@@ -687,6 +695,7 @@
     lastHistoryItems = Array.isArray(items) ? items : [];
     const filtered = visibleHistoryItems();
     historyList.innerHTML = '';
+    historyList.removeAttribute('aria-busy');
     historyEmpty.classList.toggle('hidden', filtered.length > 0);
     const emptyText = historyEmpty.querySelector('p');
     if (emptyText) {
@@ -788,9 +797,17 @@
 
   async function loadHistory() {
     try {
-      const res = await fetch('/api/history', {
-        headers: { 'X-Device-Fingerprint': deviceFingerprint },
-      });
+      const prefetched = takePrefetch('history');
+      let res;
+      try {
+        res = prefetched ? await prefetched : await fetch('/api/history', {
+          headers: { 'X-Device-Fingerprint': deviceFingerprint },
+        });
+      } catch (_err) {
+        res = await fetch('/api/history', {
+          headers: { 'X-Device-Fingerprint': deviceFingerprint },
+        });
+      }
       if (!res.ok) throw new Error('failed');
       const data = await res.json();
       renderHistory(data.items || []);
@@ -963,7 +980,18 @@
     marketList.setAttribute('aria-busy', 'true');
     if (marketLoadMoreBtn) marketLoadMoreBtn.disabled = true;
     try {
-      const res = await fetch(`/api/market?${params.toString()}`, controller ? { signal: controller.signal } : undefined);
+      const defaultQuery = !append
+        && !tag
+        && !marketSearchInput.value.trim()
+        && !(marketLanguageSelect && marketLanguageSelect.value)
+        && (marketSortSelect.value || 'newest') === 'newest';
+      const prefetched = defaultQuery ? takePrefetch('market') : null;
+      let res;
+      try {
+        res = prefetched ? await prefetched : await fetch(`/api/market?${params.toString()}`, controller ? { signal: controller.signal } : undefined);
+      } catch (_err) {
+        res = await fetch(`/api/market?${params.toString()}`, controller ? { signal: controller.signal } : undefined);
+      }
       if (!res.ok) throw new Error('market failed');
       const data = await res.json();
       if (seq !== marketRequestSeq) return;
@@ -1030,6 +1058,15 @@
   if (marketLanguageSelect) marketLanguageSelect.addEventListener('change', () => loadMarket());
   if (marketRetryBtn) marketRetryBtn.addEventListener('click', () => loadMarket());
   if (marketLoadMoreBtn) marketLoadMoreBtn.addEventListener('click', () => loadMarket({ append: true }));
+  if (marketLoadMoreBtn && 'IntersectionObserver' in window) {
+    const marketMoreObserver = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      if (!marketHasMore) return;
+      if (marketList.getAttribute('aria-busy') === 'true') return;
+      loadMarket({ append: true });
+    }, { rootMargin: '320px' });
+    marketMoreObserver.observe(marketLoadMoreBtn);
+  }
 
   async function recoverHistoryFromPageContext() {
     const candidates = new Set();
@@ -1339,7 +1376,8 @@
     // until the user opens the panel.
     const cachedProfile = profileCacheRead();
     if (cachedProfile) paintNavAvatar(cachedProfile);
-    fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((d) => {
+    const prefetchedMe = takePrefetch('me');
+    (prefetchedMe || fetch('/api/me')).then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (d && d.profile) {
         profileCacheWrite(d.profile);
         paintNavAvatar(d.profile);
