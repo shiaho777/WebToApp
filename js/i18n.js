@@ -18,16 +18,16 @@
   'use strict';
 
   var STORE_KEY = 'webtoapp-lang-v1';
-  var SUPPORTED = ['en', 'zh', 'ja', 'ar', 'ru', 'es', 'pt', 'fr', 'de'];
+  var SUPPORTED = ['en', 'zh', 'ja', 'ko', 'ar', 'ru', 'es', 'pt', 'fr', 'de'];
   var RTL = ['ar'];
   var LOCALES = {
     en: 'en-US', zh: 'zh-CN', ja: 'ja-JP', ar: 'ar',
-    ru: 'ru-RU', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE'
+    ru: 'ru-RU', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE', ko: 'ko-KR'
   };
   // Native language names for the switcher.
   var NATIVE_NAMES = {
     en: 'English', zh: '中文', ja: '日本語', ar: 'العربية', ru: 'Русский',
-    es: 'Español', pt: 'Português', fr: 'Français', de: 'Deutsch'
+    es: 'Español', pt: 'Português', fr: 'Français', de: 'Deutsch', ko: '한국어'
   };
 
   // Translation tables are attached to this object below (see i18n.*.js loaded

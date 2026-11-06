@@ -3,7 +3,7 @@
    Renders the creator card, the creator's other public apps,
    comments and ratings into the mount points emitted by
    distiller.render_download_page. Self-contained: bootstraps the
-   shared device fingerprint, carries its own 9-language strings,
+   shared device fingerprint, carries its own 10-language strings,
    and re-renders when the page's <html lang> changes.
    Requires /js/mdmini.js (window.wtaMd) loaded before this file.
    ============================================================ */
@@ -13,7 +13,7 @@
   var FP_KEY = 'webtoapp-device-fingerprint-v1';
   var FP_COOKIE = 'webtoapp_device_fingerprint';
   var LANG_KEY = 'webtoapp-lang-v1';
-  var SUPPORTED = ['en', 'zh', 'ja', 'ar', 'ru', 'es', 'pt', 'fr', 'de'];
+  var SUPPORTED = ['en', 'zh', 'ja', 'ko', 'ar', 'ru', 'es', 'pt', 'fr', 'de'];
 
   var STRINGS = {
     en: {
@@ -78,6 +78,13 @@
       writeComment: 'Kommentar schreiben…', yourRating: 'Bewertung', optional: 'optional',
       submit: 'Senden', postFailed: 'Senden fehlgeschlagen.', del: 'Löschen',
       deleted: 'Kommentar gelöscht', noRating: 'Noch keine Bewertungen', visit: 'Öffnen'
+    },
+    ko: {
+      creator: '제작자', moreApps: '이 제작자의 다른 앱', anonymous: '익명',
+      joined: '가입', comments: '댓글', noComments: '아직 댓글이 없습니다. 첫 댓글을 남겨 보세요.',
+      writeComment: '댓글을 입력하세요…', yourRating: '평점', optional: '선택',
+      submit: '게시', postFailed: '게시 실패, 다시 시도하세요.', del: '삭제',
+      deleted: '댓글이 삭제되었습니다', noRating: '아직 평점 없음', visit: '열기'
     }
   };
 

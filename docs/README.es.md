@@ -85,7 +85,7 @@ Open source · Gratis · Sin registro. Pruébalo en vivo en **[shiaho.sbs](https
 - **Historial por dispositivo**: las builds se guardan contra la huella del dispositivo con estadísticas de visitas/descargas, regenerar y exportar/importar entre dispositivos. Borrar una entrada elimina la app por completo.
 - **Limpieza automática**: las apps sin visitas durante 30 días se reclaman automáticamente.
 - **Offload opcional a Cloudflare R2**: las descargas redirigen al CDN, ahorrando ancho de banda del origen.
-- **UI multilingüe**: 9 idiomas — English, 简体中文, 日本語, العربية (RTL), Русский, Español, Português, Français, Deutsch — con las páginas de descarga generadas también localizadas.
+- **UI multilingüe**: 10 idiomas — English, 简体中文, 日本語, العربية (RTL), Русский, Español, Português, Français, Deutsch, 한국어 — con las páginas de descarga generadas también localizadas.
 
 ## Comunidad sin registro
 
@@ -120,7 +120,7 @@ Cada paquete es una fina puerta de entrada a tu sitio — no incluye el contenid
 .
 ├── index.html                 Página inicial + formulario de build
 ├── css/ js/ assets/           Assets estáticos del frontend
-│   ├── js/i18n.js             Runtime i18n ligero (9 idiomas)
+│   ├── js/i18n.js             Runtime i18n ligero (10 idiomas)
 │   ├── js/i18n.strings.js     Todas las traducciones
 │   ├── js/community.js        Comentarios / valoraciones / bloque de creador en las páginas de app
 │   └── js/mdmini.js           Mini renderizador Markdown para bios
