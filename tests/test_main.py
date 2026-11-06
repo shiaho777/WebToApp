@@ -261,6 +261,29 @@ class MarketAndVisibilityTests(unittest.TestCase):
         self.assertEqual(capped["offset"], 0)
         self.assertFalse(capped["has_more"])
 
+    def test_market_filters_by_language_bucket(self):
+        self._build("zhapp", "public", ["tools"], extra={"languages": ["zh"]})
+        self._build("multiapp", "public", ["tools"], extra={"languages": ["en", "ja"]})
+        self._build("otherapp", "public", ["tools"], extra={"languages": ["other"]})
+        self._build("undapp", "public", ["tools"])
+        for code, expected in (
+            ("zh", ["zhapp"]),
+            ("mul", ["multiapp"]),
+            ("other", ["otherapp"]),
+            ("und", ["undapp"]),
+        ):
+            body = self.client.get("/api/market", params={"language": code}).json()
+            self.assertEqual([item["app_id"] for item in body["items"]], expected, code)
+            self.assertEqual(body["language"], code)
+        everything = self.client.get("/api/market").json()
+        self.assertEqual(len(everything["items"]), 4)
+
+    def test_market_exposes_language_metadata(self):
+        self._build("langmeta", "public", ["tools"], extra={"languages": ["ko", "en"]})
+        item = self.client.get("/api/market").json()["items"][0]
+        self.assertEqual(item["languages"], ["ko", "en"])
+        self.assertEqual(item["language_category"], "mul")
+
     def test_market_never_leaks_edit_token(self):
         self._build("pubtok", "public", ["tools"])
         item = self.client.get("/api/market").json()["items"][0]

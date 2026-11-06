@@ -137,6 +137,7 @@
   const marketEmpty = document.getElementById('market-empty');
   const marketSearchInput = document.getElementById('market-search');
   const marketSortSelect = document.getElementById('market-sort');
+  const marketLanguageSelect = document.getElementById('market-language');
   const marketCount = document.getElementById('market-count');
   const profileBtn = document.getElementById('profile-btn');
   const profileBtnAvatar = document.getElementById('profile-btn-avatar');
@@ -193,6 +194,120 @@
   const historySelected = new Set();
   let currentVisibility = 'public';
   const selectedTags = new Set();
+
+  // --- App language picker ---
+  const LANGUAGES = [
+    { code: 'en', name: 'English' },
+    { code: 'zh', name: '中文' },
+    { code: 'ja', name: '日本語' },
+    { code: 'ko', name: '한국어' },
+    { code: 'ar', name: 'العربية' },
+    { code: 'ru', name: 'Русский' },
+    { code: 'es', name: 'Español' },
+    { code: 'pt', name: 'Português' },
+    { code: 'fr', name: 'Français' },
+    { code: 'de', name: 'Deutsch' },
+  ];
+  const LANGUAGE_CODES = new Set(LANGUAGES.map((item) => item.code));
+  const langPrimaryGrid = document.getElementById('lang-primary-grid');
+  const langAdditionalGrid = document.getElementById('lang-additional-grid');
+  const langAdditionalWrap = document.getElementById('lang-additional-wrap');
+  const langMultilingual = document.getElementById('lang-multilingual');
+  const languagePicker = document.getElementById('language-picker');
+  const initialUiLanguage = window.I18n && window.I18n.current;
+  let primaryLanguage = LANGUAGE_CODES.has(initialUiLanguage) ? initialUiLanguage : 'en';
+  let multilingual = false;
+  const additionalLanguages = new Set();
+
+  function languageLabel(code) {
+    if (code === 'mul') return t('language.mul');
+    if (code === 'other') return t('language.other');
+    if (code === 'und') return t('language.und');
+    const found = LANGUAGES.find((item) => item.code === code);
+    return found ? found.name : code;
+  }
+
+  function currentLanguages() {
+    return multilingual ? [primaryLanguage, ...Array.from(additionalLanguages)] : [primaryLanguage];
+  }
+
+  function hasValidLanguages() {
+    return !multilingual || additionalLanguages.size > 0;
+  }
+
+  function renderLanguagePicker() {
+    if (langPrimaryGrid) {
+      langPrimaryGrid.querySelectorAll('[data-lang]').forEach((chip) => {
+        chip.setAttribute('aria-pressed', chip.dataset.lang === primaryLanguage ? 'true' : 'false');
+      });
+    }
+    if (langMultilingual) {
+      langMultilingual.checked = multilingual;
+      const disabled = primaryLanguage === 'und';
+      langMultilingual.disabled = disabled;
+      const label = langMultilingual.closest('.lang-multi-toggle');
+      if (label) label.classList.toggle('is-disabled', disabled);
+    }
+    if (langAdditionalWrap) langAdditionalWrap.classList.toggle('hidden', !multilingual);
+    if (langAdditionalGrid) {
+      langAdditionalGrid.querySelectorAll('[data-add-lang]').forEach((chip) => {
+        const code = chip.dataset.addLang;
+        chip.setAttribute('aria-pressed', additionalLanguages.has(code) ? 'true' : 'false');
+        chip.disabled = code === primaryLanguage;
+      });
+    }
+  }
+
+  function setLanguageSelection(codes) {
+    const list = Array.isArray(codes) ? codes.map((code) => String(code || '').toLowerCase()) : [];
+    const validPrimary = list.find((code) => LANGUAGE_CODES.has(code) || code === 'other' || code === 'und');
+    primaryLanguage = validPrimary || 'en';
+    additionalLanguages.clear();
+    list.forEach((code) => {
+      if (code !== primaryLanguage && (LANGUAGE_CODES.has(code) || code === 'other')) {
+        additionalLanguages.add(code);
+      }
+    });
+    multilingual = additionalLanguages.size > 0 && primaryLanguage !== 'und';
+    if (!multilingual) additionalLanguages.clear();
+    renderLanguagePicker();
+  }
+
+  if (langPrimaryGrid) {
+    langPrimaryGrid.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-lang]');
+      if (!chip) return;
+      primaryLanguage = chip.dataset.lang;
+      additionalLanguages.delete(primaryLanguage);
+      if (primaryLanguage === 'und') {
+        multilingual = false;
+        additionalLanguages.clear();
+      }
+      renderLanguagePicker();
+    });
+  }
+  if (langAdditionalGrid) {
+    langAdditionalGrid.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-add-lang]');
+      if (!chip || chip.disabled) return;
+      const code = chip.dataset.addLang;
+      if (additionalLanguages.has(code)) additionalLanguages.delete(code);
+      else additionalLanguages.add(code);
+      renderLanguagePicker();
+    });
+  }
+  if (langMultilingual) {
+    langMultilingual.addEventListener('change', () => {
+      if (primaryLanguage === 'und') {
+        langMultilingual.checked = false;
+        return;
+      }
+      multilingual = langMultilingual.checked;
+      if (!multilingual) additionalLanguages.clear();
+      renderLanguagePicker();
+    });
+  }
+  renderLanguagePicker();
   // edit_token is the only proof of app ownership — visibility/URL edits
   // require it server-side, so persist it across reloads like the fingerprint.
   const EDIT_TOKENS_KEY = 'webtoapp-edit-tokens-v1';
@@ -628,6 +743,7 @@
             <span class="app-row-name">${escapeHtml(item.name || appId)}</span>
             <span class="pill ${isPublic ? 'pill-public' : 'pill-private'}">${escapeHtml(isPublic ? t('history.visibilityPublic') : t('history.visibilityPrivate'))}</span>
             ${isHtmlApp ? `<span class="pill">${escapeHtml(t('history.badgeHtml'))}</span>` : ''}
+            <span class="pill pill-lang">${escapeHtml(languageLabel(item.language_category || 'und'))}</span>
           </div>
           <div class="app-row-sub">
             ${host ? `<span class="app-row-host">${escapeHtml(host)}</span><span aria-hidden="true">·</span>` : ''}
@@ -718,7 +834,9 @@
     const emptyText = marketEmpty.querySelector('p');
     if (emptyText) {
       const activeTag = document.querySelector('.market-tab.active');
-      const filtering = !!marketSearchInput.value.trim() || !!(activeTag && activeTag.dataset.marketTag);
+      const filtering = !!marketSearchInput.value.trim()
+        || !!(activeTag && activeTag.dataset.marketTag)
+        || !!(marketLanguageSelect && marketLanguageSelect.value);
       const key = !lastMarketItems.length && filtering ? 'market.noMatches' : 'market.empty';
       emptyText.setAttribute('data-i18n', key);
       emptyText.textContent = t(key);
@@ -728,6 +846,7 @@
       const publicPath = getAbsoluteUrl(item.public_path || `/a/${item.app_id}`);
       const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
       const tagChips = tags.map((tag) => `<span class="market-tag">${escapeHtml(tag)}</span>`).join('');
+      const langChip = `<span class="market-tag market-lang">${escapeHtml(languageLabel(item.language_category || 'und'))}</span>`;
       const iconHtml = item.icon_url
         ? `<img src="${escapeHtml(item.icon_url)}" alt="" loading="lazy" decoding="async">`
         : `<span class="market-card-letter" aria-hidden="true">${escapeHtml((item.name || item.app_id || '?').charAt(0).toUpperCase())}</span>`;
@@ -762,7 +881,7 @@
           ${ratingHtml}
         </div>
         ${item.description ? `<p class="market-card-desc">${escapeHtml(item.description)}</p>` : ''}
-        ${tagChips ? `<div class="market-card-tags">${tagChips}</div>` : ''}
+        <div class="market-card-tags">${langChip}${tagChips}</div>
         ${item.icon_review_deadline ? `<span class="market-icon-review">${escapeHtml(t('market.iconReview'))}</span>` : ''}
         <div class="market-card-foot">
           ${creatorHtml || `<span class="market-card-anon">${escapeHtml(t('profile.anon'))}</span>`}
@@ -837,6 +956,7 @@
     const params = new URLSearchParams();
     if (tag) params.set('tag', tag);
     if (marketSearchInput.value.trim()) params.set('search', marketSearchInput.value.trim());
+    if (marketLanguageSelect && marketLanguageSelect.value) params.set('language', marketLanguageSelect.value);
     params.set('sort', marketSortSelect.value || 'newest');
     params.set('limit', String(MARKET_PAGE_SIZE));
     params.set('offset', String(append ? lastMarketItems.length : 0));
@@ -913,6 +1033,7 @@
   });
 
   marketSortSelect.addEventListener('change', () => loadMarket());
+  if (marketLanguageSelect) marketLanguageSelect.addEventListener('change', () => loadMarket());
   if (marketRetryBtn) marketRetryBtn.addEventListener('click', () => loadMarket());
   if (marketLoadMoreBtn) marketLoadMoreBtn.addEventListener('click', () => loadMarket({ append: true }));
 
@@ -1380,6 +1501,7 @@
       }
     });
     refreshTagChips();
+    setLanguageSelection(recipe.languages || (recipe.language ? [recipe.language] : ['und']));
     setVisibility(recipe.visibility || item.visibility || 'private');
     if (item.icon_url) {
       try {
@@ -1593,6 +1715,8 @@
     Object.assign(options, collectFeatureOptions());
     if (selectedTags.size > 0) options['tags'] = Array.from(selectedTags);
     options['visibility'] = currentVisibility;
+    options['language'] = primaryLanguage;
+    options['languages'] = currentLanguages();
     const appDesc = (appDescInput.value || '').trim();
     if (appDesc) options['description'] = appDesc;
     options['about-text'] = aboutTextInput.value || '';
@@ -2244,6 +2368,11 @@
     if (selectedTags.size === 0) {
       notify(t('err.tagsRequired'), 'error');
       tagsPicker.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
+    if (!hasValidLanguages()) {
+      notify(t('err.languageRequired'), 'error');
+      if (languagePicker) languagePicker.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
     try {

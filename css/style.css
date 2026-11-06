@@ -4446,3 +4446,126 @@ section {
 .hero-center .hero-points {
   justify-content: center;
 }
+
+/* ===== App language picker (#195) ===== */
+.language-field {
+  margin-top: var(--space-5);
+}
+
+.language-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.lang-primary-grid,
+.lang-additional-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lang-chip {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.lang-chip:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink);
+}
+
+.lang-chip[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.lang-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.lang-multi-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lang-multi-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.lang-multi-toggle.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lang-additional {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.lang-additional-label {
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.lang-chip-add[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ===== Language classification (#195) ===== */
+.market-lang {
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.pill-lang {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-text);
+}
+
+@media (max-width: 720px) {
+  .section-tools {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .tool-search {
+    flex: 1 1 100%;
+  }
+
+  .tool-select {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .section-menu {
+    flex: none;
+  }
+}

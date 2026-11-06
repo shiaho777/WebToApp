@@ -3282,4 +3282,137 @@
     'market.noMatches': '검색 또는 필터와 일치하는 앱이 없습니다.',
   });
 
+
+  // App language classification (#195)
+  R('en', {
+    'config.languageLabel': 'App language',
+    'config.languagePrimary': 'Primary language',
+    'config.languageMultilingual': 'Multilingual app',
+    'config.languageAdditional': 'Additional languages',
+    'config.languageNote': 'Choose the app’s main language. Add more to mark it multilingual.',
+    'err.languageRequired': 'Choose at least one additional language for a multilingual app.',
+    'language.other': 'Other',
+    'language.und': 'Unspecified',
+    'language.mul': 'Multilingual',
+    'market.languageFilter': 'Filter by language',
+    'market.allLanguages': 'All languages'
+  });
+  R('zh', {
+    'config.languageLabel': '应用语言',
+    'config.languagePrimary': '第一语言',
+    'config.languageMultilingual': '多语言应用',
+    'config.languageAdditional': '其他语言',
+    'config.languageNote': '选择应用的主要语言；添加更多语言即可标记为多语言应用。',
+    'err.languageRequired': '多语言应用至少再选择一种语言。',
+    'language.other': '其他',
+    'language.und': '未指定',
+    'language.mul': '多语言',
+    'market.languageFilter': '按语言筛选',
+    'market.allLanguages': '全部语言'
+  });
+  R('ja', {
+    'config.languageLabel': 'アプリの言語',
+    'config.languagePrimary': '第一言語',
+    'config.languageMultilingual': '多言語アプリ',
+    'config.languageAdditional': '追加の言語',
+    'config.languageNote': 'アプリの主要言語を選択してください。追加すると多言語アプリになります。',
+    'err.languageRequired': '多言語アプリには追加言語を1つ以上選んでください。',
+    'language.other': 'その他',
+    'language.und': '未指定',
+    'language.mul': '多言語',
+    'market.languageFilter': '言語で絞り込む',
+    'market.allLanguages': 'すべての言語'
+  });
+  R('ko', {
+    'config.languageLabel': '앱 언어',
+    'config.languagePrimary': '기본 언어',
+    'config.languageMultilingual': '다국어 앱',
+    'config.languageAdditional': '추가 언어',
+    'config.languageNote': '앱의 주요 언어를 선택하세요. 더 추가하면 다국어 앱으로 표시됩니다.',
+    'err.languageRequired': '다국어 앱에는 추가 언어를 하나 이상 선택하세요.',
+    'language.other': '기타',
+    'language.und': '미지정',
+    'language.mul': '다국어',
+    'market.languageFilter': '언어로 필터',
+    'market.allLanguages': '모든 언어'
+  });
+  R('ar', {
+    'config.languageLabel': 'لغة التطبيق',
+    'config.languagePrimary': 'اللغة الأساسية',
+    'config.languageMultilingual': 'تطبيق متعدد اللغات',
+    'config.languageAdditional': 'لغات إضافية',
+    'config.languageNote': 'اختر اللغة الأساسية للتطبيق. أضف لغات أخرى لتصنيفه كمتعدد اللغات.',
+    'err.languageRequired': 'اختر لغة إضافية واحدة على الأقل لتطبيق متعدد اللغات.',
+    'language.other': 'أخرى',
+    'language.und': 'غير محدد',
+    'language.mul': 'متعدد اللغات',
+    'market.languageFilter': 'تصفية حسب اللغة',
+    'market.allLanguages': 'كل اللغات'
+  });
+  R('ru', {
+    'config.languageLabel': 'Язык приложения',
+    'config.languagePrimary': 'Основной язык',
+    'config.languageMultilingual': 'Многоязычное приложение',
+    'config.languageAdditional': 'Дополнительные языки',
+    'config.languageNote': 'Выберите основной язык приложения. Добавьте другие, чтобы отметить его как многоязычное.',
+    'err.languageRequired': 'Выберите хотя бы один дополнительный язык для многоязычного приложения.',
+    'language.other': 'Другой',
+    'language.und': 'Не указан',
+    'language.mul': 'Многоязычный',
+    'market.languageFilter': 'Фильтр по языку',
+    'market.allLanguages': 'Все языки'
+  });
+  R('es', {
+    'config.languageLabel': 'Idioma de la app',
+    'config.languagePrimary': 'Idioma principal',
+    'config.languageMultilingual': 'App multilingüe',
+    'config.languageAdditional': 'Idiomas adicionales',
+    'config.languageNote': 'Elige el idioma principal de la app. Añade más para marcarla como multilingüe.',
+    'err.languageRequired': 'Elige al menos un idioma adicional para una app multilingüe.',
+    'language.other': 'Otro',
+    'language.und': 'Sin especificar',
+    'language.mul': 'Multilingüe',
+    'market.languageFilter': 'Filtrar por idioma',
+    'market.allLanguages': 'Todos los idiomas'
+  });
+  R('pt', {
+    'config.languageLabel': 'Idioma do app',
+    'config.languagePrimary': 'Idioma principal',
+    'config.languageMultilingual': 'App multilíngue',
+    'config.languageAdditional': 'Idiomas adicionais',
+    'config.languageNote': 'Escolha o idioma principal do app. Adicione mais para marcá-lo como multilíngue.',
+    'err.languageRequired': 'Escolha pelo menos um idioma adicional para um app multilíngue.',
+    'language.other': 'Outro',
+    'language.und': 'Não especificado',
+    'language.mul': 'Multilíngue',
+    'market.languageFilter': 'Filtrar por idioma',
+    'market.allLanguages': 'Todos os idiomas'
+  });
+  R('fr', {
+    'config.languageLabel': 'Langue de l’app',
+    'config.languagePrimary': 'Langue principale',
+    'config.languageMultilingual': 'App multilingue',
+    'config.languageAdditional': 'Langues supplémentaires',
+    'config.languageNote': 'Choisissez la langue principale de l’app. Ajoutez-en d’autres pour la marquer comme multilingue.',
+    'err.languageRequired': 'Choisissez au moins une langue supplémentaire pour une app multilingue.',
+    'language.other': 'Autre',
+    'language.und': 'Non spécifiée',
+    'language.mul': 'Multilingue',
+    'market.languageFilter': 'Filtrer par langue',
+    'market.allLanguages': 'Toutes les langues'
+  });
+  R('de', {
+    'config.languageLabel': 'App-Sprache',
+    'config.languagePrimary': 'Hauptsprache',
+    'config.languageMultilingual': 'Mehrsprachige App',
+    'config.languageAdditional': 'Weitere Sprachen',
+    'config.languageNote': 'Wähle die Hauptsprache der App. Weitere Sprachen markieren sie als mehrsprachig.',
+    'err.languageRequired': 'Wähle mindestens eine weitere Sprache für eine mehrsprachige App.',
+    'language.other': 'Andere',
+    'language.und': 'Nicht angegeben',
+    'language.mul': 'Mehrsprachig',
+    'market.languageFilter': 'Nach Sprache filtern',
+    'market.allLanguages': 'Alle Sprachen'
+  });
+
 })();

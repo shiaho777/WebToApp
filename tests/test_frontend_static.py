@@ -392,6 +392,17 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
         "history.noMatches",
         "market.noMatches",
         "market.loadMore",
+        "config.languageLabel",
+        "config.languagePrimary",
+        "config.languageMultilingual",
+        "config.languageAdditional",
+        "config.languageNote",
+        "err.languageRequired",
+        "language.other",
+        "language.und",
+        "language.mul",
+        "market.languageFilter",
+        "market.allLanguages",
     )
 
     def setUp(self):
@@ -475,6 +486,23 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
             self.assertIn(marker, self.js)
         for cls in (".market-card-time", ".market-card-stat", ".market-card-stats"):
             self.assertIn(cls, self.css)
+
+    def test_language_picker_and_market_filter_are_wired(self):
+        for code in ("en", "zh", "ja", "ko", "ar", "ru", "es", "pt", "fr", "de"):
+            self.assertIn(f'data-lang="{code}"', self.html)
+            self.assertIn(f'data-add-lang="{code}"', self.html)
+        for marker in (
+            'id="lang-primary-grid"',
+            'id="lang-multilingual"',
+            'id="lang-additional-grid"',
+            'id="market-language"',
+            'data-lang="other"',
+            'data-lang="und"',
+        ):
+            self.assertIn(marker, self.html)
+        self.assertIn("options['languages'] = currentLanguages()", self.js)
+        self.assertIn("marketLanguageSelect", self.js)
+        self.assertIn("params.set('language'", self.js)
 
     def test_new_components_have_styles(self):
         for cls in (
