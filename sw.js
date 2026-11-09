@@ -6,7 +6,7 @@
 
 const CACHE_NAME = 'wta-shell-v1';
 const SHELL_KEY = '/';
-const NETWORK_TIMEOUT_MS = 600;
+const NETWORK_TIMEOUT_MS = 250;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
