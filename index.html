@@ -753,5 +753,12 @@
   <script src="js/announcements.js?v=20261106-perf2"></script>
   <script src="js/mdmini.js?v=20261013-ads1"></script>
   <script src="js/app.v5.js?v=20261106-cache1"></script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(function () {});
+    });
+  }
+  </script>
 </body>
 </html>

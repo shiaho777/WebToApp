@@ -102,6 +102,12 @@ class EntryCacheHeaderTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("max-age=86400", resp.headers.get("cache-control", ""))
 
+    def test_service_worker_must_revalidate(self):
+        resp = self.client.get("/sw.js")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("cache-control"), "no-cache")
+        self.assertEqual(resp.headers.get("cdn-cache-control"), "no-store")
+
 
 class HistoryBulkDeleteTests(unittest.TestCase):
     """POST /api/history/delete-bulk — one request replaces the per-id DELETE
