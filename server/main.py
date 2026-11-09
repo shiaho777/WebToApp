@@ -146,13 +146,17 @@ async def add_cache_headers(request: Request, call_next):
     existing = response.headers.get("cache-control")
     if existing:
         return response
-    if path in ("/", "/index.html"):
+    if path in ("/", "/index.html", "/sw.js"):
         # Entry HTML must revalidate on every load. All frontend upgrades
         # ride on ?v= cache-busters *inside* this file, so a heuristically
         # cached copy strands users on stale UI talking to a new API
         # (all-zero stats, missing panels). StaticFiles emits ETag and
         # Last-Modified, so this costs a cheap 304, not a full download.
+        # The service worker script must revalidate too, or browsers can
+        # keep running an old worker after a deploy.
         response.headers["Cache-Control"] = "no-cache"
+        if path == "/sw.js":
+            response.headers["CDN-Cache-Control"] = "no-store"
     elif path.startswith(_LONG_CACHE_PREFIXES) or path.endswith(_LONG_CACHE_SUFFIXES):
         # 1 day fresh, 7 days stale-while-revalidate. Hashed query strings
         # (?v=...) used in index.html keep these effectively immutable.

@@ -615,5 +615,33 @@ class StreamingFirstLoadTests(unittest.TestCase):
         self.assertIn("js/app.v5.js?v=20261106-cache1", self.html)
 
 
+class ServiceWorkerTests(unittest.TestCase):
+    """Guards for the main-site shell cache (issue #213)."""
+
+    def setUp(self):
+        self.sw = _read("sw.js")
+        self.html = _read("index.html")
+
+    def test_worker_caches_the_shell_and_assets(self):
+        for marker in (
+            "CACHE_NAME",
+            "SHELL_KEY",
+            "addEventListener('install'",
+            "addEventListener('activate'",
+            "addEventListener('fetch'",
+            "staleWhileRevalidate",
+            "NETWORK_TIMEOUT_MS",
+        ):
+            self.assertIn(marker, self.sw)
+
+    def test_worker_never_touches_api_or_generated_apps(self):
+        for marker in ("'/api/'", "'/a/'", "'/generated/'", "'/sw.js'"):
+            self.assertIn(marker, self.sw)
+
+    def test_page_registers_the_worker_without_http_cache(self):
+        self.assertIn("navigator.serviceWorker.register('/sw.js'", self.html)
+        self.assertIn("updateViaCache: 'none'", self.html)
+
+
 if __name__ == "__main__":
     unittest.main()
