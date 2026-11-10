@@ -133,6 +133,8 @@ class AnnouncementTests(unittest.TestCase):
             "start loading before the main script",
             "next page automatically",
             "cached on this device",
+            "for 24 hours",
+            "24 小时",
         ):
             self.assertIn(marker, block)
         for lang in ("en", "zh", "ja", "ko", "ar", "ru", "es", "pt", "fr", "de"):
@@ -148,7 +150,7 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261106-perf2", html)
+        self.assertIn("js/announcements.js?v=20261110-perf3", html)
 
 
 class FrontendResilienceTests(unittest.TestCase):
@@ -604,6 +606,7 @@ class StreamingFirstLoadTests(unittest.TestCase):
             "writeRenderCache('stats'",
             "writeRenderCache('history'",
             "writeRenderCache('market'",
+            "24 * 60 * 60 * 1000",
         ):
             self.assertIn(marker, self.js)
 
@@ -612,7 +615,7 @@ class StreamingFirstLoadTests(unittest.TestCase):
 
     def test_streaming_assets_are_cache_busted(self):
         self.assertIn("css/style.css?v=20261106-stream1", self.html)
-        self.assertIn("js/app.v5.js?v=20261106-cache1", self.html)
+        self.assertIn("js/app.v5.js?v=20261110-cache1", self.html)
 
 
 class ServiceWorkerTests(unittest.TestCase):

@@ -48,7 +48,7 @@
           "The first screen is faster: the hero and stats no longer wait for a scroll animation, fonts load asynchronously, and translations such as Chinese are applied as soon as the page is parsed.",
           "Stats, history and market data now start loading before the main script runs. History and market show placeholders first, then fill in when the data arrives.",
           "The market loads the next page automatically as you scroll near the bottom, so the manual “Load more” click is no longer required.",
-          "Your last stats, history and market page are cached on this device for 10 minutes. A repeat visit shows them immediately while fresh data is fetched in the background."
+          "Your last stats, history and market page are cached on this device for 24 hours. A repeat visit shows them immediately while fresh data is fetched in the background."
         ],
         "zh": [
           "新增韩语支持：主站、下载页、PWA、公告和社区现在都可以切换到韩语。",
@@ -56,7 +56,7 @@
           "首页首屏更快：标题和统计不再等滚动动画，字体改为异步加载，中文等翻译也会在页面解析后立即应用。",
           "统计、历史和市场数据会在主脚本运行前就开始请求，「你的应用」和市场先显示占位骨架，数据到了再填入。",
           "市场滚动到接近底部会自动加载下一页，不再需要手动点「加载更多」。",
-          "最近一次的统计、历史和市场首页会在这台设备上缓存 10 分钟。再次打开时先立即显示，再在后台刷新。"
+          "最近一次的统计、历史和市场首页会在这台设备上缓存 24 小时。再次打开时先立即显示，再在后台刷新。"
         ],
         "ja": [
           "韓国語に対応しました。メインサイト、ダウンロードページ、PWA、お知らせ、コミュニティを韓国語に切り替えられます。",
@@ -64,7 +64,7 @@
           "最初の画面が速くなりました。ヒーローと統計はスクロールアニメーションを待たず、フォントは非同期で読み込み、中国語などの翻訳はページ解析後すぐに適用されます。",
           "統計・履歴・マーケットのデータをメインスクリプトの実行前に取得し始めます。「あなたのアプリ」とマーケットは先にプレースホルダーを表示し、データが届き次第埋まります。",
           "マーケットは下までスクロールすると次のページを自動で読み込むため、「もっと見る」を手動で押す必要はありません。",
-          "直近の統計・履歴・マーケットの1ページ目はこの端末に10分間キャッシュされます。再訪問時はすぐに表示し、裏で最新データに更新します。"
+          "直近の統計・履歴・マーケットの1ページ目はこの端末に24時間キャッシュされます。再訪問時はすぐに表示し、裏で最新データに更新します。"
         ],
         "ko": [
           "한국어를 지원합니다. 메인 사이트, 다운로드 페이지, PWA, 공지, 커뮤니티를 모두 한국어로 전환할 수 있습니다.",
@@ -72,7 +72,7 @@
           "첫 화면이 더 빨라졌습니다. 히어로와 통계는 스크롤 애니메이션을 기다리지 않고, 글꼴은 비동기로 불러오며, 중국어 등의 번역은 페이지 파싱 직후 적용됩니다.",
           "통계, 기록, 마켓 데이터를 메인 스크립트 실행 전에 요청하기 시작합니다. 내 앱과 마켓은 자리 표시자를 먼저 보여 주고 데이터가 도착하면 채웁니다.",
           "마켓은 아래로 스크롤하면 다음 페이지를 자동으로 불러오므로 '더 보기'를 직접 누를 필요가 없습니다.",
-          "최근 통계, 기록, 마켓 첫 페이지는 이 기기에 10분 동안 캐시됩니다. 다시 방문하면 즉시 보여 주고 백그라운드에서 최신 데이터로 갱신합니다."
+          "최근 통계, 기록, 마켓 첫 페이지는 이 기기에 24시간 동안 캐시됩니다. 다시 방문하면 즉시 보여 주고 백그라운드에서 최신 데이터로 갱신합니다."
         ],
         "ar": [
           "أصبحت اللغة الكورية متاحة: يمكن تحويل الموقع الرئيسي وصفحات التنزيل وتطبيق PWA والإعلانات والمجتمع إلى الكورية.",
@@ -80,7 +80,7 @@
           "أصبحت الشاشة الأولى أسرع: لم يعد العنوان والإحصاءات ينتظران حركة التمرير، وتُحمّل الخطوط بشكل غير متزامن، وتُطبَّق الترجمات مثل الصينية فور تحليل الصفحة.",
           "تبدأ الإحصاءات والسجل وبيانات السوق بالتحميل قبل تشغيل البرنامج النصي الرئيسي. يعرض قسم تطبيقاتك والسوق عناصر مكانية أولاً ثم يملؤها عند وصول البيانات.",
           "يحمّل السوق الصفحة التالية تلقائياً عند التمرير قرب الأسفل، لذا لم تعد بحاجة إلى النقر على «تحميل المزيد».",
-          "تُخزَّن آخر إحصاءات وسجل وصفحة سوق أولى على هذا الجهاز لمدة 10 دقائق. عند الزيارة التالية تظهر فوراً ثم تُحدَّث في الخلفية."
+          "تُخزَّن آخر إحصاءات وسجل وصفحة سوق أولى على هذا الجهاز لمدة 24 ساعة. عند الزيارة التالية تظهر فوراً ثم تُحدَّث في الخلفية."
         ],
         "ru": [
           "Добавлена поддержка корейского: основной сайт, страницы загрузки, PWA, объявления и сообщество можно переключить на корейский.",
@@ -88,7 +88,7 @@
           "Первый экран стал быстрее: заголовок и статистика больше не ждут анимации прокрутки, шрифты загружаются асинхронно, а переводы вроде китайского применяются сразу после разбора страницы.",
           "Статистика, история и данные рынка начинают загружаться до запуска основного скрипта. История и рынок сначала показывают заглушки, а затем заполняются при поступлении данных.",
           "Рынок автоматически подгружает следующую страницу при прокрутке вниз, так что вручную нажимать «Загрузить ещё» больше не нужно.",
-          "Последние статистика, история и первая страница рынка кэшируются на этом устройстве на 10 минут. При повторном визите они показываются сразу, а свежие данные загружаются в фоне."
+          "Последние статистика, история и первая страница рынка кэшируются на этом устройстве на 24 часа. При повторном визите они показываются сразу, а свежие данные загружаются в фоне."
         ],
         "es": [
           "El coreano ya está disponible: el sitio principal, las páginas de descarga, la PWA, los avisos y la comunidad se pueden cambiar a coreano.",
@@ -96,7 +96,7 @@
           "La primera pantalla es más rápida: el título y las estadísticas ya no esperan una animación de desplazamiento, las fuentes cargan de forma asíncrona y traducciones como el chino se aplican en cuanto se analiza la página.",
           "Las estadísticas, el historial y los datos del mercado empiezan a cargarse antes de ejecutar el script principal. Tus apps y el mercado muestran marcadores primero y se rellenan cuando llegan los datos.",
           "El mercado carga la página siguiente automáticamente al desplazarte cerca del final, así que ya no hace falta pulsar «Cargar más».",
-          "Las últimas estadísticas, el historial y la primera página del mercado se guardan en este dispositivo durante 10 minutos. En una nueva visita se muestran al instante y se actualizan en segundo plano."
+          "Las últimas estadísticas, el historial y la primera página del mercado se guardan en este dispositivo durante 24 horas. En una nueva visita se muestran al instante y se actualizan en segundo plano."
         ],
         "pt": [
           "O coreano já está disponível: o site principal, as páginas de download, o PWA, os avisos e a comunidade podem ser alterados para coreano.",
@@ -104,7 +104,7 @@
           "A primeira tela ficou mais rápida: o título e as estatísticas não esperam mais uma animação de rolagem, as fontes carregam de forma assíncrona e traduções como o chinês são aplicadas assim que a página é analisada.",
           "As estatísticas, o histórico e os dados do mercado começam a carregar antes de executar o script principal. Seus apps e o mercado mostram marcadores primeiro e são preenchidos quando os dados chegam.",
           "O mercado carrega a próxima página automaticamente ao rolar perto do fim, então não é mais preciso clicar em «Carregar mais».",
-          "As últimas estatísticas, o histórico e a primeira página do mercado ficam em cache neste dispositivo por 10 minutos. Numa nova visita, aparecem na hora e são atualizados em segundo plano."
+          "As últimas estatísticas, o histórico e a primeira página do mercado ficam em cache neste dispositivo por 24 horas. Numa nova visita, aparecem na hora e são atualizados em segundo plano."
         ],
         "fr": [
           "Le coréen est désormais disponible : le site principal, les pages de téléchargement, la PWA, les annonces et la communauté peuvent passer en coréen.",
@@ -112,7 +112,7 @@
           "Le premier écran est plus rapide : le titre et les statistiques n’attendent plus une animation de défilement, les polices se chargent en asynchrone et les traductions comme le chinois s’appliquent dès l’analyse de la page.",
           "Les statistiques, l’historique et les données du marché commencent à se charger avant l’exécution du script principal. Vos apps et le marché affichent d’abord des repères, puis se remplissent à l’arrivée des données.",
           "Le marché charge automatiquement la page suivante quand vous approchez du bas, plus besoin de cliquer sur « Charger plus ».",
-          "Les dernières statistiques, l’historique et la première page du marché sont mis en cache sur cet appareil pendant 10 minutes. Lors d’une nouvelle visite, ils s’affichent immédiatement puis se mettent à jour en arrière-plan."
+          "Les dernières statistiques, l’historique et la première page du marché sont mis en cache sur cet appareil pendant 24 heures. Lors d’une nouvelle visite, ils s’affichent immédiatement puis se mettent à jour en arrière-plan."
         ],
         "de": [
           "Koreanisch ist jetzt verfügbar: Hauptseite, Download-Seiten, PWA, Hinweise und Community lassen sich auf Koreanisch umstellen.",
@@ -120,7 +120,7 @@
           "Der erste Bildschirm ist schneller: Titel und Statistiken warten nicht mehr auf eine Scroll-Animation, Schriften laden asynchron und Übersetzungen wie Chinesisch werden direkt nach dem Parsen der Seite angewendet.",
           "Statistiken, Verlauf und Marktdaten beginnen schon vor dem Hauptskript zu laden. Deine Apps und der Markt zeigen zuerst Platzhalter und füllen sich, sobald die Daten da sind.",
           "Der Markt lädt die nächste Seite beim Scrollen nahe dem Ende automatisch, ein Klick auf „Mehr laden“ ist nicht mehr nötig.",
-          "Die letzten Statistiken, der Verlauf und die erste Marktseite werden 10 Minuten lang auf diesem Gerät zwischengespeichert. Beim nächsten Besuch erscheinen sie sofort und werden im Hintergrund aktualisiert."
+          "Die letzten Statistiken, der Verlauf und die erste Marktseite werden 24 Stunden lang auf diesem Gerät zwischengespeichert. Beim nächsten Besuch erscheinen sie sofort und werden im Hintergrund aktualisiert."
         ]
       }
     },
