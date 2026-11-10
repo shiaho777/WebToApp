@@ -1,20 +1,29 @@
 /* WebToApp main-site shell cache.
-   Repeat visits should not wait for the CDN round-trip. This worker caches
-   the entry HTML and the static shell assets only. API calls, generated app
-   pages and download pages always go to the network. */
+   Repeat visits should paint instantly, not wait for the CDN round-trip.
+   This worker caches the entry HTML and the static shell assets only.
+   API calls, generated app pages and download pages always go to the network. */
 'use strict';
 
-const CACHE_NAME = 'wta-shell-v1';
+const CACHE_NAME = 'wta-shell-v2';
 const SHELL_KEY = '/';
-const NETWORK_TIMEOUT_MS = 250;
+const SHELL_ASSET_PREFIXES = ['/css/', '/js/', '/assets/'];
+const SHELL_ASSET_FILES = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.add(new Request(SHELL_KEY, { cache: 'reload' })))
-      .catch(() => {})
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+      const response = await fetch(new Request(SHELL_KEY, { cache: 'reload' }));
+      if (response && response.ok) {
+        const html = await response.clone().text();
+        await cache.put(SHELL_KEY, response);
+        await Promise.allSettled(shellAssetUrls(html).map((url) => cache.add(url)));
+      }
+    } catch (_err) {
+      // The first navigation will populate the cache if precaching fails.
+    }
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -37,41 +46,54 @@ function isExcluded(pathname) {
 }
 
 function isShellAsset(pathname) {
-  return pathname.indexOf('/css/') === 0
-    || pathname.indexOf('/js/') === 0
-    || pathname.indexOf('/assets/') === 0
-    || pathname === '/manifest.webmanifest';
+  return SHELL_ASSET_PREFIXES.some((prefix) => pathname.indexOf(prefix) === 0)
+    || SHELL_ASSET_FILES.indexOf(pathname) !== -1;
+}
+
+function shellAssetUrls(html) {
+  const urls = new Set();
+  const re = /(?:src|href)="([^"]+)"/g;
+  let match;
+  while ((match = re.exec(html))) {
+    let url;
+    try {
+      url = new URL(match[1], self.location.origin);
+    } catch (_err) {
+      continue;
+    }
+    if (url.origin === self.location.origin && isShellAsset(url.pathname)) {
+      urls.add(url.href);
+    }
+  }
+  return Array.from(urls);
+}
+
+async function refreshShell(request) {
+  const response = await fetch(request);
+  if (!response || !response.ok) return response;
+
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(SHELL_KEY);
+  const html = await response.clone().text();
+  const oldHtml = cached ? await cached.text() : null;
+
+  // Only rewrite the cache and refetch assets when the HTML actually changed.
+  if (html !== oldHtml) {
+    await cache.put(SHELL_KEY, response.clone());
+    await Promise.allSettled(shellAssetUrls(html).map((url) => cache.add(url)));
+  }
+  return response;
 }
 
 function navigationResponse(event) {
-  const network = fetch(event.request).then((response) => {
-    if (response && response.ok) {
-      // Clone before any await: the page starts consuming the original body
-      // as soon as this response is returned.
-      const copy = response.clone();
-      caches.open(CACHE_NAME)
-        .then((cache) => cache.put(SHELL_KEY, copy))
-        .catch(() => {});
-    }
-    return response;
-  }).catch(() => null);
-
-  // Called synchronously from the fetch event, before any await, so the
-  // worker stays alive while the background refresh finishes.
+  const network = refreshShell(event.request).catch(() => null);
   event.waitUntil(network);
 
   return (async () => {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(SHELL_KEY);
-    if (!cached) return (await network) || Response.error();
-
-    // Prefer a fast fresh response; otherwise paint the cached shell and let
-    // the network request update it for the next navigation.
-    const timeout = new Promise((resolve) => {
-      setTimeout(() => resolve(null), NETWORK_TIMEOUT_MS);
-    });
-    const fresh = await Promise.race([network, timeout]);
-    return (fresh && fresh.ok) ? fresh : cached;
+    if (cached) return cached;
+    return (await network) || Response.error();
   })();
 }
 
