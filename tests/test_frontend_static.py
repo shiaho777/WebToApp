@@ -630,7 +630,9 @@ class ServiceWorkerTests(unittest.TestCase):
             "addEventListener('activate'",
             "addEventListener('fetch'",
             "staleWhileRevalidate",
-            "NETWORK_TIMEOUT_MS",
+            "shellAssetUrls",
+            "refreshShell",
+            "if (cached) return cached",
         ):
             self.assertIn(marker, self.sw)
 
