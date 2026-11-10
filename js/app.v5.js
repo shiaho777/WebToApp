@@ -10,7 +10,7 @@
   // The APIs are fast at the origin but can spend seconds behind the CDN.
   // Paint the last real response immediately, then replace it with fresh data.
   const RENDER_CACHE_PREFIX = 'webtoapp-render-cache-v1:';
-  const RENDER_CACHE_TTL_MS = 10 * 60 * 1000;
+  const RENDER_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
   function readRenderCache(name) {
     try {
