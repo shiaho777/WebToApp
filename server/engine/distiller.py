@@ -990,7 +990,17 @@ class Distiller:
 
     # ===== Download Landing Page =====
     def _write_download_page(self, app_dir: Path, r: dict):
-        (app_dir / "page.html").write_text(self.render_download_page(app_dir, r))
+        # Atomic replace: concurrent readers (FileResponse) must never see a
+        # half-written page. The tmp name is unique so parallel renders of
+        # the same app cannot clobber each other mid-write.
+        target = app_dir / "page.html"
+        tmp = app_dir / f"page.html.tmp-{uuid.uuid4().hex[:8]}"
+        try:
+            tmp.write_text(self.render_download_page(app_dir, r), encoding="utf-8")
+            tmp.replace(target)
+        finally:
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
 
     def render_download_page(self, app_dir: Path, r: dict) -> str:
         # Everything derived from the recipe is user-controlled and lands in

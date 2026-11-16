@@ -1307,8 +1307,12 @@ async def popular_recipes():
     return recipes.get_popular()
 
 
-@app.get("/api/stats")
-async def homepage_stats():
+_STATS_CACHE_TTL_SECONDS = 30
+_stats_cache: Dict[str, object] = {"at": 0.0, "value": None}
+_stats_cache_lock = threading.Lock()
+
+
+def _compute_homepage_stats() -> dict:
     app_count = sum(1 for _ in APPS_DIR.glob("*/recipe.json"))
     traffic = history_store.traffic_totals()
     return {
@@ -1316,6 +1320,23 @@ async def homepage_stats():
         "downloads": traffic["downloads"],
         "views": traffic["views"],
     }
+
+
+@app.get("/api/stats")
+async def homepage_stats():
+    # The homepage (and every prefetch) hits this; a full generated/ glob +
+    # traffic aggregation per request is wasted work for counters that move
+    # slowly. 30s staleness is invisible next to the live-counter UX.
+    now = time.time()
+    with _stats_cache_lock:
+        cached = _stats_cache["value"]
+        if cached is not None and now - float(_stats_cache["at"]) < _STATS_CACHE_TTL_SECONDS:
+            return cached
+    value = await asyncio.to_thread(_compute_homepage_stats)
+    with _stats_cache_lock:
+        _stats_cache["at"] = time.time()
+        _stats_cache["value"] = value
+    return value
 
 
 @app.get("/api/history")
@@ -1513,9 +1534,12 @@ def market_listing(
         page_offset = max(0, int(offset))
     except (TypeError, ValueError):
         page_offset = 0
-    # Pull the full public set first; creator/rating decoration and the
-    # search filter (which also matches creator name / numeric id) run after.
-    items = history_store.list_public_apps(tag=tag, sort=sort, limit=1000, apps_dir=APPS_DIR)
+    # Pull the FULL public set: creator/rating decoration and the search
+    # filter (which also matches creator name / numeric id) run in Python
+    # because ratings live in a separate SQLite file. The old limit=1000
+    # cap silently hid older apps from search and made the rating board
+    # local to the newest 1000 — a correctness bug, not just a perf issue.
+    items = history_store.list_public_apps(tag=tag, sort=sort, limit=None, apps_dir=APPS_DIR)
     app_ids = [item["app_id"] for item in items]
     creators = community_store.creator_nums_map(app_ids)
     ratings = community_store.rating_stats_map(app_ids)
@@ -1835,19 +1859,23 @@ async def serve_download_page(app_id: str, request: Request):
     page_path = app_dir / "page.html"
     if page_path.exists():
         try:
+            # Only the first 256 bytes carry the marker — reading the whole
+            # page (hundreds of KB) on every cached hit was pure waste.
+            with open(page_path, "rb") as handle:
+                head = handle.read(256)
             page_ok = (
                 page_path.stat().st_mtime_ns >= recipe_path.stat().st_mtime_ns
-                and Distiller.DOWNLOAD_PAGE_MARKER in page_path.read_text(errors="ignore")[:256]
+                and Distiller.DOWNLOAD_PAGE_MARKER.encode("utf-8") in head
             )
         except Exception:
             page_ok = False
         if page_ok:
             return FileResponse(page_path, media_type="text/html; charset=utf-8")
     recipe = _load_recipe(app_id)
-    distiller._write_download_page(app_dir, recipe)
+    await asyncio.to_thread(distiller._write_download_page, app_dir, recipe)
     if page_path.exists():
         return FileResponse(page_path, media_type="text/html; charset=utf-8")
-    return HTMLResponse(distiller.render_download_page(app_dir, recipe))
+    return HTMLResponse(await asyncio.to_thread(distiller.render_download_page, app_dir, recipe))
 
 
 @app.get("/a/{app_id}/download/{platform}")
@@ -1869,11 +1897,12 @@ async def serve_download(app_id: str, platform: str):
         filename, media_type = DOWNLOAD_TYPES["android_fallback"]
         filepath = APPS_DIR / app_id / "downloads" / filename
 
-    recipe_path = APPS_DIR / app_id / "recipe.json"
     recipe = {}
-    if recipe_path.exists():
+    if (APPS_DIR / app_id / "recipe.json").exists():
         try:
-            recipe = json.loads(recipe_path.read_text())
+            # mtime/size-keyed LRU — same freshness as a direct read, without
+            # re-parsing the JSON on every download hit.
+            recipe = _load_recipe(app_id)
         except Exception:
             recipe = {}
 
@@ -1897,9 +1926,8 @@ async def serve_pwa(app_id: str):
     pwa = APPS_DIR / app_id / "pwa.html"
     if not pwa.exists():
         raise HTTPException(404)
-    html = pwa.read_text()
     history_store.record_visit(app_id, "pwa")
-    return HTMLResponse(html)
+    return FileResponse(pwa, media_type="text/html; charset=utf-8")
 
 
 @app.get("/a/{app_id}/manifest.json")

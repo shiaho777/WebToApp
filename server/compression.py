@@ -10,6 +10,9 @@ requests keep yielding cheap 304s.
 """
 
 import gzip
+import hashlib
+import threading
+from collections import OrderedDict
 from typing import List, Optional
 
 from starlette.datastructures import Headers, MutableHeaders
@@ -50,6 +53,35 @@ def accepts_gzip(accept_encoding: Optional[str]) -> bool:
 def is_compressible(content_type: Optional[str]) -> bool:
     media_type = str(content_type or "").split(";", 1)[0].strip().lower()
     return bool(media_type) and media_type.startswith(COMPRESSIBLE_TYPES)
+
+
+# Bounded cache of gzip results keyed by content hash. Static assets and
+# download pages are served byte-identically on every hit; re-compressing
+# them at level 6 per request burned CPU for nothing. 16MB of compressed
+# payloads covers the whole frontend plus hundreds of app pages.
+_GZIP_CACHE_MAX_BYTES = 16 * 1024 * 1024
+_gzip_cache: "OrderedDict[bytes, bytes]" = OrderedDict()
+_gzip_cache_bytes = 0
+_gzip_cache_lock = threading.Lock()
+
+
+def _gzip_cached(raw: bytes, compresslevel: int) -> bytes:
+    global _gzip_cache_bytes
+    key = hashlib.sha256(raw).digest()
+    with _gzip_cache_lock:
+        cached = _gzip_cache.get(key)
+        if cached is not None:
+            _gzip_cache.move_to_end(key)
+            return cached
+    payload = gzip.compress(raw, compresslevel=compresslevel)
+    with _gzip_cache_lock:
+        if key not in _gzip_cache:
+            _gzip_cache[key] = payload
+            _gzip_cache_bytes += len(payload)
+            while _gzip_cache_bytes > _GZIP_CACHE_MAX_BYTES and _gzip_cache:
+                _evicted_key, evicted = _gzip_cache.popitem(last=False)
+                _gzip_cache_bytes -= len(evicted)
+    return payload
 
 
 class TextCompressionMiddleware:
@@ -130,7 +162,7 @@ class _Responder:
         if self.size < self.owner.minimum_size:
             await self._flush_plain(False)
             return
-        payload = gzip.compress(b"".join(self.chunks), compresslevel=self.owner.compresslevel)
+        payload = _gzip_cached(b"".join(self.chunks), self.owner.compresslevel)
         headers = MutableHeaders(scope=self.start)
         headers["Content-Encoding"] = "gzip"
         headers["Content-Length"] = str(len(payload))
