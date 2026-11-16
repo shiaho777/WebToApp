@@ -148,6 +148,51 @@ class AnnouncementTests(unittest.TestCase):
             self.assertIsNotNone(match, lang)
             self.assertEqual(len(re.findall(r'^\s+"', match.group(1), re.M)), 6, lang)
 
+    SPEED_ICON_TITLES = {
+        "en": "Faster builds, full market search and a new icon policy",
+        "zh": "构建提速、市场搜索补全，图标新规上线",
+        "ja": "ビルド高速化、マーケット検索の完全対応、アイコン新ルール",
+        "ko": "빌드 속도 개선, 마켓 검색 완전 지원, 새 아이콘 정책",
+        "ar": "بناء أسرع وبحث شامل في السوق وسياسة أيقونات جديدة",
+        "ru": "Быстрее сборка, полный поиск по рынку и новая политика значков",
+        "es": "Generación más rápida, búsqueda completa y nueva política de iconos",
+        "pt": "Geração mais rápida, busca completa e nova política de ícones",
+        "fr": "Génération plus rapide, recherche complète et nouvelle politique d’icônes",
+        "de": "Schnellere Builds, vollständige Marktsuche und neue Symbol-Regeln",
+    }
+
+    def test_speed_and_icons_notice_is_newest_and_translated(self):
+        src = _read("js/announcements.js")
+        self.assertIn("2026-11-16-speed-and-icons", src)
+        self.assertIn("2026-11-16T14:30:00Z", src)
+        self.assertLess(
+            src.index("2026-11-16-speed-and-icons"),
+            src.index("2026-11-06-faster-homepage"),
+        )
+        for lang, title in self.SPEED_ICON_TITLES.items():
+            self.assertIn(f'"{lang}": "{title}"', src, lang)
+
+    def test_speed_and_icons_notice_covers_the_round(self):
+        src = _read("js/announcements.js")
+        block = src[
+            src.index('"id": "2026-11-16-speed-and-icons"'):
+            src.index('"id": "2026-11-06-faster-homepage"')
+        ]
+        for marker in (
+            "publishing to the market now requires a usable icon",
+            "48 hours",
+            "7-day window is gone",
+            "every public app",
+            "only your language",
+            "48 小时",
+            "7 天窗口已取消",
+        ):
+            self.assertIn(marker, block)
+        for lang in ("en", "zh", "ja", "ko", "ar", "ru", "es", "pt", "fr", "de"):
+            match = re.search(rf'"{lang}": \[\n(.*?)\n\s+\]', block, re.S)
+            self.assertIsNotNone(match, lang)
+            self.assertEqual(len(re.findall(r'^\s+"', match.group(1), re.M)), 6, lang)
+
     def test_korean_is_available_everywhere(self):
         self.assertIn("'ko'", _read("js/i18n.js"))
         self.assertIn("ko: '한국어'", _read("js/i18n.js"))
@@ -156,7 +201,7 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261116-lazy1", html)
+        self.assertIn("js/announcements.js?v=20261116-notice1", html)
 
 
 class FrontendResilienceTests(unittest.TestCase):
