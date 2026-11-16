@@ -9,6 +9,7 @@ import hashlib
 import ipaddress
 import json
 import mimetypes
+import os
 import re
 import secrets
 import shutil
@@ -70,6 +71,14 @@ _BLOCKED_STATIC_PREFIXES = ("/certs", "/server", "/.git", "/deploy", "/generated
 # sensitive .json files all live under blocked prefixes anyway.
 _BLOCKED_STATIC_SUFFIXES = (".keystore", ".jks", ".pem", ".key", ".p12", ".pfx", ".env", ".bak", ".sqlite3", ".log")
 
+# Defense in depth: the catch-all mount only serves the frontend allowlist.
+# Anything else (server source, tests, .venv, docs, dotfiles, repo metadata)
+# is unreachable even if the blocklist above misses a new sensitive path.
+_STATIC_ALLOWED_PREFIXES = ("/css/", "/js/", "/assets/")
+_STATIC_ALLOWED_FILES = {
+    "/index.html", "/sw.js", "/manifest.webmanifest", "/favicon.ico", "/robots.txt",
+}
+
 
 def _normalize_request_path(raw_path: str) -> str:
     """Collapse duplicate slashes, strip trailing ones, lower-case.
@@ -83,10 +92,26 @@ def _normalize_request_path(raw_path: str) -> str:
 
 def _is_sensitive_path(raw_path: str) -> bool:
     normalized = _normalize_request_path(raw_path)
-    return (
+    if (
         any(normalized == p or normalized.startswith(p + "/") for p in _BLOCKED_STATIC_PREFIXES)
         or normalized.endswith(_BLOCKED_STATIC_SUFFIXES)
-    )
+    ):
+        return True
+    # Allowlist gate for the catch-all StaticFiles mount: API/app routes are
+    # handled by explicit routers above it, everything else must be a known
+    # frontend file. Unknown paths (/.venv/..., /tests/..., /README.md, ...)
+    # never reach the filesystem layer.
+    if normalized in ("", "/"):
+        return False
+    # Explicit routers own these namespaces (mounted before StaticFiles);
+    # unknown subpaths already 404 at the routing layer, never at the mount.
+    if normalized.startswith(("/api/", "/a/", "/u/")) or normalized in ("/healthz", "/readyz"):
+        return False
+    if normalized in _STATIC_ALLOWED_FILES:
+        return False
+    if any(normalized.startswith(p) for p in _STATIC_ALLOWED_PREFIXES):
+        return False
+    return True
 
 
 # App ids are minted server-side (md5[:8]) and become directory names under
@@ -269,22 +294,44 @@ class IPRateLimiter:
             self._buckets.pop(key, None)
 
 
+class QueueFullError(RuntimeError):
+    """Raised when the build queue is saturated (global or per-device cap)."""
+
+    def __init__(self, scope: str):
+        self.scope = scope
+        super().__init__(f"build queue full ({scope})")
+
+
+# Backlog caps: workers drain at ~seconds-to-minutes per build, so a bounded
+# pending set keeps worst-case wait predictable and stops unbounded growth.
+DISTILL_QUEUE_MAX_PENDING = 64
+DISTILL_MAX_PENDING_PER_DEVICE = 2
+DISTILL_PRUNE_INTERVAL_SECONDS = 60
+
+
 class DistillTaskQueue:
-    def __init__(self, worker_count: int = 1, store: Optional[TaskStore] = None):
+    def __init__(self, worker_count: int = 1, store: Optional[TaskStore] = None,
+                 max_pending: int = DISTILL_QUEUE_MAX_PENDING,
+                 max_pending_per_device: int = DISTILL_MAX_PENDING_PER_DEVICE):
         self.worker_count = max(1, int(worker_count or 1))
+        self.max_pending = max(1, int(max_pending))
+        self.max_pending_per_device = max(1, int(max_pending_per_device))
         self._queue = asyncio.Queue()
         self._tasks: Dict[str, dict] = {}
         self._lock = asyncio.Lock()
         self._workers = []
         self._store = store
+        self._last_prune = 0.0
         self.completed_total = 0
         self.failed_total = 0
 
-    def _persist(self, task: dict) -> None:
+    async def _persist(self, task: dict) -> None:
         if not self._store:
             return
         try:
-            self._store.upsert(task)
+            # SQLite fsync must not run on the event loop — every caller
+            # holds self._lock across the await, preserving write ordering.
+            await asyncio.to_thread(self._store.upsert, task)
         except Exception as exc:
             log_event("task_persist_failed", task_id=task.get("task_id"), error=str(exc))
 
@@ -298,7 +345,7 @@ class DistillTaskQueue:
                 task["stage"] = "queued"
                 task["updated_at"] = _utc_now_iso()
                 self._tasks[task["task_id"]] = task
-                self._persist(task)
+                await self._persist(task)
                 await self._queue.put(task["task_id"])
                 log_event("task_resumed", task_id=task["task_id"], app_id=task.get("app_id"))
         self._workers = [
@@ -337,14 +384,29 @@ class DistillTaskQueue:
         }
         async with self._lock:
             self._prune_locked()
+            pending = [t for t in self._tasks.values() if t.get("status") == "pending"]
+            if len(pending) >= self.max_pending:
+                raise QueueFullError("global")
+            identity = str(payload.get("device_fingerprint") or "")
+            if identity:
+                device_pending = sum(
+                    1 for t in pending
+                    if str((t.get("payload") or {}).get("device_fingerprint") or "") == identity
+                )
+                if device_pending >= self.max_pending_per_device:
+                    raise QueueFullError("device")
             self._tasks[task_id] = task
-            self._persist(task)
+            await self._persist(task)
         await self._queue.put(task_id)
         return {"task_id": task_id, "app_id": app_id, "status": "pending"}
 
     async def get(self, task_id: str) -> Optional[dict]:
         async with self._lock:
-            self._prune_locked()
+            # Polling hits this every ~400ms per build; pruning SQLite on
+            # every poll bought nothing. Sweep at most once a minute.
+            now = time.time()
+            if now - self._last_prune >= DISTILL_PRUNE_INTERVAL_SECONDS:
+                self._prune_locked(now=now)
             task = self._tasks.get(task_id)
             if task:
                 return deepcopy(task)
@@ -370,7 +432,7 @@ class DistillTaskQueue:
             # crash recovery only needs the task back in "pending".
             if stage.startswith("platform_") and stage != "platform_error":
                 return
-            self._persist(task)
+            await self._persist(task)
 
     async def _worker_loop(self, _index: int) -> None:
         while True:
@@ -386,7 +448,7 @@ class DistillTaskQueue:
                     task["status"] = "running"
                     task["stage"] = "starting"
                     task["updated_at"] = _utc_now_iso()
-                    self._persist(task)
+                    await self._persist(task)
                     payload = deepcopy(task["payload"])
                 payload = dict(payload or {})
                 payload["_task_id"] = task_id
@@ -404,7 +466,7 @@ class DistillTaskQueue:
                             task["updated_at"] = _utc_now_iso()
                             task["finished_at"] = time.time()
                             self.failed_total += 1
-                            self._persist(task)
+                            await self._persist(task)
                 else:
                     async with self._lock:
                         task = self._tasks.get(task_id)
@@ -415,13 +477,14 @@ class DistillTaskQueue:
                             task["updated_at"] = _utc_now_iso()
                             task["finished_at"] = time.time()
                             self.completed_total += 1
-                            self._persist(task)
+                            await self._persist(task)
                     log_event("distill_done", task_id=task_id, app_id=(result or {}).get("app_id"))
             finally:
                 self._queue.task_done()
 
-    def _prune_locked(self) -> None:
-        now = time.time()
+    def _prune_locked(self, now: Optional[float] = None) -> None:
+        now = time.time() if now is None else now
+        self._last_prune = now
         expired = []
         finished = []
         for task_id, task in self._tasks.items():
@@ -430,28 +493,32 @@ class DistillTaskQueue:
                 finished.append((finished_at, task_id))
                 if now - float(finished_at) > DISTILL_TASK_TTL_SECONDS:
                     expired.append(task_id)
+        if len(finished) > DISTILL_TASK_MAX_FINISHED:
+            finished.sort()
+            expired.extend(
+                task_id for _finished_at, task_id in finished[:len(finished) - DISTILL_TASK_MAX_FINISHED]
+            )
         for task_id in expired:
             self._tasks.pop(task_id, None)
-            if self._store:
-                try:
-                    self._store.delete(task_id)
-                except Exception:
-                    pass
-        if self._store:
+        if self._store and expired:
+            self._schedule_store_prune(expired)
+
+    def _schedule_store_prune(self, expired_ids: List[str]) -> None:
+        """SQLite cleanup runs off the event loop; _prune_locked is called
+        from async contexts holding self._lock, so it must stay sync."""
+        def _work() -> None:
             try:
                 self._store.prune(DISTILL_TASK_TTL_SECONDS, DISTILL_TASK_MAX_FINISHED)
-            except Exception:
-                pass
-        if len(finished) <= DISTILL_TASK_MAX_FINISHED:
-            return
-        finished.sort()
-        for _finished_at, task_id in finished[:len(finished) - DISTILL_TASK_MAX_FINISHED]:
-            self._tasks.pop(task_id, None)
-            if self._store:
-                try:
+                for task_id in expired_ids:
                     self._store.delete(task_id)
-                except Exception:
-                    pass
+            except Exception as exc:  # noqa: BLE001
+                log_event("task_prune_failed", error=str(exc))
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            _work()
+            return
+        loop.create_task(asyncio.to_thread(_work))
 
 
 # --- Models ---
@@ -957,18 +1024,21 @@ async def distill_app(req: DistillRequest, request: Request):
     parsed_target = urlparse(str(req.url or "").strip())
     if parsed_target.scheme.lower() not in ("http", "https") or not parsed_target.netloc:
         raise HTTPException(status_code=422, detail="URL must be an absolute http(s) URL")
-    task = await distill_queue.submit(
-        {
-            "url": str(req.url),
-            "name": req.name,
-            "color": req.color,
-            "display": req.display,
-            "orientation": req.orientation,
-            "options": req.options or {},
-            "base_url": _resolve_base_url(request),
-            "device_fingerprint": identity,
-        }
-    )
+    try:
+        task = await distill_queue.submit(
+            {
+                "url": str(req.url),
+                "name": req.name,
+                "color": req.color,
+                "display": req.display,
+                "orientation": req.orientation,
+                "options": req.options or {},
+                "base_url": _resolve_base_url(request),
+                "device_fingerprint": identity,
+            }
+        )
+    except QueueFullError:
+        raise HTTPException(status_code=429, detail="生成队列繁忙，请稍后再试。")
     log_event(
         "distill_submitted",
         task_id=task.get("task_id"),
@@ -1016,6 +1086,11 @@ class UpdateUrlRequest(BaseModel):
 
 
 # --- HTML-to-App uploads ---
+# Zip validation buffers the whole bundle in memory; cap how many run at
+# once so concurrent uploads cannot stack unbounded peaks.
+_upload_slots = asyncio.Semaphore(4)
+
+
 async def _read_upload_capped(file: UploadFile) -> bytes:
     cap = config.html_upload_max_bytes()
     data = await file.read(cap + 1)
@@ -1058,7 +1133,8 @@ async def analyze_html_upload(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
     data = await _read_upload_capped(file)
     try:
-        result = await asyncio.to_thread(_analyze_html_bytes, data, file.filename)
+        async with _upload_slots:
+            result = await asyncio.to_thread(_analyze_html_bytes, data, file.filename)
     except html_site.HtmlUploadError as exc:
         raise HTTPException(
             status_code=400,
@@ -1101,27 +1177,31 @@ async def distill_html_app(
         raise HTTPException(422, "options must be a JSON object") from exc
     data = await _read_upload_capped(file)
     try:
-        staged = await asyncio.to_thread(html_site.stage_html_app, data, file.filename, name, APPS_DIR)
+        async with _upload_slots:
+            staged = await asyncio.to_thread(html_site.stage_html_app, data, file.filename, name, APPS_DIR)
     except html_site.HtmlUploadError as exc:
         raise HTTPException(
             status_code=400,
             detail={"code": "htmlUpload.invalid", "message": str(exc)},
         )
-    task = await distill_queue.submit(
-        {
-            "source_type": "html",
-            "app_id": staged["app_id"],
-            "content_hash": staged["content_hash"],
-            "site_index": staged["index_name"],
-            "name": staged["name"],
-            "color": color,
-            "display": display,
-            "orientation": orientation,
-            "options": parsed_options,
-            "base_url": _resolve_base_url(request),
-            "device_fingerprint": identity,
-        }
-    )
+    try:
+        task = await distill_queue.submit(
+            {
+                "source_type": "html",
+                "app_id": staged["app_id"],
+                "content_hash": staged["content_hash"],
+                "site_index": staged["index_name"],
+                "name": staged["name"],
+                "color": color,
+                "display": display,
+                "orientation": orientation,
+                "options": parsed_options,
+                "base_url": _resolve_base_url(request),
+                "device_fingerprint": identity,
+            }
+        )
+    except QueueFullError:
+        raise HTTPException(status_code=429, detail="生成队列繁忙，请稍后再试。")
     log_event(
         "distill_html_submitted",
         task_id=task.get("task_id"),
@@ -1320,7 +1400,7 @@ async def homepage_stats():
 
 @app.get("/api/history")
 async def history_index(request: Request):
-    return _history_payload(request)
+    return await asyncio.to_thread(_history_payload, request)
 
 
 @app.post("/api/history/attach/{app_id}")
@@ -1331,8 +1411,9 @@ async def attach_history_item(app_id: str, request: Request):
     device_fingerprint = _device_fingerprint(request)
     if not device_fingerprint:
         return {"attached": False, "reason": "missing_device_fingerprint"}
-    history_store.attach_app(device_fingerprint, app_id)
-    return {"attached": True, "app_id": app_id, "history": _history_payload(request)}
+    await asyncio.to_thread(history_store.attach_app, device_fingerprint, app_id)
+    history = await asyncio.to_thread(_history_payload, request)
+    return {"attached": True, "app_id": app_id, "history": history}
 
 
 def _decode_site_files(item: dict):
@@ -1349,7 +1430,7 @@ def _decode_site_files(item: dict):
 
 @app.get("/api/history/export")
 async def export_history(request: Request):
-    payload = history_store.export_history(_device_fingerprint(request), APPS_DIR)
+    payload = await asyncio.to_thread(history_store.export_history, _device_fingerprint(request), APPS_DIR)
     export_cap = config.html_export_max_bytes()
     for item in payload.get("items") or []:
         recipe = item.get("recipe") or {}
@@ -1414,10 +1495,14 @@ async def import_history(payload: HistoryImportPayload, request: Request):
                     if not site_files:
                         raise ValueError("HTML app snapshot carries no site bundle (skipped at export or corrupt)")
                     await asyncio.to_thread(html_site.restore_site_files, app_dir / "site", site_files)
-                distiller.write_app_files(app_dir, recipe, base_url=base_url)
+                # Full five-platform build (APK subprocesses, icon fetch, R2
+                # upload) — must never run on the event loop, or one import
+                # of up to 50 items stalls every other request for minutes.
+                await asyncio.to_thread(distiller.write_app_files, app_dir, recipe, base_url=base_url)
                 effective_recipe = _load_recipe(app_id)
                 restored += 1
-            history_store.import_snapshot(
+            await asyncio.to_thread(
+                history_store.import_snapshot,
                 device_fingerprint,
                 item.get("snapshot") or {},
                 effective_recipe,
@@ -1480,12 +1565,14 @@ async def delete_history_item(app_id: str, request: Request):
     device_fingerprint = _device_fingerprint(request)
     if not device_fingerprint:
         raise HTTPException(400, "Missing device fingerprint")
-    removed = history_store.remove_from_device(device_fingerprint, app_id)
+    removed = await asyncio.to_thread(history_store.remove_from_device, device_fingerprint, app_id)
     if not removed:
         raise HTTPException(404, "History item not found")
-    purged = _purge_app_fully([app_id])
+    # rmtree + keystore globs + synchronous R2 HTTP (60s timeout) off-loop.
+    purged = await asyncio.to_thread(_purge_app_fully, [app_id])
+    history = await asyncio.to_thread(_history_payload, request)
     return {"removed": True, "app_id": app_id, "purged": app_id in purged,
-            "history": _history_payload(request)}
+            "history": history}
 
 
 HISTORY_BULK_DELETE_MAX = 500
@@ -1615,12 +1702,12 @@ async def upload_my_avatar(request: Request, file: UploadFile = File(...)):
     raw = await file.read(3 * 1024 * 1024 + 1)
     if len(raw) > 3 * 1024 * 1024:
         raise HTTPException(413, "avatar_too_large")
-    png = distiller._normalize_uploaded_icon(raw)
+    png = await asyncio.to_thread(distiller._normalize_uploaded_icon, raw)
     if not png:
         raise HTTPException(422, "avatar_bad_image")
-    profile = community_store.ensure_user(fp)
+    profile = await asyncio.to_thread(community_store.ensure_user, fp)
     (AVATARS_DIR / f"u{profile['user_num']}.png").write_bytes(png)
-    version = community_store.bump_avatar(fp)
+    version = await asyncio.to_thread(community_store.bump_avatar, fp)
     return {"avatar_url": f"/u/{profile['user_num']}/avatar.png?v={version}"}
 
 
@@ -1686,7 +1773,7 @@ async def post_comment(app_id: str, payload: CommentPayload, request: Request):
         if not (1 <= rating <= 5):
             raise HTTPException(422, "bad_rating")
     try:
-        comment = community_store.add_comment(app_id, fp, payload.body, rating)
+        comment = await asyncio.to_thread(community_store.add_comment, app_id, fp, payload.body, rating)
     except ValueError as exc:
         raise HTTPException(422, str(exc))
     return {"comment": comment}

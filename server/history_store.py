@@ -113,6 +113,11 @@ class HistoryStore:
             except Exception:
                 # Columns already exist from a previous run.
                 pass
+            # Added after the ALTER above: on a fresh DB the visibility column
+            # only exists once the migration ran.
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_apps_visibility ON apps(visibility)"
+            )
 
     def _migrate_json_if_needed(self) -> None:
         with self._lock:
@@ -612,15 +617,20 @@ class HistoryStore:
         with self._lock:
             self._flush_visits_locked()
             app_ids = self._get_device_app_ids_locked(device_fingerprint)
-            count = 0
-            for app_id in app_ids:
-                row = self._conn.execute("SELECT created_at FROM apps WHERE app_id = ?", (app_id,)).fetchone()
-                if not row:
-                    continue
-                created = _parse_utc(row["created_at"])
-                if created and created >= since:
-                    count += 1
-            return count
+            if not app_ids:
+                return 0
+            # One query instead of one SELECT per app (N+1 on every build
+            # request). created_at is stored as ISO-8601 UTC with a trailing
+            # "Z", so lexicographic comparison matches chronological order.
+            # The length/prefix guard keeps malformed timestamps (e.g. the
+            # literal "invalid") out, mirroring the old _parse_utc skip.
+            placeholders = ",".join("?" for _ in app_ids)
+            row = self._conn.execute(
+                f"SELECT COUNT(*) AS n FROM apps WHERE app_id IN ({placeholders}) "
+                "AND created_at >= ? AND length(created_at) >= 20 AND substr(created_at, 5, 1) = '-'",
+                (*app_ids, since_iso),
+            ).fetchone()
+            return int(row["n"] or 0)
 
     def device_rows(self) -> List[tuple]:
         """(device_id, created_at, [app_ids]) in first-seen order — feeds the

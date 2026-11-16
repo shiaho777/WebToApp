@@ -11,7 +11,7 @@ import re
 from urllib.parse import urljoin, urlparse
 
 from server.engine.distiller import Distiller
-from server.engine.cache import analysis_cache, html_cache, icon_cache
+from server.engine.cache import analysis_cache, html_cache, icon_cache, icon_miss_cache
 from server.htmlmeta import parse_html_metadata
 from server.net import apinned_targets, aread_limited_response, avalidate_public_http_url, redirect_target
 from server import config
@@ -400,19 +400,19 @@ class SiteAnalyzer:
             host = urlparse(url).netloc.lower()
             cache_key = f"icon:{host}"
             icon_png = icon_cache.get(cache_key)
-            if icon_png is None:
+            if icon_png is None and icon_miss_cache.get(cache_key) is None:
                 candidates = self.icon_distiller._collect_icon_candidates(url)
                 picked = self.icon_distiller._choose_best_icon(candidates)
                 icon_png = picked[0] if isinstance(picked, tuple) else picked
                 if icon_png:
                     icon_cache.set(cache_key, icon_png)
                 else:
-                    # Cache the miss too — same contract as the build-side
-                    # sweep in distiller. Without it the frontend analyze step
-                    # re-ran the whole (possibly seconds-long) candidate
-                    # sweep, then the build re-ran it AGAIN because the miss
-                    # was never cached. b"" = known icon-less host.
-                    icon_cache.set(cache_key, b"")
+                    # Cache the miss in icon_miss_cache — the SAME store the
+                    # build-side sweep reads (distiller._fetch_icon). Writing
+                    # b"" into icon_cache instead left the build-side contract
+                    # broken: falsy bytes were skipped and the whole candidate
+                    # sweep re-ran at build time.
+                    icon_miss_cache.set(cache_key, b"")
             if not icon_png:
                 return ""
         except Exception:

@@ -46,6 +46,24 @@ class SensitivePathTests(unittest.TestCase):
             with self.subTest(path=path):
                 assert main._is_sensitive_path(path)
 
+    def test_allowlist_blocks_unknown_static_paths(self):
+        # The catch-all mount is rooted at the whole project dir; anything
+        # outside the frontend allowlist must never reach StaticFiles.
+        for path in (
+            "/.venv/lib/python3.12/site-packages/httpx/__init__.py",
+            "//.venv/pyvenv.cfg",
+            "/venv/bin/activate",
+            "/tests/test_main.py",
+            "/.pytest_cache/v/cache/lastfailed",
+            "/README.md",
+            "/AGENTS.md",
+            "/docker-compose.yml",
+            "/docs/DEPLOY.md",
+            "/.github/workflows/ci.yml",
+        ):
+            with self.subTest(path=path):
+                assert main._is_sensitive_path(path)
+
     def test_legitimate_paths_still_pass(self):
         for path in (
             "/",
@@ -103,6 +121,11 @@ class MiddlewareWiringTests(unittest.TestCase):
 
     def test_homepage_still_serves(self):
         self.assertEqual(self._status_for("/index.html"), 200)
+
+    def test_unknown_project_paths_are_hard_404(self):
+        self.assertEqual(self._status_for("/.venv/pyvenv.cfg"), 404)
+        self.assertEqual(self._status_for("/tests/test_main.py"), 404)
+        self.assertEqual(self._status_for("/README.md"), 404)
 
 
 if __name__ == "__main__":
