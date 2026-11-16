@@ -27,6 +27,104 @@
 
   var NOTICES = [
     {
+      "id": "2026-11-16-speed-and-icons",
+      "publishedAt": "2026-11-16T14:30:00Z",
+      "title": {
+        "en": "Faster builds, full market search and a new icon policy",
+        "zh": "构建提速、市场搜索补全，图标新规上线",
+        "ja": "ビルド高速化、マーケット検索の完全対応、アイコン新ルール",
+        "ko": "빌드 속도 개선, 마켓 검색 완전 지원, 새 아이콘 정책",
+        "ar": "بناء أسرع وبحث شامل في السوق وسياسة أيقونات جديدة",
+        "ru": "Быстрее сборка, полный поиск по рынку и новая политика значков",
+        "es": "Generación más rápida, búsqueda completa y nueva política de iconos",
+        "pt": "Geração mais rápida, busca completa e nova política de ícones",
+        "fr": "Génération plus rapide, recherche complète et nouvelle politique d’icônes",
+        "de": "Schnellere Builds, vollständige Marktsuche und neue Symbol-Regeln"
+      },
+      "paragraphs": {
+        "en": [
+          "Builds are faster and steadier: heavy work no longer blocks other visitors, the build queue has a fair cap, and history imports run in the background.",
+          "Market search and the rating board now cover every public app, not just the newest ones — older apps are findable again.",
+          "The first screen loads lighter: only your language is downloaded instead of all ten, and notices render when you open them.",
+          "New icon policy: publishing to the market now requires a usable icon. Flat or missing icons are rejected at publish time, with a clear upload prompt.",
+          "Apps already on the market whose icon fails the check get 48 hours to upload a real picture before they leave the market. The old 7-day window is gone.",
+          "Under the hood: Android rebuilds are quicker, icon fetching stops as soon as a perfect icon is found, and CDN uploads retry instead of failing silently."
+        ],
+        "zh": [
+          "构建更快更稳：重活不再阻塞其他访客，生成队列有了公平上限，历史导入改在后台执行。",
+          "市场搜索和评分榜现在覆盖全部公开应用，不再只有最新的一批——老应用也能被搜到了。",
+          "首屏加载更轻：只下载你使用的语言而不是全部十种，公告点开时才渲染。",
+          "图标新规：公开到市场必须有可用图标。纯色或缺失的图标会在公开时被拒绝，并给出明确的上传引导。",
+          "已在市场上、图标未通过检查的应用，有 48 小时上传一张有图案的图，逾期退出市场。旧的 7 天窗口已取消。",
+          "底层改进：Android 重建更快，图标抓取拿到合格图标即停止，CDN 上传失败会自动重试而不是悄悄丢掉。"
+        ],
+        "ja": [
+          "ビルドが速く安定しました。重い処理が他の訪問者をブロックしなくなり、生成キューに公平な上限を設け、履歴インポートはバックグラウンドで実行されます。",
+          "マーケット検索と評価ボードがすべての公開アプリを対象にするようになりました。最新分だけでなく、古いアプリも見つかります。",
+          "最初の画面が軽くなりました。10言語すべてではなく使用中の言語だけをダウンロードし、お知らせは開いたときに描画されます。",
+          "アイコン新ルール：マーケットへの公開には使えるアイコンが必須です。単色や欠落したアイコンは公開時に拒否され、明確なアップロード案内が表示されます。",
+          "すでにマーケットにあり検査に通らないアイコンのアプリは、48時間以内に模様のある画像を上げてください。過ぎると市場から外れます。旧7日間の猶予は廃止されました。",
+          "内部改善：Androidの再ビルドが速くなり、アイコン取得は合格アイコンが見つかると即停止し、CDNアップロードは黙って失敗せず再試行します。"
+        ],
+        "ko": [
+          "빌드가 더 빠르고 안정적입니다. 무거운 작업이 다른 방문자를 차단하지 않고, 생성 대기열에 공정한 상한이 생겼으며, 기록 가져오기는 백그라운드에서 실행됩니다.",
+          "마켓 검색과 평점 보드가 모든 공개 앱을 대상으로 합니다. 최신 앱만이 아니라 오래된 앱도 찾을 수 있습니다.",
+          "첫 화면이 더 가벼워졌습니다. 열 개 언어 전체가 아니라 사용 중인 언어만 다운로드하고, 공지는 열 때 렌더링됩니다.",
+          "새 아이콘 정책: 마켓 공개에는 사용 가능한 아이콘이 필수입니다. 단색이거나 없는 아이콘은 공개 시 거부되며 명확한 업로드 안내가 표시됩니다.",
+          "이미 마켓에 있고 검사에 통과하지 못한 아이콘의 앱은 48시간 안에 실제 이미지를 업로드해야 하며, 기한이 지나면 마켓에서 제외됩니다. 기존 7일 유예는 폐지되었습니다.",
+          "내부 개선: Android 재빌드가 빨라지고, 아이콘 가져오기는 합격 아이콘을 찾으면 즉시 멈추며, CDN 업로드는 조용히 실패하지 않고 재시도합니다."
+        ],
+        "ar": [
+          "أصبح البناء أسرع وأكثر استقراراً: لم تعد العمليات الثقيلة تعيق الزوار الآخرين، ولطابور الإنشاء حد عادل، ويعمل استيراد السجل في الخلفية.",
+          "يغطي بحث السوق ولوحة التقييمات الآن كل التطبيقات العامة، وليس الأحدث فقط — يمكن العثور على التطبيقات القديمة مجدداً.",
+          "أصبحت الشاشة الأولى أخف: تُنزَّل لغتك فقط بدل اللغات العشر كلها، وتُعرض الإعلانات عند فتحها.",
+          "سياسة الأيقونات الجديدة: النشر في السوق يتطلب أيقونة صالحة. تُرفض الأيقونات أحادية اللون أو المفقودة عند النشر مع إرشاد واضح للرفع.",
+          "الت التطبيقات الموجودة في السوق والتي لا تجتاز أيقونتها الفحص مهلة 48 ساعة لرفع صورة فيها رسم، وإلا خرجت من السوق. أُلغيت مهلة الأيام السبعة القديمة.",
+          "تحسينات داخلية: إعادة بناء Android أسرع، ويتوقف جلب الأيقونات فور العثور على أيقونة مناسبة، وتُعاد محاولات رفع CDN بدل الفشل بصمت."
+        ],
+        "ru": [
+          "Сборка стала быстрее и стабильнее: тяжёлые операции больше не блокируют других посетителей, у очереди генерации появился честный лимит, а импорт истории выполняется в фоне.",
+          "Поиск по рынку и доска рейтингов теперь охватывают все публичные приложения, а не только новейшие — старые приложения снова находятся.",
+          "Первый экран стал легче: загружается только ваш язык вместо всех десяти, а объявления отрисовываются при открытии.",
+          "Новая политика значков: для публикации на рынке нужен пригодный значок. Однотонные или отсутствующие значки отклоняются при публикации с понятной подсказкой загрузить изображение.",
+          "Приложения уже на рынке, чей значок не прошёл проверку, получают 48 часов на загрузку настоящего рисунка, иначе покидают рынок. Прежнее окно в 7 дней отменено.",
+          "Под капотом: пересборка Android быстрее, загрузка значков останавливается сразу после нахождения подходящего, а загрузки на CDN повторяются при сбое, а не теряются молча."
+        ],
+        "es": [
+          "La generación es más rápida y estable: el trabajo pesado ya no bloquea a otros visitantes, la cola tiene un límite justo y la importación del historial se ejecuta en segundo plano.",
+          "La búsqueda del mercado y el panel de valoraciones cubren todas las apps públicas, no solo las más nuevas: las antiguas vuelven a ser encontrables.",
+          "La primera pantalla carga más ligera: solo se descarga tu idioma en lugar de los diez, y los avisos se renderizan al abrirlos.",
+          "Nueva política de iconos: publicar en el mercado requiere un icono válido. Los iconos planos o ausentes se rechazan al publicar, con una guía clara para subir una imagen.",
+          "Las apps ya en el mercado cuyo icono no pasa la revisión tienen 48 horas para subir un dibujo de verdad antes de salir del mercado. La antigua ventana de 7 días desaparece.",
+          "Entre bastidores: las regeneraciones de Android son más rápidas, la búsqueda de iconos se detiene en cuanto encuentra uno válido y las subidas al CDN se reintentan en vez de fallar en silencio."
+        ],
+        "pt": [
+          "A geração está mais rápida e estável: o trabalho pesado não bloqueia mais outros visitantes, a fila tem um limite justo e a importação do histórico roda em segundo plano.",
+          "A busca do mercado e o painel de avaliações cobrem todos os apps públicos, não só os mais novos — os antigos voltam a ser encontrados.",
+          "A primeira tela carrega mais leve: só o seu idioma é baixado em vez dos dez, e os avisos são renderizados ao abrir.",
+          "Nova política de ícones: publicar no mercado exige um ícone válido. Ícones de cor única ou ausentes são rejeitados na publicação, com uma orientação clara de envio.",
+          "Apps já no mercado cujo ícone não passa na verificação têm 48 horas para enviar um desenho de verdade antes de sair do mercado. A antiga janela de 7 dias acabou.",
+          "Nos bastidores: regenerações Android mais rápidas, a busca de ícones para assim que encontra um válido e os envios ao CDN são repetidos em vez de falhar em silêncio."
+        ],
+        "fr": [
+          "La génération est plus rapide et plus stable : les tâches lourdes ne bloquent plus les autres visiteurs, la file a une limite équitable et l’import de l’historique s’exécute en arrière-plan.",
+          "La recherche du marché et le classement des notes couvrent toutes les applications publiques, pas seulement les plus récentes — les anciennes sont de nouveau trouvables.",
+          "Le premier écran est plus léger : seule votre langue est téléchargée au lieu des dix, et les annonces s’affichent à l’ouverture.",
+          "Nouvelle politique d’icônes : publier sur le marché exige une icône valide. Les icônes unies ou manquantes sont refusées à la publication, avec un guide clair pour envoyer une image.",
+          "Les applications déjà sur le marché dont l’icône échoue au contrôle ont 48 heures pour envoyer un vrai dessin avant de quitter le marché. L’ancienne fenêtre de 7 jours est supprimée.",
+          "En coulisses : les régénérations Android sont plus rapides, la recherche d’icônes s’arrête dès qu’une icône valide est trouvée, et les envois au CDN sont réessayés au lieu d’échouer en silence."
+        ],
+        "de": [
+          "Builds sind schneller und stabiler: schwere Arbeit blockiert andere Besucher nicht mehr, die Warteschlange hat ein faires Limit, und der Historien-Import läuft im Hintergrund.",
+          "Marktsuche und Bewertungsboard decken jetzt alle öffentlichen Apps ab, nicht nur die neuesten — ältere Apps sind wieder auffindbar.",
+          "Der erste Bildschirm lädt leichter: nur deine Sprache wird geladen statt aller zehn, und Hinweise werden erst beim Öffnen gerendert.",
+          "Neue Symbol-Regeln: Für die Veröffentlichung im Markt ist ein brauchbares Symbol Pflicht. Einfarbige oder fehlende Symbole werden beim Veröffentlichen abgelehnt, mit klarer Upload-Anleitung.",
+          "Apps bereits im Markt, deren Symbol die Prüfung nicht besteht, haben 48 Stunden Zeit, ein echtes Bild hochzuladen, sonst verlassen sie den Markt. Das alte 7-Tage-Fenster entfällt.",
+          "Unter der Haube: Android-Neubuilds sind schneller, die Symbol-Suche stoppt sofort bei einem brauchbaren Treffer, und CDN-Uploads werden bei Fehlern wiederholt statt still zu scheitern."
+        ]
+      }
+    },
+    {
       "id": "2026-11-06-faster-homepage",
       "publishedAt": "2026-11-06T06:20:00Z",
       "title": {
