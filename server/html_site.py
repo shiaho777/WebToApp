@@ -14,6 +14,7 @@ import hashlib
 import io
 import re
 import shutil
+import tempfile
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -85,12 +86,15 @@ def _normalized_entry_name(raw: str) -> str:
     return "/".join(parts)
 
 
-def _read_capped(zin: zipfile.ZipFile, info: zipfile.ZipInfo, cap: int) -> bytes:
-    """Read one entry, enforcing the advertised size cap even if the local
-    header lies about it."""
-    chunks = []
+
+
+
+def _stream_to_disk(zin: zipfile.ZipFile, info: zipfile.ZipInfo, target: Path, cap: int) -> int:
+    """Stream one zip entry to disk in 64KB chunks, enforcing the size cap
+    even if the local header lies. The full entry never sits in memory."""
+    target.parent.mkdir(parents=True, exist_ok=True)
     total = 0
-    with zin.open(info, "r") as stream:
+    with zin.open(info, "r") as stream, open(target, "wb") as out:
         while True:
             chunk = stream.read(64 * 1024)
             if not chunk:
@@ -98,8 +102,8 @@ def _read_capped(zin: zipfile.ZipFile, info: zipfile.ZipInfo, cap: int) -> bytes
             total += len(chunk)
             if total > cap:
                 raise HtmlUploadError("Archive is larger than allowed once extracted")
-            chunks.append(chunk)
-    return b"".join(chunks)
+            out.write(chunk)
+    return total
 
 
 def _extract_zip(data: bytes, dest: Path) -> List[str]:
@@ -118,7 +122,11 @@ def _extract_zip(data: bytes, dest: Path) -> List[str]:
         infos = zin.infolist()
         if len(infos) > max_files * 2 + 16:
             raise HtmlUploadError(f"Archive has too many entries (max {max_files} files)")
-        entries: Dict[str, bytes] = {}
+        # Validate every entry up front (same defenses as before), then
+        # stream each one straight to disk — the old path buffered the whole
+        # site in RAM and the caller re-read it all for hashing (2x peak).
+        names: List[str] = []
+        seen = set()
         total = 0
         for info in infos:
             if info.flag_bits & 0x1:
@@ -137,36 +145,58 @@ def _extract_zip(data: bytes, dest: Path) -> List[str]:
             total += info.file_size
             if total > max_bytes:
                 raise HtmlUploadError("Archive is larger than allowed once extracted")
-            entries[name] = _read_capped(zin, info, max_bytes)
-        if len(entries) > max_files:
+            if name not in seen:
+                seen.add(name)
+                names.append(name)
+        if len(names) > max_files:
             raise HtmlUploadError(f"Archive has too many files (max {max_files})")
-        if not entries:
+        if not names:
             raise HtmlUploadError("Archive is empty")
-        entries = _flatten_single_root(entries)
-        if INDEX_NAME not in entries:
+        names = _flatten_single_root_names(names)
+        if INDEX_NAME not in names:
             raise HtmlUploadError(f"Archive must contain {INDEX_NAME} at its root")
-        dest.mkdir(parents=True, exist_ok=False)
-        for name, blob in sorted(entries.items()):
-            target = _contained_path(dest, name)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(blob)
-        return sorted(entries)
+        # Flatten by writing under final names: map final name -> source entry.
+        first_parts = {name.split("/", 1)[0] for name in seen}
+        strip_prefix = ""
+        if len(first_parts) == 1 and all("/" in name for name in seen):
+            strip_prefix = next(iter(first_parts)) + "/"
+        source_by_final = {}
+        for info in infos:
+            name = _normalized_entry_name(info.filename)
+            if not name:
+                continue
+            final = name[len(strip_prefix):] if strip_prefix and name.startswith(strip_prefix) else name
+            source_by_final[final] = info  # last duplicate wins, as before
+        staging = Path(tempfile.mkdtemp(prefix=".extract-", dir=str(dest.parent)))
+        try:
+            for final in sorted(names):
+                target = _contained_path(staging, final)
+                _stream_to_disk(zin, source_by_final[final], target, max_bytes)
+            if dest.exists():
+                raise FileExistsError(f"destination already exists: {dest}")
+            staging.replace(dest)
+        except BaseException:
+            shutil.rmtree(staging, ignore_errors=True)
+            raise
+        return sorted(names)
 
 
 class _BytesReader(io.BytesIO):
     """zipfile needs a file-like object; plain BytesIO already qualifies."""
 
 
-def _flatten_single_root(entries: Dict[str, bytes]) -> Dict[str, bytes]:
-    """``mysite/index.html`` … → ``index.html`` … when every entry lives under
-    one shared top-level directory and nothing sits at the root."""
-    first_parts = {name.split("/", 1)[0] for name in entries}
+def _flatten_single_root_names(names: List[str]) -> List[str]:
+    """Name-only variant of _flatten_single_root for the streaming extractor."""
+    first_parts = {name.split("/", 1)[0] for name in names}
     if len(first_parts) != 1:
-        return entries
-    if not all("/" in name for name in entries):
-        return entries  # a file at the root level: keep the layout as-is
+        return names
+    if not all("/" in name for name in names):
+        return names
     prefix = next(iter(first_parts)) + "/"
-    return {name[len(prefix):]: blob for name, blob in entries.items()}
+    return [name[len(prefix):] for name in names]
+
+
+
 
 
 def _contained_path(root: Path, rel: str) -> Path:
@@ -185,6 +215,24 @@ def _hash_content(entries: Dict[str, bytes]) -> str:
         digest.update(name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(hashlib.sha256(entries[name]).digest())
+    return digest.hexdigest()
+
+
+def _hash_files(root: Path, names: List[str]) -> str:
+    """Same chained hash as _hash_content, but streamed from disk in 64KB
+    chunks so a 20MB site never materializes in memory a second time."""
+    digest = hashlib.sha256()
+    for name in sorted(names):
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\0")
+        file_digest = hashlib.sha256()
+        with open(root / name, "rb") as handle:
+            while True:
+                chunk = handle.read(64 * 1024)
+                if not chunk:
+                    break
+                file_digest.update(chunk)
+        digest.update(file_digest.digest())
     return digest.hexdigest()
 
 
@@ -213,12 +261,11 @@ def validate_and_extract(data: bytes, filename: str, dest: Path) -> dict:
         }
     if suffix == ".zip":
         names = _extract_zip(data, dest)
-        entries = {name: (dest / name).read_bytes() for name in names}
         return {
-            "content_hash": _hash_content(entries),
+            "content_hash": _hash_files(dest, names),
             "index_name": INDEX_NAME,
-            "file_count": len(entries),
-            "total_bytes": sum(len(blob) for blob in entries.values()),
+            "file_count": len(names),
+            "total_bytes": sum((dest / name).stat().st_size for name in names),
         }
     raise HtmlUploadError("Only .html, .htm and .zip uploads are supported")
 

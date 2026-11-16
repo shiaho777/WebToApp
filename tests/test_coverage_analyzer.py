@@ -387,12 +387,20 @@ def test_favicon_data_url_cache_hit_miss_empty_and_exception(monkeypatch):
     assert cache.data["icon:new.example"] == b"chosen"
 
     cache = DummyCache()
+    miss_cache = DummyCache()
     monkeypatch.setattr(analyzer_module, "icon_cache", cache)
+    monkeypatch.setattr(analyzer_module, "icon_miss_cache", miss_cache)
     analyzer.icon_distiller._choose_best_icon.return_value = None
     assert analyzer._favicon_data_url("https://empty.example") == ""
-    # A miss is cached (b"") so later builds of the same host skip the
-    # candidate sweep instead of re-running it (perf/issue #34 follow-up).
-    assert cache.data.get("icon:empty.example") == b""
+    # A miss lands in icon_miss_cache — the SAME store distiller._fetch_icon
+    # reads — so the build-side sweep skips the host instead of re-running
+    # the whole candidate download (the old b""-in-icon_cache contract was
+    # falsy-skipped by the build side and never honored).
+    assert miss_cache.data.get("icon:empty.example") == b""
+    assert "icon:empty.example" not in cache.data
+    analyzer.icon_distiller._collect_icon_candidates.reset_mock()
+    assert analyzer._favicon_data_url("https://empty.example") == ""
+    analyzer.icon_distiller._collect_icon_candidates.assert_not_called()
 
     cache = MagicMock()
     cache.get.side_effect = RuntimeError("cache failed")
