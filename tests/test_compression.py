@@ -158,7 +158,7 @@ class AppWiringTests(unittest.TestCase):
         self.client = TestClient(main.app)
 
     def test_static_text_assets_are_compressed(self):
-        for path in ("/css/style.css", "/js/i18n.strings.js", "/"):
+        for path in ("/css/style.css", "/js/i18n.en.js", "/"):
             with self.subTest(path=path):
                 r = self.client.get(path, headers={"Accept-Encoding": "gzip"})
                 self.assertEqual(r.status_code, 200)

@@ -121,7 +121,7 @@ Each package is a thin entry point to your site — it bundles no site content, 
 ├── index.html                 Landing page + build form
 ├── css/ js/ assets/           Frontend static assets
 │   ├── js/i18n.js             Lightweight i18n runtime (10 languages)
-│   ├── js/i18n.strings.js     All translations
+│   ├── js/i18n.<lang>.js      Per-language translations (en sync, rest on demand)
 │   ├── js/community.js        Comments / ratings / creator block on app pages
 │   └── js/mdmini.js           Tiny Markdown renderer for bios
 ├── server/

@@ -30,6 +30,12 @@ def _read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+def _strings_src() -> str:
+    """Aggregate the per-language translation files (issue #228 split the old
+    single i18n.strings.js into js/i18n.<lang>.js loaded on demand)."""
+    return "\n".join(_read(f"js/i18n.{lang}.js") for lang in LANGS)
+
+
 class FrontendFeedbackTests(unittest.TestCase):
     def test_index_loads_ui_helpers_before_app(self):
         html = _read("index.html")
@@ -57,7 +63,7 @@ class FrontendFeedbackTests(unittest.TestCase):
                 )
 
     def test_new_strings_exist_in_every_language(self):
-        src = _read("js/i18n.strings.js")
+        src = _strings_src()
         blocks = {lang: "" for lang in LANGS}
         for match in re.finditer(r"R\('(\w+)',\s*\{(.*?)\}\);", src, re.S):
             lang, body = match.group(1), match.group(2)
@@ -150,7 +156,7 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261110-perf3", html)
+        self.assertIn("js/announcements.js?v=20261116-lazy1", html)
 
 
 class FrontendResilienceTests(unittest.TestCase):
@@ -179,7 +185,7 @@ class FrontendResilienceTests(unittest.TestCase):
         self.assertIn("#nav.is-scrolled", _read("css/style.css"))
 
     def test_chinese_market_empty_text_typo_fixed(self):
-        self.assertNotIn("公链应用", _read("js/i18n.strings.js"))
+        self.assertNotIn("公链应用", _strings_src())
 
 
 class FrontendPerformanceTests(unittest.TestCase):
@@ -414,13 +420,12 @@ class FrontendBuildFlowTests(unittest.TestCase):
             self.assertIn(cls, self.css)
 
     def test_build_strings_exist_in_every_language(self):
-        strings = _read("js/i18n.strings.js")
-        start = strings.index("'build.title'")
-        block = strings[strings.rfind("(function", 0, start):]
+        # Each per-language file must carry every build key exactly once.
         for lang in LANGS:
+            block = _read(f"js/i18n.{lang}.js")
             self.assertIn(f"R('{lang}',", block, lang)
-        for key in self.BUILD_KEYS:
-            self.assertEqual(block.count(f"'{key}'"), len(LANGS), key)
+            for key in self.BUILD_KEYS:
+                self.assertEqual(block.count(f"'{key}'"), 1, f"{lang}: {key}")
 
 
 class HomeHistoryMarketRedesignTests(unittest.TestCase):
@@ -455,7 +460,7 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
         self.html = _read("index.html")
         self.js = _read("js/app.v5.js")
         self.css = _read("css/style.css")
-        self.strings = _read("js/i18n.strings.js")
+        self.strings = _strings_src()
         self.server = _read("server/main.py")
 
     def test_hero_is_centered_without_a_preview(self):
@@ -615,7 +620,19 @@ class StreamingFirstLoadTests(unittest.TestCase):
 
     def test_streaming_assets_are_cache_busted(self):
         self.assertIn("css/style.css?v=20261106-stream1", self.html)
-        self.assertIn("js/app.v5.js?v=20261110-cache1", self.html)
+        self.assertIn("js/app.v5.js?v=20261116-perf1", self.html)
+
+    def test_translations_load_per_language_on_demand(self):
+        # issue #228: the 197KB all-languages bundle is gone; en ships sync as
+        # the fallback and every other language loads via js/i18n.<lang>.js.
+        self.assertFalse((ROOT / "js/i18n.strings.js").exists())
+        self.assertIn("js/i18n.en.js?v=", self.html)
+        self.assertNotIn("js/i18n.strings.js", self.html)
+        for lang in LANGS:
+            self.assertTrue((ROOT / f"js/i18n.{lang}.js").is_file(), lang)
+        runtime = _read("js/i18n.js")
+        self.assertIn("function loadLanguage(lang)", runtime)
+        self.assertIn("js/i18n.' + lang + '.js?v=", runtime)
 
 
 class ServiceWorkerTests(unittest.TestCase):
