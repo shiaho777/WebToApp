@@ -1857,18 +1857,28 @@
       let transientFailures = 0;
       const MAX_TRANSIENT_FAILURES = 5;
       while (attempts < 240) {
+        // Hidden tab: pause without burning the attempt budget — the build
+        // keeps running server-side and polling resumes when visible again.
+        while (document.hidden) await sleep(1000);
         attempts += 1;
         await sleep(attempts <= 8 ? 400 : 800 + transientFailures * 600);
         let pollRes;
+        // A hung request must not stall the loop forever: abort after 10s
+        // and let the transient-failure backoff handle it.
+        const pollAbort = new AbortController();
+        const pollTimer = setTimeout(() => pollAbort.abort(), 10000);
         try {
           pollRes = await fetch(`/api/distill/${encodeURIComponent(task.task_id)}`, {
             headers: apiHeaders(),
+            signal: pollAbort.signal,
           });
         } catch (_err) {
+          clearTimeout(pollTimer);
           transientFailures += 1;
           if (transientFailures >= MAX_TRANSIENT_FAILURES) throw new Error(t('analysis.failed.network'));
           continue;
         }
+        clearTimeout(pollTimer);
         if (pollRes.status === 502 || pollRes.status === 503 || pollRes.status === 504) {
           transientFailures += 1;
           if (transientFailures >= MAX_TRANSIENT_FAILURES) throw new Error(t('err.generateFailed'));
@@ -2519,7 +2529,13 @@
       } else {
         historySelected.add(id);
       }
-      renderHistory(lastHistoryItems);
+      // Local update: toggling one checkbox used to rebuild the entire list
+      // DOM. Only this row's class/checkbox and the select bar change.
+      const selected = historySelected.has(id);
+      row.classList.toggle('selected', selected);
+      const rowBox = row.querySelector('input[data-select]');
+      if (rowBox && rowBox !== box) rowBox.checked = selected;
+      updateHistorySelectBar();
       return;
     }
 
@@ -2679,10 +2695,16 @@
   const historyMoreBtn = document.getElementById('history-more-btn');
   const historyMorePanel = document.getElementById('history-more-panel');
 
+  let historySearchTimer = null;
   if (historySearchInput) {
     historySearchInput.addEventListener('input', () => {
-      historyQuery = historySearchInput.value;
-      renderHistory(lastHistoryItems);
+      // Debounce like the market search: re-rendering the whole list DOM on
+      // every keystroke janked long histories.
+      clearTimeout(historySearchTimer);
+      historySearchTimer = setTimeout(() => {
+        historyQuery = historySearchInput.value;
+        renderHistory(lastHistoryItems);
+      }, 200);
     });
   }
   if (historySortSelect) {

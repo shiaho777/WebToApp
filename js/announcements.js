@@ -302,12 +302,16 @@
     return day || '';
   }
 
-  function render() {
+  // The panel body (2 notices x 10 languages of DOM) is built on first open,
+  // not at startup — most visits never open it. Chrome (button label/title)
+  // stays eager so the nav looks complete on first paint.
+  var bodyRendered = false;
+
+  function renderChrome() {
     var wrap = document.getElementById('nav-notices') || document.querySelector('.nav-notices');
     var btn = document.getElementById('notices-btn');
     var title = document.getElementById('notices-title');
-    var scroll = document.getElementById('notices-scroll');
-    if (!wrap || !btn || !title || !scroll) return;
+    if (!wrap || !btn || !title) return;
     var lang = (window.I18n && LANGS.indexOf(window.I18n.current) !== -1) ? window.I18n.current : 'en';
     var chrome = CHROME[lang] || CHROME.en;
     if (!NOTICES.length) {
@@ -320,6 +324,12 @@
     title.textContent = chrome.heading;
     var closeBtn = document.getElementById('notices-close');
     if (closeBtn) closeBtn.setAttribute('aria-label', lang === 'zh' ? '关闭' : 'Close');
+  }
+
+  function renderBody() {
+    var scroll = document.getElementById('notices-scroll');
+    if (!scroll || !NOTICES.length) return;
+    var lang = (window.I18n && LANGS.indexOf(window.I18n.current) !== -1) ? window.I18n.current : 'en';
     scroll.innerHTML = '<ol class="nav-notices-list">' + NOTICES.map(function (notice) {
       var heading = pick(notice.title, lang) || notice.id;
       var paragraphs = pick(notice.paragraphs, lang) || [];
@@ -333,6 +343,12 @@
           body +
         '</li>';
     }).join('') + '</ol>';
+    bodyRendered = true;
+  }
+
+  function render() {
+    renderChrome();
+    if (bodyRendered) renderBody();
   }
 
   function bind() {
@@ -354,7 +370,9 @@
 
     btn.addEventListener('click', function (event) {
       event.stopPropagation();
-      setOpen(!isOpen());
+      var willOpen = !isOpen();
+      if (willOpen && !bodyRendered) renderBody();
+      setOpen(willOpen);
     });
     if (closeBtn) {
       closeBtn.addEventListener('click', function (event) {
@@ -379,7 +397,7 @@
 
   function start() {
     bind();
-    render();
+    renderChrome();
   }
 
   window.WTA_NOTICES = NOTICES;

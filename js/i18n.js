@@ -30,10 +30,28 @@
     es: 'Español', pt: 'Português', fr: 'Français', de: 'Deutsch', ko: '한국어'
   };
 
-  // Translation tables are attached to this object below (see i18n.*.js loaded
-  // inline). To keep everything dependency-free and avoid a flash of
-  // untranslated content, all languages live in this single file.
+  // Translation tables register via I18n.register. English ships synchronously
+  // (js/i18n.en.js) as the always-present fallback; every other language loads
+  // on demand from js/i18n.<lang>.js — the old single 197KB all-languages file
+  // made single-language users download ~90% waste and blocked first paint.
   var TRANSLATIONS = {};
+  // Bump together with the per-language files' content (cache busting).
+  var LANG_VERSION = '20261116-split1';
+  var loadedLangs = { en: true };
+  var pendingLangs = {};
+
+  function loadLanguage(lang) {
+    if (loadedLangs[lang] || pendingLangs[lang]) return pendingLangs[lang] || Promise.resolve();
+    var promise = new Promise(function (resolve) {
+      var script = document.createElement('script');
+      script.src = 'js/i18n.' + lang + '.js?v=' + LANG_VERSION;
+      script.onload = function () { loadedLangs[lang] = true; resolve(); };
+      script.onerror = function () { resolve(); }; // t() falls back to en per key
+      document.head.appendChild(script);
+    });
+    pendingLangs[lang] = promise;
+    return promise;
+  }
 
   function detect() {
     // An explicit user choice (from the switcher) always wins and persists.
@@ -122,14 +140,25 @@
     setMeta('property', 'og:description', t('meta.ogDescription'));
   }
 
+  function applyCurrent() {
+    applyDocumentChrome();
+    applyTranslations(document);
+    applyMeta();
+    window.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang: current } }));
+  }
+
   function setLanguage(lang) {
     if (SUPPORTED.indexOf(lang) === -1) return;
     current = lang;
     try { window.localStorage.setItem(STORE_KEY, lang); } catch (_e) { /* ignore */ }
-    applyDocumentChrome();
-    applyTranslations(document);
-    applyMeta();
-    window.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang: lang } }));
+    // Apply immediately with whatever is registered (en fallback covers any
+    // missing key), then re-apply once the on-demand language file lands.
+    applyCurrent();
+    if (lang !== 'en' && !loadedLangs[lang]) {
+      loadLanguage(lang).then(function () {
+        if (current === lang) applyCurrent();
+      });
+    }
   }
 
   // Public API
@@ -145,6 +174,7 @@
     supported: SUPPORTED.slice(),
     rtl: RTL.slice(),
     nativeNames: NATIVE_NAMES,
+    loadLanguage: loadLanguage,
     get current() { return current; }
   };
 

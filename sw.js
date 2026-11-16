@@ -34,9 +34,35 @@ self.addEventListener('activate', (event) => {
           .filter((key) => key.indexOf('wta-shell-') === 0 && key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       ))
+      .then(() => pruneStaleAssets())
       .then(() => self.clients.claim())
   );
 });
+
+// SWR entries are keyed by the full URL including ?v=, so every version bump
+// used to leave the old asset in the bucket forever. Drop versioned entries
+// whose exact URL is no longer referenced by the current shell HTML. Entries
+// WITHOUT a ?v= (e.g. lazily loaded language files cached by SWR) are kept —
+// they are not superseded by a version bump.
+async function pruneStaleAssets() {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const shell = await cache.match(SHELL_KEY);
+    if (!shell) return;
+    const html = await shell.text();
+    const keep = new Set(shellAssetUrls(html));
+    const requests = await cache.keys();
+    await Promise.all(requests.map(async (request) => {
+      const url = new URL(request.url);
+      if (url.origin !== self.location.origin) return;
+      if (!isShellAsset(url.pathname)) return;
+      if (!url.searchParams.has('v')) return;
+      if (!keep.has(request.url)) await cache.delete(request);
+    }));
+  } catch (_err) {
+    // Pruning is best-effort; a failure must not block activation.
+  }
+}
 
 function isExcluded(pathname) {
   return pathname.indexOf('/api/') === 0
