@@ -619,8 +619,21 @@ class StreamingFirstLoadTests(unittest.TestCase):
         self.assertIn("promise.catch(function () {})", self.html)
 
     def test_streaming_assets_are_cache_busted(self):
-        self.assertIn("css/style.css?v=20261106-stream1", self.html)
-        self.assertIn("js/app.v5.js?v=20261116-perf1", self.html)
+        self.assertIn("css/style.css?v=20261116-icon1", self.html)
+        self.assertIn("js/app.v5.js?v=20261116-icon1", self.html)
+
+    def test_icon_publish_gate_is_wired(self):
+        # issue #232: publishing requires a usable icon; the warning lives at
+        # the upload control and the 409 code is translated, not shown raw.
+        self.assertIn('id="icon-required-note"', self.html)
+        self.assertIn("function setIconRequiredNote(visible)", self.js)
+        self.assertIn("code === 'icon_required'", self.js)
+        self.assertIn("t('err.iconRequired')", self.js)
+        self.assertIn(".icon-required-note", self.css)
+        strings = _strings_src()
+        for key in ("err.iconRequired", "config.iconRequiredNote"):
+            for lang in LANGS:
+                self.assertIn(f"'{key}'", _read(f"js/i18n.{lang}.js"), f"{lang}: {key}")
 
     def test_translations_load_per_language_on_demand(self):
         # issue #228: the 197KB all-languages bundle is gone; en ships sync as

@@ -1,3 +1,4 @@
+import io
 import ipaddress
 import json
 import tempfile
@@ -7,8 +8,22 @@ from types import SimpleNamespace
 from typing import Optional
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from server import main
+
+
+def _real_icon_png() -> bytes:
+    """A multi-color picture that passes the flat-icon detector (#232 gate)."""
+    image = Image.new("RGBA", (4, 4))
+    pixels = image.load()
+    pixels[0, 0] = (255, 0, 0, 255)
+    pixels[1, 0] = (0, 255, 0, 255)
+    pixels[0, 1] = (0, 0, 255, 255)
+    pixels[1, 1] = (255, 255, 0, 255)
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 class MainHelpersTests(unittest.TestCase):
@@ -209,6 +224,9 @@ class MarketAndVisibilityTests(unittest.TestCase):
         }
         recipe.update(extra or {})
         (self.apps_dir / app_id / "recipe.json").write_text(json.dumps(recipe))
+        # Publishing now requires a usable icon (#232); give every fixture a
+        # real multi-color picture so visibility tests exercise their own rules.
+        (self.apps_dir / app_id / "icon.png").write_bytes(_real_icon_png())
         main.history_store.record_build(self.FP, recipe, f"/a/{app_id}", None)
 
     def _cookies(self):
@@ -218,9 +236,9 @@ class MarketAndVisibilityTests(unittest.TestCase):
         self._build("solid001", "public", ["tools"])
         main.history_store.flag_icon_review("solid001", flagged_at="2026-10-13T16:00:00Z")
         history = self.client.get("/api/history", cookies=self._cookies()).json()["items"]
-        self.assertEqual(history[0]["icon_review_deadline"], "2026-10-20T16:00:00Z")
+        self.assertEqual(history[0]["icon_review_deadline"], "2026-10-15T16:00:00Z")
         market = self.client.get("/api/market").json()["items"]
-        self.assertEqual(market[0]["icon_review_deadline"], "2026-10-20T16:00:00Z")
+        self.assertEqual(market[0]["icon_review_deadline"], "2026-10-15T16:00:00Z")
 
     def test_market_lists_only_public_apps(self):
         self._build("pub1", "public", ["tools"])
@@ -298,6 +316,7 @@ class MarketAndVisibilityTests(unittest.TestCase):
     def test_market_includes_icon_url_when_icon_exists(self):
         self._build("iconapp", "public", ["tools"])
         self._build("noicon", "public", ["tools"])
+        (self.apps_dir / "noicon" / "icon.png").unlink()
         (self.apps_dir / "iconapp" / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n")
         items = {i["app_id"]: i for i in self.client.get("/api/market").json()["items"]}
         self.assertEqual(items["iconapp"]["icon_url"], "/a/iconapp/icon.png")
@@ -391,6 +410,46 @@ class MarketAndVisibilityTests(unittest.TestCase):
             cookies={"webtoapp_device_fingerprint": "someone-else"},
         )
         self.assertEqual(resp.status_code, 400)
+
+    def test_public_requires_a_usable_icon(self):
+        # No icon at all -> 409 icon_required, even with a valid token/tags
+        # and no open review (the old gate only fired after a deadline).
+        self._build("noicon01", "private", ["tools"])
+        (self.apps_dir / "noicon01" / "icon.png").unlink()
+        resp = self.client.post(
+            "/api/history/noicon01/visibility",
+            json={"visibility": "public", "edit_token": "tok-noicon01"},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(resp.json()["detail"], "icon_required")
+        # A flat-color icon is equally unusable.
+        flat = Image.new("RGBA", (8, 8), (124, 58, 237, 255))
+        buf = io.BytesIO()
+        flat.save(buf, format="PNG")
+        (self.apps_dir / "noicon01" / "icon.png").write_bytes(buf.getvalue())
+        resp = self.client.post(
+            "/api/history/noicon01/visibility",
+            json={"visibility": "public", "edit_token": "tok-noicon01"},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.status_code, 409)
+        # Uploading a real picture unblocks publishing immediately.
+        (self.apps_dir / "noicon01" / "icon.png").write_bytes(_real_icon_png())
+        resp = self.client.post(
+            "/api/history/noicon01/visibility",
+            json={"visibility": "public", "edit_token": "tok-noicon01"},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.status_code, 200)
+        # Going private never needs an icon.
+        (self.apps_dir / "noicon01" / "icon.png").unlink()
+        resp = self.client.post(
+            "/api/history/noicon01/visibility",
+            json={"visibility": "private", "edit_token": "tok-noicon01"},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(resp.status_code, 200)
 
     def test_attach_alone_does_not_grant_visibility(self):
         # The attach endpoint is intentionally open (it only re-links an app
@@ -657,6 +716,8 @@ class CommunityEndpointTests(unittest.TestCase):
             "edit_token": f"tok-{app_id}",
         }
         (self.apps_dir / app_id / "recipe.json").write_text(json.dumps(recipe))
+        # Usable icon required for publishing (#232).
+        (self.apps_dir / app_id / "icon.png").write_bytes(_real_icon_png())
         main.history_store.record_build(fp, recipe, f"/a/{app_id}", None)
         # Mirrors the record_build caller in /api/distill: every build
         # attributes a creator, regardless of visibility.

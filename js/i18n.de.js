@@ -189,6 +189,8 @@ R('de', {
     'history.iconReview': 'Dieses Symbol gilt nicht. Ersetze es vor {deadline} durch ein echtes Bild, sonst verlässt die App den Markt.',
     'market.iconReview': 'Symbol ersetzen',
     'err.iconReviewExpired': 'Die Frist zum Ersetzen des Symbols ist vorbei. Die App bleibt außerhalb des Marktes, bis ein echtes Bild hochgeladen ist.',
+    'err.iconRequired': 'Zum Veröffentlichen ist ein brauchbares Symbol nötig. Lade ein Bild mit einem echten Motiv hoch und versuche es erneut.',
+    'config.iconRequiredNote': 'Noch kein brauchbares Symbol — lade ein Bild mit einem echten Motiv hoch. Für die Veröffentlichung im Markt ist ein Symbol Pflicht.',
     'history.visibilityPublic': 'Öffentlich',
     'history.visibilityPrivate': 'Privat',
     'history.visibilityHint': 'Öffentliche / private Listung im Markt umschalten',

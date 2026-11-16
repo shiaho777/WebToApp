@@ -1,4 +1,8 @@
-"""Flat-icon reviews: seven days to replace the picture, then leave the market."""
+"""Flat-icon reviews: 48 hours to replace the picture, then leave the market.
+
+Publishing itself is gated on a usable icon (#232); this cure window only
+applies to apps already public when their icon fails detection.
+"""
 
 import io
 import json
@@ -12,7 +16,12 @@ from PIL import Image
 
 from server.engine.distiller import Distiller
 from server.history_store import HistoryStore
-from server.icon_review import NOTICE_AT, enforce_icon_review_deadlines, run_icon_review_pass
+from server.icon_review import (
+    NOTICE_AT,
+    enforce_icon_review_deadlines,
+    run_icon_review_pass,
+    shorten_open_reviews,
+)
 
 
 def _solid_png():
@@ -67,7 +76,7 @@ class IconReviewTests(unittest.TestCase):
         self.assertTrue(self.history.flag_icon_review("abc", flagged_at=NOTICE_AT))
         self.assertFalse(self.history.flag_icon_review("abc", flagged_at="2026-10-18T00:00:00Z"))
         review = self.history.open_icon_reviews()["abc"]
-        self.assertEqual(review["deadline_at"], "2026-10-20T16:00:00Z")
+        self.assertEqual(review["deadline_at"], "2026-10-15T16:00:00Z")
 
     def test_packaged_flat_icon_is_due_with_the_notice(self):
         app_dir = self._public("oldflat1", "2026-09-01T00:00:00Z")
@@ -75,12 +84,12 @@ class IconReviewTests(unittest.TestCase):
         downloads.mkdir()
         with zipfile.ZipFile(downloads / "windows.zip", "w") as bundle:
             bundle.writestr("Flat/icon.png", _solid_png())
-        summary = run_icon_review_pass(self.history, self.apps, now="2026-10-19T00:00:00Z")
+        summary = run_icon_review_pass(self.history, self.apps, now="2026-10-14T00:00:00Z")
         self.assertEqual(summary["flagged"], ["oldflat1"])
         self.assertEqual(summary["unpublished"], [])
         self.assertEqual(
             self.history.open_icon_reviews()["oldflat1"]["deadline_at"],
-            "2026-10-20T16:00:00Z",
+            "2026-10-15T16:00:00Z",
         )
 
     def test_past_deadline_without_a_picture_leaves_the_market(self):
@@ -89,9 +98,9 @@ class IconReviewTests(unittest.TestCase):
         downloads.mkdir()
         with zipfile.ZipFile(downloads / "windows.zip", "w") as bundle:
             bundle.writestr("Flat/icon.png", _solid_png())
-        run_icon_review_pass(self.history, self.apps, now="2026-10-19T00:00:00Z")
+        run_icon_review_pass(self.history, self.apps, now="2026-10-14T00:00:00Z")
         unpublished = enforce_icon_review_deadlines(
-            self.history, self.apps, now="2026-10-21T00:00:00Z",
+            self.history, self.apps, now="2026-10-16T00:00:00Z",
         )
         self.assertEqual(unpublished, ["lateflat"])
         self.assertEqual(self.history.get_app_visibility("lateflat")["visibility"], "private")
@@ -105,14 +114,52 @@ class IconReviewTests(unittest.TestCase):
         downloads.mkdir()
         with zipfile.ZipFile(downloads / "windows.zip", "w") as bundle:
             bundle.writestr("Flat/icon.png", _solid_png())
-        run_icon_review_pass(self.history, self.apps, now="2026-10-19T00:00:00Z")
+        run_icon_review_pass(self.history, self.apps, now="2026-10-14T00:00:00Z")
         (app_dir / "icon.png").write_bytes(_real_png())
         self.assertEqual(
-            enforce_icon_review_deadlines(self.history, self.apps, now="2026-10-19T00:00:00Z"),
+            enforce_icon_review_deadlines(self.history, self.apps, now="2026-10-14T00:00:00Z"),
             [],
         )
         self.assertEqual(self.history.open_icon_reviews(), {})
         self.assertEqual(self.history.get_app_visibility("fixed001")["visibility"], "public")
+
+    def test_new_flag_defaults_to_48_hours(self):
+        self.assertTrue(self.history.flag_icon_review("fresh001", flagged_at="2026-11-16T10:00:00Z"))
+        review = self.history.open_icon_reviews()["fresh001"]
+        self.assertEqual(review["deadline_at"], "2026-11-18T10:00:00Z")
+
+    def test_legacy_seven_day_reviews_are_capped_to_48h(self):
+        # Simulate a review opened under the old 7-day rule.
+        self.assertTrue(self.history.flag_icon_review("legacy01", flagged_at="2026-11-16T10:00:00Z"))
+        self.history.set_icon_review_deadline("legacy01", "2026-11-23T10:00:00Z")
+        changed = shorten_open_reviews(self.history)
+        self.assertEqual(changed, 1)
+        self.assertEqual(
+            self.history.open_icon_reviews()["legacy01"]["deadline_at"],
+            "2026-11-18T10:00:00Z",
+        )
+        # Idempotent: a second pass changes nothing.
+        self.assertEqual(shorten_open_reviews(self.history), 0)
+
+    def test_sweep_enforces_the_capped_deadline(self):
+        # Created before the notice anchor so the flag time is NOTICE_AT
+        # (post-notice apps are flagged at the real current time).
+        app_dir = self._public("capped01", "2026-09-01T00:00:00Z")
+        downloads = app_dir / "downloads"
+        downloads.mkdir()
+        with zipfile.ZipFile(downloads / "windows.zip", "w") as bundle:
+            bundle.writestr("Flat/icon.png", _solid_png())
+        run_icon_review_pass(self.history, self.apps, now="2026-10-14T00:00:00Z")
+        # Still inside the 48h window (deadline 2026-10-15T16:00Z): stays public.
+        self.assertEqual(
+            enforce_icon_review_deadlines(self.history, self.apps, now="2026-10-14T12:00:00Z"),
+            [],
+        )
+        # Past 48h with no replacement: leaves the market.
+        self.assertEqual(
+            enforce_icon_review_deadlines(self.history, self.apps, now="2026-10-16T00:00:00Z"),
+            ["capped01"],
+        )
 
     def test_html_solid_favicon_is_flagged_on_fetch(self):
         distiller = Distiller()

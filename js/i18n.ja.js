@@ -189,6 +189,8 @@ R('ja', {
     'history.iconReview': 'このアイコンは使えません。{deadline} までに模様のある画像へ替えてください。過ぎると市場から外れます。',
     'market.iconReview': 'アイコン要差替',
     'err.iconReviewExpired': '差替の期限が過ぎました。模様のある画像を上げるまで、市場には戻りません。',
+    'err.iconRequired': '公開には使えるアイコンが必要です。模様のある画像をアップロードしてから、もう一度お試しください。',
+    'config.iconRequiredNote': '使えるアイコンがまだありません。模様のある画像をアップロードしてください。市場への公開には使えるアイコンが必須です。',
     'history.visibilityPublic': '公開',
     'history.visibilityPrivate': '非公開',
     'history.visibilityHint': 'マーケットでの公開 / 非公開を切り替える',
