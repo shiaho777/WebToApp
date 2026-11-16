@@ -44,7 +44,7 @@ from server.compression import TextCompressionMiddleware
 from server.history_store import HistoryStore
 from server.languages import MARKET_LANGUAGE_CODES
 from server.engine.icon_quality import is_unusable_icon
-from server.icon_review import review_deadline_passed, run_icon_review_pass
+from server.icon_review import run_icon_review_pass
 from server.market_dedupe import conflicts_with_newer, dedupe_creator, dedupe_public_market
 from server.logging_util import log_event, setup_logging
 from server.task_store import TaskStore
@@ -1844,14 +1844,18 @@ def set_history_visibility(app_id: str, payload: VisibilityPayload, request: Req
         raise HTTPException(400, "Public apps need at least one tag")
     creator_fp = community_store.creator_of(app_id)
     if visibility == "public":
-        review = history_store.open_icon_reviews([app_id]).get(app_id)
+        # Publishing requires a usable icon, full stop (#232). The old gate
+        # only rejected once a review deadline had passed, which let fresh
+        # icon-less apps sit on the market with a "replace icon" badge for
+        # days. The 48h cure window now applies only to apps already public
+        # when their icon fails detection (enforced by the hourly sweep).
         icon_path = APPS_DIR / app_id / "icon.png"
         try:
             icon_ok = icon_path.is_file() and not is_unusable_icon(icon_path.read_bytes())
         except OSError:
             icon_ok = False
-        if review and not icon_ok and review_deadline_passed(review["deadline_at"]):
-            raise HTTPException(409, "icon_review_expired")
+        if not icon_ok:
+            raise HTTPException(409, "icon_required")
     if (
         visibility == "public"
         and creator_fp

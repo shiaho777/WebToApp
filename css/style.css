@@ -2615,6 +2615,12 @@ section {
 .result-note{margin-top:12px;padding:10px 12px;border-radius:var(--radius-md);background:rgba(var(--accent-rgb), 0.12);color:var(--accent-text);font-size:.92rem;line-height:1.4}
 .result-note.hidden{display:none}
 
+/* Icon publish gate (#232): warning shown at the upload control when the
+   build had no usable icon, or publishing was rejected for lacking one. */
+.icon-required-note{margin:8px 0 0;padding:8px 10px;border-radius:var(--radius-md);background:rgba(var(--danger-rgb), 0.1);color:var(--danger-text);font-size:.85rem;line-height:1.4}
+.icon-required-note.hidden{display:none}
+.icon-upload.needs-icon .icon-upload-preview{outline:2px solid var(--danger);outline-offset:2px}
+
 /* ===== Source mode toggle (URL / HTML upload) ===== */
 .source-mode {
   display: inline-flex;

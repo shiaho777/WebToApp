@@ -213,6 +213,8 @@ R('zh', {
     'history.iconReview': '这个图标不合格。请在 {deadline} 前换一张有图案的，否则应用会退出市场。',
     'market.iconReview': '待换图标',
     'err.iconReviewExpired': '更换图标的期限已经过了。换上一张有图案的图之前，它会留在市场外面。',
+    'err.iconRequired': '公开到市场需要先有一个可用图标。请上传一张有图案的图片，然后再试。',
+    'config.iconRequiredNote': '还没有可用图标——请上传一张有图案的图片。公开到市场必须有可用图标。',
     'history.visibilityPublic': '公链',
     'history.visibilityPrivate': '私链',
     'history.visibilityHint': '切换是否在公链市场公开列出',

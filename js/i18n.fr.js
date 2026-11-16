@@ -189,6 +189,8 @@ R('fr', {
     'history.iconReview': 'Cette icône ne convient pas. Remplacez-la par un vrai dessin avant le {deadline}, sinon l’app quitte le marché.',
     'market.iconReview': 'Icône à remplacer',
     'err.iconReviewExpired': 'Le délai pour changer l’icône est passé. L’app reste hors du marché tant qu’un vrai dessin n’est pas envoyé.',
+    'err.iconRequired': 'Une icône valide est requise pour publier. Envoyez une image avec un vrai dessin, puis réessayez.',
+    'config.iconRequiredNote': 'Pas encore d’icône valide — envoyez une image avec un vrai dessin. Une icône valide est obligatoire pour publier sur le marché.',
     'history.visibilityPublic': 'Public',
     'history.visibilityPrivate': 'Privé',
     'history.visibilityHint': 'Basculer le listage public / privé sur le marché',

@@ -724,15 +724,16 @@ class HistoryStore:
             self._flush_visits_locked()
             return app_id in self._get_device_app_ids_locked(device_fingerprint)
 
-    def flag_icon_review(self, app_id: str, flagged_at: Optional[str] = None, days: int = 7) -> bool:
-        """Open a review. An already-open review keeps its original deadline."""
+    def flag_icon_review(self, app_id: str, flagged_at: Optional[str] = None, hours: int = 48) -> bool:
+        """Open a review. An already-open review keeps its original deadline
+        (the hourly sweep caps legacy 7-day deadlines at 48h, see #232)."""
         app_id = str(app_id or "").strip()
         if not app_id:
             return False
         start = flagged_at or _utc_now()
         try:
             deadline = (
-                _parse_utc(start) + timedelta(days=days)
+                _parse_utc(start) + timedelta(hours=hours)
             ).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         except (TypeError, ValueError, AttributeError):
             return False
@@ -756,6 +757,18 @@ class HistoryStore:
                     (app_id, "solid", start, deadline),
                 )
             return True
+
+    def set_icon_review_deadline(self, app_id: str, deadline_at: str) -> bool:
+        """Override the deadline of an OPEN review (policy migration)."""
+        app_id = str(app_id or "").strip()
+        if not app_id or _parse_utc(deadline_at) is None:
+            return False
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE icon_reviews SET deadline_at = ? WHERE app_id = ? AND resolved_at IS NULL",
+                (deadline_at, app_id),
+            )
+            return cur.rowcount > 0
 
     def resolve_icon_review(self, app_id: str) -> bool:
         app_id = str(app_id or "").strip()

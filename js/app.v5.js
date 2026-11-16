@@ -631,12 +631,21 @@
       .replace(/'/g, '&#39;');
   }
 
+  function setIconRequiredNote(visible) {
+    const note = document.getElementById('icon-required-note');
+    if (!note) return;
+    note.classList.toggle('hidden', !visible);
+    const wrap = document.querySelector('.icon-upload');
+    if (wrap) wrap.classList.toggle('needs-icon', visible);
+  }
+
   function fillIconPreview(dataUrl, label) {
     if (dataUrl) {
       customIconDataUrl = dataUrl;
       customIconPreview.src = dataUrl;
       customIconPreview.parentElement.classList.add('has-image');
       customIconPlaceholder.textContent = label || t('icon.refilled');
+      setIconRequiredNote(false);
       syncRestoreIconButton();
       return;
     }
@@ -1937,9 +1946,13 @@
     if (data.icon_rejected === 'solid') {
       solidNote.textContent = t('result.solidIcon');
       solidNote.classList.remove('hidden');
+      // Surface the warning at the upload control too — the result-panel
+      // note alone was easy to miss before hitting "publish" (#232).
+      setIconRequiredNote(true);
     } else {
       solidNote.textContent = '';
       solidNote.classList.add('hidden');
+      setIconRequiredNote(false);
     }
     await loadHistory();
     scheduleGentleScroll(resultPanel, { block: 'nearest', threshold: 0.45, delay: 180 });
@@ -1960,6 +1973,7 @@
       customIconPreview.src = customIconDataUrl;
       customIconPreview.parentElement.classList.add('has-image');
       customIconPlaceholder.textContent = file.name;
+      setIconRequiredNote(false);
       syncRestoreIconButton();
     } catch (_err) {
       customIconDataUrl = '';
@@ -2613,6 +2627,10 @@
           }
           if (res.status === 409 && code === 'icon_review_expired') {
             throw new Error(t('err.iconReviewExpired'));
+          }
+          if (res.status === 409 && code === 'icon_required') {
+            setIconRequiredNote(true);
+            throw new Error(t('err.iconRequired'));
           }
           throw new Error(code || 'visibility failed');
         }

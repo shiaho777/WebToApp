@@ -213,6 +213,8 @@ R('en', {
     'history.iconReview': 'This icon does not qualify. Replace it with a real picture before {deadline}, or the app leaves the market.',
     'market.iconReview': 'Icon needs replacing',
     'err.iconReviewExpired': 'The deadline to replace this flat icon has passed. It stays off the market until you upload a real picture.',
+    'err.iconRequired': 'A usable icon is required to publish. Upload a picture with a real design, then try again.',
+    'config.iconRequiredNote': 'No usable icon yet — upload a picture with a real design. A usable icon is required to publish on the market.',
     'history.visibilityPublic': 'Public',
     'history.visibilityPrivate': 'Private',
     'history.visibilityHint': 'Toggle public / private listing in the market',

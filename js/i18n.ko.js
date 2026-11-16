@@ -207,6 +207,8 @@ R('ko', {
     'history.iconReview': '이 아이콘은 기준을 충족하지 않습니다. {deadline}까지 실제 이미지로 교체하지 않으면 앱이 마켓에서 제외됩니다.',
     'market.iconReview': '아이콘 교체 필요',
     'err.iconReviewExpired': '단색 아이콘 교체 기한이 지났습니다. 실제 이미지를 업로드할 때까지 마켓에 표시되지 않습니다.',
+    'err.iconRequired': '공개하려면 사용 가능한 아이콘이 필요합니다. 실제 디자인이 있는 이미지를 업로드한 후 다시 시도하세요.',
+    'config.iconRequiredNote': '아직 사용 가능한 아이콘이 없습니다. 실제 디자인이 있는 이미지를 업로드하세요. 마켓 공개에는 사용 가능한 아이콘이 필수입니다.',
     'history.visibilityPublic': '공개',
     'history.visibilityPrivate': '비공개',
     'history.visibilityHint': '마켓 공개/비공개 전환',

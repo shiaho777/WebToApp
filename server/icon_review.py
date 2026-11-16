@@ -1,9 +1,15 @@
-"""Seven-day grace for apps whose icon was a flat color.
+"""48-hour cure window for apps whose icon was a flat color.
 
-The public notice dated 2026-10-13 is the start of the clock for icons
-already removed. A flat icon found later gets seven days from the moment
-we notice it. When the deadline passes and there is still no usable icon,
-the app leaves the market. The download page stays up.
+Publishing itself is gated on a usable icon (see the visibility endpoint),
+so this window only applies to apps that were ALREADY public when their
+icon failed detection: they get 48 hours from the moment we notice it to
+upload a real picture. When the deadline passes and there is still no
+usable icon, the app leaves the market. The download page stays up.
+
+Historical note: the original 7-day grace was a transitional measure for
+the retroactive cleanup announced on 2026-10-13 (#145). That transition is
+over; new builds can no longer reach the market icon-less, and live apps
+now get 48 hours instead of a week (#232).
 """
 
 import tarfile
@@ -14,10 +20,10 @@ from pathlib import Path
 from server.engine.icon_quality import is_unusable_icon, strip_solid_icons
 from server.market_dedupe import unpublish_apps
 
-# Matches the announcement timeline. Apps that already lost a flat icon
-# share this start, so the date in the notice and the deadline agree.
+# Kept for the historical notice timeline; pre-notice apps are long past
+# any deadline under the 48h policy.
 NOTICE_AT = "2026-10-13T16:00:00Z"
-REVIEW_DAYS = 7
+REVIEW_HOURS = 48
 
 
 def _parse(iso: str) -> datetime:
@@ -29,8 +35,8 @@ def review_deadline_passed(deadline_at: str, now: datetime = None) -> bool:
     return moment >= _parse(deadline_at)
 
 
-def deadline_for(flagged_at: str, days: int = REVIEW_DAYS) -> str:
-    moment = _parse(flagged_at) + timedelta(days=days)
+def deadline_for(flagged_at: str, hours: int = REVIEW_HOURS) -> str:
+    moment = _parse(flagged_at) + timedelta(hours=hours)
     return moment.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
@@ -146,12 +152,31 @@ def enforce_icon_review_deadlines(history_store, apps_dir: Path, now: str = "") 
     return unpublish_apps(history_store, apps_dir, late)
 
 
+def shorten_open_reviews(history_store) -> int:
+    """Cap every open review at flagged_at + 48h (policy migration, #232).
+
+    Reviews opened under the old 7-day rule keep their flag time but lose
+    the extra days; already-overdue ones become enforceable on this sweep.
+    """
+    changed = 0
+    for app_id, review in history_store.open_icon_reviews().items():
+        try:
+            capped = deadline_for(review["flagged_at"])
+        except (TypeError, ValueError):
+            continue
+        if capped < review["deadline_at"]:
+            history_store.set_icon_review_deadline(app_id, capped)
+            changed += 1
+    return changed
+
+
 def run_icon_review_pass(history_store, apps_dir: Path, now: str = "") -> dict:
     stripped = strip_solid_icons(apps_dir)
     flagged = []
     for app_id in list(stripped) + find_packaged_solid_apps(apps_dir):
         if _flag(history_store, app_id):
             flagged.append(app_id)
+    shorten_open_reviews(history_store)
     unpublished = enforce_icon_review_deadlines(history_store, apps_dir, now=now)
     return {
         "stripped": stripped,
