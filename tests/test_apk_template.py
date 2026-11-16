@@ -44,13 +44,25 @@ def test_file_chooser_imports_present():
 
 
 def test_template_revision_is_bumped_slug():
-    # Any change to ACTIVITY_JAVA must come with a new TEMPLATE_REVISION or
-    # build hosts keep serving the cached (stale) template APK.
+    # The human-readable prefix keeps the date-slug convention...
     revision = ApkBuilder.TEMPLATE_REVISION
     parts = revision.split("-")
     assert len(parts) >= 4
     assert all(part.isdigit() for part in parts[:3])  # YYYY-MM-DD prefix
     assert parts[3]  # feature slug
+
+
+def test_effective_revision_tracks_template_content(monkeypatch):
+    # ...but the EFFECTIVE revision appends a content hash, so editing the
+    # Java/manifest can never silently serve a stale cached template (the
+    # old hand-bumped constant relied on developers remembering to bump it).
+    effective = ApkBuilder._template_revision()
+    assert effective.startswith(ApkBuilder.TEMPLATE_REVISION + "-")
+    assert len(effective.rsplit("-", 1)[-1]) == 12
+    monkeypatch.setattr("server.engine.apk_builder.ACTIVITY_JAVA", ACTIVITY_JAVA + "\n// touched")
+    changed = ApkBuilder._template_revision()
+    assert changed != effective
+    assert changed.startswith(ApkBuilder.TEMPLATE_REVISION + "-")
 
 
 def test_manifest_targets_current_sdk():

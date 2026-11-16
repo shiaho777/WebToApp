@@ -24,7 +24,9 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import hmac
+import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote, urlsplit
@@ -32,6 +34,7 @@ from urllib.parse import quote, urlsplit
 import httpx
 
 from server import config
+from server.logging_util import log_event
 
 
 _MEDIA_BY_EXT = {
@@ -267,17 +270,36 @@ class R2Storage:
 
         Returns a dict mapping filename -> public URL for the files that were
         successfully uploaded. Empty when storage is unconfigured.
+
+        Files upload in parallel with one retry each; a file that still fails
+        is logged and skipped — the URLs of its siblings are KEPT (the old
+        serial loop let one failure abort the batch and discard everything
+        already uploaded).
         """
         if not self.configured or not downloads_dir.exists():
             return {}
-        urls: dict = {}
-        for path in sorted(downloads_dir.iterdir()):
-            if not path.is_file():
-                continue
+        paths = [p for p in sorted(downloads_dir.iterdir()) if p.is_file()]
+        if not paths:
+            return {}
+
+        def _upload_one(path: Path) -> Tuple[str, Optional[str]]:
             key = f"{app_id}/downloads/{path.name}"
-            url = self.upload_file(path, key)
-            if url:
-                urls[path.name] = url
+            last_error: Optional[Exception] = None
+            for attempt in range(2):
+                try:
+                    return path.name, self.upload_file(path, key)
+                except Exception as exc:  # noqa: BLE001 - retry once, then skip
+                    last_error = exc
+                    if attempt == 0:
+                        time.sleep(0.5)
+            log_event("r2_upload_file_failed", app_id=app_id, file=path.name, error=str(last_error))
+            return path.name, None
+
+        urls: dict = {}
+        with ThreadPoolExecutor(max_workers=min(4, len(paths))) as pool:
+            for name, url in pool.map(_upload_one, paths):
+                if url:
+                    urls[name] = url
         return urls
 
     def delete_app(self, app_id: str) -> int:

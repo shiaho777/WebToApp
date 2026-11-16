@@ -464,10 +464,27 @@ def test_ttl_cache_initialization_hits_misses_expiry_eviction_and_stats(monkeypa
     assert stats == {
         "size": 1,
         "max_size": 1,
+        "bytes": 1,
+        "max_bytes": None,
         "ttl_seconds": 1.0,
         "hits": 1,
         "misses": 3,
     }
+
+
+def test_ttl_cache_byte_budget_evicts_largest_pressure(monkeypatch):
+    monkeypatch.setattr(cache_module.time, "time", lambda: 1.0)
+    cache = TTLCache(max_size=100, ttl_seconds=60, max_bytes=1000)
+    cache.set("a", b"x" * 600)
+    cache.set("b", b"y" * 300)
+    assert cache.get("a") is not None  # 900 bytes under budget; a becomes MRU
+    cache.set("c", b"z" * 200)  # 1100 > 1000 -> evict LRU (b) until it fits
+    assert cache.get("b") is None
+    assert cache.get("a") is not None
+    assert cache.get("c") is not None
+    stats = cache.stats()
+    assert stats["bytes"] == 800
+    assert stats["max_bytes"] == 1000
 
 
 def test_ttl_cache_positive_constructor_and_update_lru(monkeypatch):

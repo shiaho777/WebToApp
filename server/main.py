@@ -904,10 +904,14 @@ def _purge_orphan_keystores() -> int:
             pass
     return removed
 
+# R2 deletes that failed (network blip, 5xx) are retried on later sweeps —
+# otherwise the CDN keeps orphan objects forever with no compensation path.
+_r2_delete_retry_ids: set = set()
+_R2_DELETE_RETRY_CAP = 1000
+
+
 def _purge_expired_generated_apps() -> int:
     expired = history_store.list_expired_apps(_retention_cutoff_iso())
-    if not expired:
-        return 0
     removed_ids = []
     for item in expired:
         app_id = item["app_id"]
@@ -918,27 +922,30 @@ def _purge_expired_generated_apps() -> int:
             removed_ids.append(app_id)
         except Exception:
             continue
-    if not removed_ids:
-        return 0
-    history_store.purge_apps(removed_ids)
-    with _recipe_cache_lock:
-        for app_id in removed_ids:
-            _recipe_cache.pop(app_id, None)
-    keystore_removed = _purge_keystores_for_apps(removed_ids)
-    orphan_removed = _purge_orphan_keystores()
+    if removed_ids:
+        history_store.purge_apps(removed_ids)
+        with _recipe_cache_lock:
+            for app_id in removed_ids:
+                _recipe_cache.pop(app_id, None)
+        keystore_removed = _purge_keystores_for_apps(removed_ids)
+        orphan_removed = _purge_orphan_keystores()
+        log_event(
+            "retention_purged",
+            count=len(removed_ids),
+            app_ids=removed_ids[:10],
+            keystores_removed=keystore_removed,
+            orphan_keystores_removed=orphan_removed,
+        )
     if r2_storage.configured:
-        for app_id in removed_ids:
+        pending = list(_r2_delete_retry_ids) + removed_ids
+        _r2_delete_retry_ids.clear()
+        for app_id in pending:
             try:
                 r2_storage.delete_app(app_id)
             except Exception as exc:  # noqa: BLE001
+                if len(_r2_delete_retry_ids) < _R2_DELETE_RETRY_CAP:
+                    _r2_delete_retry_ids.add(app_id)
                 log_event("retention_r2_failed", app_id=app_id, error=str(exc))
-    log_event(
-        "retention_purged",
-        count=len(removed_ids),
-        app_ids=removed_ids[:10],
-        keystores_removed=keystore_removed,
-        orphan_keystores_removed=orphan_removed,
-    )
     return len(removed_ids)
 
 
