@@ -130,6 +130,14 @@ def html_cache_ttl_seconds() -> int:
         return 900
 
 
+def html_cache_max_bytes() -> int:
+    # Byte budget for the fetched-page cache (entries alone allowed ~512MB).
+    try:
+        return max(1024 * 1024, int(os.environ.get("HTML_CACHE_MAX_BYTES", "67108864").strip() or "67108864"))
+    except ValueError:
+        return 67108864
+
+
 def icon_fetch_timeout() -> float:
     try:
         return max(1.0, min(15.0, float(os.environ.get("ICON_FETCH_TIMEOUT", "4").strip() or "4")))

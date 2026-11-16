@@ -16,6 +16,7 @@ Fallback strategy:
 3. If all else fails, emit the legacy ZIP fallback package.
 """
 
+import hashlib
 import html
 import json
 import os
@@ -25,13 +26,16 @@ import shutil
 import struct
 import subprocess
 import tempfile
+import threading
 import zipfile
 import zlib
+from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import urlparse
 
 from server import config
 from server.engine import apk_v2_signer
+from server.logging_util import log_event
 
 
 class _AxmlPatcher:
@@ -1123,7 +1127,19 @@ class ApkBuilder:
     TEMPLATE_APP_NAME = "WebToApp Template"
     TEMPLATE_VERSION_CODE = 1
     TEMPLATE_VERSION_NAME = "1.0"
+    # Human-readable prefix; the effective revision appends a content hash
+    # (see _template_revision) so editing ACTIVITY_JAVA/MANIFEST_XML can never
+    # silently serve a stale cached template — the old hand-bumped constant
+    # relied on developers remembering to change it (AGENTS.md even documented
+    # a manual cache-delete workaround for exactly that failure mode).
     TEMPLATE_REVISION = "2026-09-03-exportbridge-1"
+
+    @classmethod
+    def _template_revision(cls) -> str:
+        digest = hashlib.sha256(
+            (ACTIVITY_JAVA + "\n" + MANIFEST_XML).encode("utf-8")
+        ).hexdigest()[:12]
+        return f"{cls.TEMPLATE_REVISION}-{digest}"
     # Keystore used only to sign the throwaway base *template* APK. The template
     # is always re-signed per-app afterwards, so this key never reaches users.
     TEMPLATE_KEY_ALIAS = "webtoapp"
@@ -1183,23 +1199,6 @@ class ApkBuilder:
                     return str(j)
         return None
 
-    def _find_apktool(self):
-        tool = shutil.which("apktool")
-        if tool:
-            return tool
-        jar = self._apktool_jar()
-        if jar and shutil.which("java"):
-            return f"java -jar {self._shell_quote(str(jar))}"
-        return None
-
-    def _apktool_jar(self):
-        jar = self.android_tools_dir / "apktool.jar"
-        return jar if jar.exists() else None
-
-    def _apksigner_jar(self):
-        jar = self.android_tools_dir / "apksigner.jar"
-        return jar if jar.exists() else None
-
     @property
     def can_build_apk(self):
         return self._can_patch_apk() and (self._template_apk_path().exists() or self._can_build_template())
@@ -1249,34 +1248,25 @@ class ApkBuilder:
                 raise RuntimeError("built APK failed alignment validation")
             return True
         except Exception as e:
-            print(f"[ApkBuilder] template build failed: {e}")
+            log_event("apk_build_failed", error=str(e))
             return False
 
     def _ensure_template_apk(self, icon_png=None):
         template_apk = self._template_apk_path()
         revision_file = self.template_dir / "template.revision"
+        revision = self._template_revision()
         current_revision = revision_file.read_text().strip() if revision_file.exists() else ""
-        if template_apk.exists() and current_revision == self.TEMPLATE_REVISION:
+        if template_apk.exists() and current_revision == revision:
             return template_apk
         if template_apk.exists():
             template_apk.unlink()
         built = self._build_base_template(template_apk, icon_png)
         if built and built.exists():
-            revision_file.write_text(self.TEMPLATE_REVISION)
+            revision_file.write_text(revision)
         return built if built and built.exists() else None
 
     def _template_apk_path(self):
         return self.template_dir / self.TEMPLATE_APK_NAME
-
-    def _seed_template_from_existing_generated(self, template_apk: Path):
-        generated_dir = self.root / "generated"
-        if not generated_dir.exists():
-            return None
-        for candidate in generated_dir.glob("*/downloads/android.apk"):
-            if candidate.is_file():
-                shutil.copy(candidate, template_apk)
-                return template_apk
-        return None
 
     def _build_base_template(self, template_apk: Path, icon_png=None):
         aapt2_candidates = self._find_tools("aapt2")
@@ -1492,9 +1482,32 @@ class ApkBuilder:
             capture_output=True,
         )
 
+    # Signing material only depends on the keystore, which is stable across
+    # rebuilds of the same app. The export used to fork 6-7 openssl processes
+    # per build; cache the DER bytes + PEM texts in memory (bounded LRU) and
+    # just re-materialize the two PEM files into the caller's tmp dir.
+    # Deliberately NO plaintext key cache on disk — memory only, keyed by the
+    # keystore's content identity so a rotated key invalidates automatically.
+    _SIGNING_MATERIAL_CACHE_MAX = 256
+    _signing_material_cache: "OrderedDict[tuple, tuple]" = OrderedDict()
+    _signing_material_lock = threading.Lock()
+
     def _export_signing_material(self, keystore: Path, password: str, alias: str, tmp: Path):
         """Export (key_pem, cert_pem, key_der, cert_der, pubkey_der) from a
         PKCS12 keystore so our custom v1/v2/v3 signer (openssl-based) can use it."""
+        stat = keystore.stat()
+        cache_key = (str(keystore), stat.st_mtime_ns, stat.st_size, password, alias)
+        with self._signing_material_lock:
+            cached = self._signing_material_cache.get(cache_key)
+            if cached is not None:
+                self._signing_material_cache.move_to_end(cache_key)
+        if cached is not None:
+            key_pem_text, cert_pem_text, key_der, cert_der, pub_der = cached
+            key_pem = tmp / "key.pem"
+            cert_pem = tmp / "cert.pem"
+            key_pem.write_text(key_pem_text)
+            cert_pem.write_text(cert_pem_text)
+            return key_pem, cert_pem, key_der, cert_der, pub_der
         p12 = tmp / "ks.p12"
         shutil.copy(keystore, p12)
         key_pem = tmp / "key.pem"
@@ -1526,7 +1539,18 @@ class ApkBuilder:
         if res.returncode != 0:
             subprocess.run(["openssl", "pkey", "-pubin", "-in", str(tmp / "pub.pem"),
                             "-outform", "DER", "-out", str(pub_der)], check=True, capture_output=True)
-        return key_pem, cert_pem, key_der.read_bytes(), cert_der.read_bytes(), pub_der.read_bytes()
+        key_der_bytes = key_der.read_bytes()
+        cert_der_bytes = cert_der.read_bytes()
+        pub_der_bytes = pub_der.read_bytes()
+        with self._signing_material_lock:
+            self._signing_material_cache[cache_key] = (
+                key_pem.read_text(), cert_pem.read_text(),
+                key_der_bytes, cert_der_bytes, pub_der_bytes,
+            )
+            self._signing_material_cache.move_to_end(cache_key)
+            while len(self._signing_material_cache) > self._SIGNING_MATERIAL_CACHE_MAX:
+                self._signing_material_cache.popitem(last=False)
+        return key_pem, cert_pem, key_der_bytes, cert_der_bytes, pub_der_bytes
 
     def _patch_template_apk(self, template_apk: Path, output: Path, url: str, name: str, pkg: str, icon_png, version_code: int, version_name: str, feature_options: dict, app_id: str = None):
         """Produce a per-app APK by copying the cached template and patching it
@@ -1796,57 +1820,4 @@ class ApkBuilder:
         iend_chunk = struct.pack(">I", 0) + b"IEND" + struct.pack(">I", zlib.crc32(b"IEND"))
         return b"\x89PNG\r\n\x1a\n" + ihdr_chunk + idat_chunk + iend_chunk
 
-    def _xml_escape(self, text: str) -> str:
-        return (
-            text.replace("&", "&amp;")
-            .replace('"', "&quot;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
 
-    def _set_manifest_attr(self, manifest_text: str, attr_name: str, attr_value: str) -> str:
-        attr_pattern = rf'{re.escape(attr_name)}="[^"]*"'
-        if re.search(attr_pattern, manifest_text):
-            return re.sub(attr_pattern, f'{attr_name}="{self._xml_escape(attr_value)}"', manifest_text, count=1)
-        manifest_open = re.search(r"<manifest\b", manifest_text)
-        if not manifest_open:
-            return manifest_text
-        insert_at = manifest_text.find(">", manifest_open.start())
-        if insert_at == -1:
-            return manifest_text
-        return (
-            manifest_text[:insert_at]
-            + f' {attr_name}="{self._xml_escape(attr_value)}"'
-            + manifest_text[insert_at:]
-        )
-
-    def _run_tool(self, tool, args):
-        if tool.startswith("java -jar "):
-            jar = tool[len("java -jar "):].strip("'")
-            subprocess.run(["java", "-jar", jar] + args, check=True, capture_output=True)
-            return
-        subprocess.run([tool] + args, check=True, capture_output=True)
-
-    def _sign_apk(self, apk_path: Path, keystore: Path, apksigner: str, apksigner_jar: Path, password: str = None, alias: str = None):
-        base_args = [
-            "sign",
-            "--ks",
-            str(keystore),
-            "--ks-pass",
-            f"pass:{password if password is not None else config.android_template_keystore_password()}",
-            "--key-pass",
-            f"pass:{password if password is not None else config.android_template_keystore_password()}",
-            "--ks-key-alias",
-            alias if alias is not None else self.TEMPLATE_KEY_ALIAS,
-            str(apk_path),
-        ]
-        if apksigner:
-            subprocess.run([apksigner] + base_args, check=True, capture_output=True)
-            return
-        if apksigner_jar and shutil.which("java"):
-            subprocess.run(["java", "-jar", str(apksigner_jar)] + base_args, check=True, capture_output=True)
-            return
-        raise RuntimeError("No apksigner available")
-
-    def _shell_quote(self, value: str) -> str:
-        return value.replace("'", "'\"'\"'")

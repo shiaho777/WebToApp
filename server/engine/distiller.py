@@ -22,6 +22,7 @@ from typing import Callable, Optional
 from urllib.parse import urlparse, urljoin
 from PIL import Image, ImageOps, UnidentifiedImageError
 from server import config
+from server.logging_util import log_event
 from server.engine.apk_builder import ApkBuilder
 from server.engine import mobileconfig_signer
 from server.engine.cache import html_cache, icon_cache, icon_miss_cache
@@ -358,7 +359,10 @@ class Distiller:
                     Image.Resampling.LANCZOS,
                 )
             out = io.BytesIO()
-            work.save(out, format="WEBP", quality=quality, method=6)
+            # method=4: ~3-5x faster than the slowest setting (method=6) for a
+            # negligible size delta at q90; the retry loop can run up to 5
+            # passes per image, so the encoder speed compounds.
+            work.save(out, format="WEBP", quality=quality, method=4)
             blob = out.getvalue()
             if len(blob) <= self.ABOUT_IMAGE_LIMIT:
                 return blob
@@ -639,13 +643,15 @@ class Distiller:
 
     def _upload_downloads_to_cdn(self, app_id: str, downloads_dir: Path) -> dict:
         """Push every file in ``downloads/`` to R2. Failures are non-fatal:
-        we keep the local files so the endpoint can still serve via FileResponse."""
+        we keep the local files so the endpoint can still serve via
+        FileResponse. Per-file failures inside upload_app_downloads no longer
+        discard the URLs that DID upload — partial results are kept."""
         if not r2_storage.configured:
             return {}
         try:
             return r2_storage.upload_app_downloads(app_id, downloads_dir)
         except Exception as exc:  # noqa: BLE001 - network/storage errors are non-fatal
-            print(f"[Storage] R2 upload failed for {app_id}: {exc}")
+            log_event("cdn_upload_failed", app_id=app_id, error=str(exc))
             return {}
 
     # ===== Icon Fetching =====
@@ -867,6 +873,11 @@ class Distiller:
             size = max((int(n) for n in nums), default=0)
             yield size, urljoin(manifest_url, src)
 
+    # _normalize_to_png caps every candidate at a 512px canvas, so a usable
+    # 512px icon is the maximum achievable quality — nothing left in flight
+    # can beat it.
+    ICON_PERFECT_DIM = 512
+
     def _choose_best_icon(self, candidate_urls):
         best_png = None
         best_dim = 0
@@ -886,16 +897,20 @@ class Distiller:
                 return None
             return png, self._png_dimension(png), url
 
-        # Wait on the whole batch, not a "good-enough" early exit: candidate
-        # priority already encodes which source is likely best, so racing
-        # completion-by-size made a fast 96px ico beat a slow 512px
-        # apple-touch-icon whenever the smaller one landed first. The full
-        # batch runs in parallel anyway, so total latency = the slowest
-        # candidate (bounded by the per-request timeout) — and accepting a
-        # strict-excellent icon instead of merely good one is worth ~100ms.
+        # No "good-enough" racing: candidate priority encodes which source is
+        # likely best, and completion-by-size made a fast 96px ico beat a slow
+        # 512px apple-touch-icon. But once a PERFECT (512px, non-solid) icon is
+        # in hand nothing can beat it — stop waiting on the slow tail (often
+        # third-party favicon services) instead of paying the slowest timeout.
         workers = max(1, min(6, len(urls)))
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            for result in pool.map(fetch_one, urls):
+        pool = ThreadPoolExecutor(max_workers=workers)
+        futures = [pool.submit(fetch_one, url) for url in urls]
+        try:
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                except Exception:  # noqa: BLE001 - one bad candidate must not sink the sweep
+                    continue
                 if not result:
                     continue
                 png, dim, _url = result
@@ -905,6 +920,10 @@ class Distiller:
                 if dim > best_dim:
                     best_dim = dim
                     best_png = png
+                if best_dim >= self.ICON_PERFECT_DIM:
+                    break
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
         return best_png, saw_solid
 
     def _png_dimension(self, png_data):
