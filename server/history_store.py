@@ -863,21 +863,38 @@ class HistoryStore:
             return True
 
     def list_public_apps(self, tag: Optional[str] = None, search: Optional[str] = None,
-                         sort: str = "downloads", limit: int = 60,
-                         apps_dir: Optional[Path] = None) -> List[dict]:
+                         sort: str = "downloads", limit: Optional[int] = 60,
+                         apps_dir: Optional[Path] = None, offset: int = 0) -> List[dict]:
         """Market listing: public apps only, with visit/download stats.
         sort: downloads | visits | newest. ``apps_dir`` enables per-app
-        icon.png probing so cards get icon_url like the device history list."""
+        icon.png probing so cards get icon_url like the device history list.
+
+        One LEFT JOIN replaces the old per-row visits SELECT (N+1), and
+        download totals are summed in SQL via json_each. ``limit=None``
+        returns the full filtered set — the market endpoint needs it to
+        search/sort across ALL public apps, not just the newest page.
+        """
         with self._lock:
             self._flush_visits_locked()
-            rows = self._conn.execute("SELECT * FROM apps WHERE visibility = 'public'").fetchall()
+            rows = self._conn.execute(
+                """
+                SELECT a.*,
+                       COALESCE(v.total, 0) AS visit_total,
+                       COALESCE((
+                           SELECT SUM(CAST(j.value AS INTEGER))
+                           FROM json_each(COALESCE(v.downloads_json, '{}')) AS j
+                           WHERE j.type IN ('integer', 'real')
+                       ), 0) AS download_total
+                FROM apps AS a
+                LEFT JOIN visits AS v ON v.app_id = a.app_id
+                WHERE a.visibility = 'public'
+                """
+            ).fetchall()
             items = []
             for row in rows:
                 snapshot = self._app_row_to_snapshot(row)
-                visits = self._conn.execute("SELECT * FROM visits WHERE app_id = ?", (row["app_id"],)).fetchone()
-                stats = self._visit_row_to_stats(visits)
-                snapshot["visit_count"] = stats["total"]
-                snapshot["download_count"] = sum(int(v or 0) for v in (stats.get("downloads") or {}).values())
+                snapshot["visit_count"] = int(row["visit_total"] or 0)
+                snapshot["download_count"] = int(row["download_total"] or 0)
                 snapshot["created_at"] = row["created_at"]
                 if apps_dir is not None:
                     icon_path = Path(apps_dir) / row["app_id"] / "icon.png"
@@ -894,7 +911,10 @@ class HistoryStore:
             "newest": lambda i: i.get("created_at") or "",
         }.get(sort) or (lambda i: i.get("created_at") or "")
         items.sort(key=sort_key, reverse=True)
-        return items[:limit]
+        start = max(0, int(offset or 0))
+        if limit is None:
+            return items[start:]
+        return items[start:start + max(0, int(limit))]
 
     def list_expired_apps(self, cutoff_iso: str) -> List[dict]:
         cutoff = _parse_utc(cutoff_iso)
@@ -973,19 +993,15 @@ class HistoryStore:
         with self._lock:
             self._flush_visits_locked()
             row = self._conn.execute(
-                "SELECT COALESCE(SUM(landing + install + pwa + launch), 0) AS views FROM visits"
+                """
+                SELECT
+                    COALESCE(SUM(landing + install + pwa + launch), 0) AS views,
+                    COALESCE((
+                        SELECT SUM(CAST(j.value AS INTEGER))
+                        FROM visits AS v2, json_each(COALESCE(v2.downloads_json, '{}')) AS j
+                        WHERE j.type IN ('integer', 'real')
+                    ), 0) AS downloads
+                FROM visits
+                """
             ).fetchone()
-            views = int(row["views"] or 0)
-            downloads = 0
-            for (blob,) in self._conn.execute("SELECT downloads_json FROM visits"):
-                try:
-                    data = json.loads(blob or "{}")
-                except Exception:
-                    continue
-                if isinstance(data, dict):
-                    downloads += sum(
-                        int(value or 0)
-                        for value in data.values()
-                        if isinstance(value, (int, float))
-                    )
-            return {"views": views, "downloads": downloads}
+            return {"views": int(row["views"] or 0), "downloads": int(row["downloads"] or 0)}

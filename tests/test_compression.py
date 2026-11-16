@@ -1,6 +1,8 @@
 """Regression guards for the selective gzip middleware (issue #161)."""
 
+import gzip
 import unittest
+from unittest.mock import patch
 
 from starlette.applications import Starlette
 from starlette.responses import Response, StreamingResponse
@@ -180,6 +182,41 @@ class AppWiringTests(unittest.TestCase):
         r = self.client.get("/css/style.css", headers={"Accept-Encoding": "gzip"})
         with open(main.ROOT / "css" / "style.css", "rb") as handle:
             self.assertEqual(r.content, handle.read())
+
+
+class GzipResultCacheTests(unittest.TestCase):
+    """issue #224: identical bodies reuse one gzip result instead of
+    re-compressing at level 6 on every request."""
+
+    def setUp(self):
+        from server import compression
+        self.compression = compression
+        with compression._gzip_cache_lock:
+            compression._gzip_cache.clear()
+            compression._gzip_cache_bytes = 0
+
+    def test_identical_body_compresses_once(self):
+        with patch.object(self.compression.gzip, "compress", wraps=gzip.compress) as spy:
+            first = self.compression._gzip_cached(TEXT, 6)
+            second = self.compression._gzip_cached(TEXT, 6)
+        self.assertEqual(first, second)
+        self.assertEqual(gzip.decompress(first), TEXT)
+        self.assertEqual(spy.call_count, 1)
+
+    def test_cache_evicts_past_byte_budget(self):
+        original_budget = self.compression._GZIP_CACHE_MAX_BYTES
+        # Each compressed entry is ~60 bytes; a 200-byte budget keeps a few
+        # and must evict the rest (8 distinct bodies would exceed it).
+        self.compression._GZIP_CACHE_MAX_BYTES = 200
+        try:
+            for index in range(8):
+                self.compression._gzip_cached(TEXT + bytes([index]), 6)
+            with self.compression._gzip_cache_lock:
+                self.assertLessEqual(self.compression._gzip_cache_bytes, 200)
+                self.assertGreater(len(self.compression._gzip_cache), 0)
+                self.assertLess(len(self.compression._gzip_cache), 8)
+        finally:
+            self.compression._GZIP_CACHE_MAX_BYTES = original_budget
 
 
 if __name__ == "__main__":
