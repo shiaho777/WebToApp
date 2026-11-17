@@ -201,7 +201,51 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261116-notice1", html)
+        self.assertIn("js/announcements.js?v=20261118-notice1", html)
+
+    ANTI_ABUSE_TITLES = {
+        "en": "Staying fast and free: new anti-abuse defenses",
+        "zh": "更快更稳的免费服务：反滥用加固上线",
+        "ja": "速さと無料を守る：不正利用対策を強化",
+        "ko": "빠르고 무료로 유지: 악용 방지 강화",
+        "ar": "أسرع ومجاني دائماً: دفاعات جديدة ضد إساءة الاستخدام",
+        "ru": "Быстро и бесплатно: новая защита от злоупотреблений",
+        "es": "Rápido y gratis: nuevas defensas contra el abuso",
+        "pt": "Rápido e grátis: novas defesas contra abuso",
+        "fr": "Rapide et gratuit : nouvelles défenses anti-abus",
+        "de": "Schnell und kostenlos: neue Schutzmaßnahmen gegen Missbrauch",
+    }
+
+    def test_anti_abuse_notice_is_newest_and_translated(self):
+        src = _read("js/announcements.js")
+        self.assertIn("2026-11-18-anti-abuse", src)
+        self.assertIn("2026-11-18T01:30:00Z", src)
+        self.assertLess(
+            src.index("2026-11-18-anti-abuse"),
+            src.index("2026-11-16-speed-and-icons"),
+        )
+        for lang, title in self.ANTI_ABUSE_TITLES.items():
+            self.assertIn(f'"{lang}": "{title}"', src, lang)
+
+    def test_anti_abuse_notice_covers_the_defenses(self):
+        src = _read("js/announcements.js")
+        block = src[
+            src.index('"id": "2026-11-18-anti-abuse"'):
+            src.index('"id": "2026-11-16-speed-and-icons"')
+        ]
+        for marker in (
+            "invisible proof-of-work",
+            "72 hours",
+            "no accounts and no captchas",
+            "per IP per day",
+            "72 小时",
+            "无账号、无验证码",
+        ):
+            self.assertIn(marker, block)
+        for lang in ("en", "zh", "ja", "ko", "ar", "ru", "es", "pt", "fr", "de"):
+            match = re.search(rf'"{lang}": \[\n(.*?)\n\s+\]', block, re.S)
+            self.assertIsNotNone(match, lang)
+            self.assertEqual(len(re.findall(r'^\s+"', match.group(1), re.M)), 6, lang)
 
 
 class FrontendResilienceTests(unittest.TestCase):
