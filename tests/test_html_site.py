@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import tempfile
 import unittest
 import zipfile
@@ -340,6 +341,10 @@ class HtmlAppEndpointTests(unittest.TestCase):
         from server import main
 
         self.main = main
+        # These tests exercise legacy same-origin serving; since #238 that
+        # mode requires an explicit opt-in (default is fail-closed 503).
+        self._env = patch.dict(os.environ, {"SITE_ALLOW_SAME_ORIGIN": "1"})
+        self._env.start()
         self.client = TestClient(main.app)
         self.tmp = Path(tempfile.mkdtemp())
         self._apps_dir = main.APPS_DIR
@@ -350,6 +355,7 @@ class HtmlAppEndpointTests(unittest.TestCase):
     def tearDown(self):
         self.main.APPS_DIR = self._apps_dir
         self.main.distill_rate_limiter.allow = self._allow
+        self._env.stop()
 
     def test_analyze_html_endpoint(self):
         resp = self.client.post(

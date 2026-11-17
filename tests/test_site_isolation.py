@@ -69,14 +69,25 @@ class ServeAppSiteIsolationTests(unittest.TestCase):
             )
         self.assertEqual(resp.status_code, 404)
 
-    def test_no_redirect_when_unconfigured(self):
-        with mock.patch.dict(os.environ, {"SITE_PUBLIC_BASE_URL": ""}):
+    def test_unconfigured_fails_closed(self):
+        # #238: without an isolated origin, serving uploaded content is
+        # refused outright (503) instead of running same-origin with the API.
+        with mock.patch.dict(os.environ, {"SITE_PUBLIC_BASE_URL": "", "SITE_ALLOW_SAME_ORIGIN": ""}):
             resp = self.client.get(
                 "/a/nonexistent/site/index.html",
                 headers={"Host": ORIGIN},
                 follow_redirects=False,
             )
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.status_code, 503)
+
+    def test_unconfigured_with_explicit_opt_in_serves_legacy(self):
+        with mock.patch.dict(os.environ, {"SITE_PUBLIC_BASE_URL": "", "SITE_ALLOW_SAME_ORIGIN": "1"}):
+            resp = self.client.get(
+                "/a/nonexistent/site/index.html",
+                headers={"Host": ORIGIN},
+                follow_redirects=False,
+            )
+        self.assertEqual(resp.status_code, 404)  # reached serving logic
 
     def test_gateway_key_bypasses_redirect(self):
         env = {"SITE_PUBLIC_BASE_URL": SANDBOX, "SITE_ORIGIN_KEY": "s3cret"}

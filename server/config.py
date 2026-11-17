@@ -242,6 +242,16 @@ def site_public_base_url() -> str:
     return os.environ.get("SITE_PUBLIC_BASE_URL", "").strip().rstrip("/")
 
 
+def site_allow_same_origin() -> bool:
+    """Explicit opt-in to legacy same-origin hosting of uploaded HTML (#238).
+
+    Without SITE_PUBLIC_BASE_URL, serving uploaded pages from the API origin
+    lets their JS read the device-fingerprint cookie and localStorage edit
+    tokens. Serving now fails closed (503) unless this flag is set to 1.
+    """
+    return os.environ.get("SITE_ALLOW_SAME_ORIGIN", "").strip() == "1"
+
+
 def site_origin_key() -> str:
     """Shared secret that lets the site gateway skip the sandbox redirect.
 
