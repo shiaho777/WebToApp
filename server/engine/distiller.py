@@ -192,7 +192,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v9-korean -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v10-report -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")
@@ -1372,6 +1372,9 @@ a{{color:inherit;text-decoration:none}}
 .comment-body{{margin:6px 0 0 40px;font-size:.9rem;line-height:1.65;word-break:break-word}}
 .comment-del{{flex:none;background:none;border:none;color:var(--ink-soft);font-size:.75rem;cursor:pointer;text-decoration:underline}}
 .comments-empty{{color:var(--ink-soft);font-size:.9rem}}
+.report-wrap{{margin-top:18px;text-align:right}}
+.report-link{{background:none;border:none;color:var(--ink-soft);font-size:.8rem;cursor:pointer;text-decoration:underline;padding:4px}}
+.report-link:hover{{color:var(--danger)}}
 </style>
 </head>
 <body>
@@ -1440,13 +1443,14 @@ a{{color:inherit;text-decoration:none}}
         </form>
         <div id="comments-list"></div>
       </div>
+      <div class="report-wrap"><button type="button" id="report-app" class="report-link"></button></div>
     </section>
   </main>
 </div>
 <script>{script_body}</script>
 <script src="/js/ui.js?v=20261104-ui3"></script>
 <script src="/js/mdmini.js"></script>
-<script src="/js/community.js?v=20261106-ko1"></script>
+<script src="/js/community.js?v=20261118-report1"></script>
 </body>
 </html>"""
         return html

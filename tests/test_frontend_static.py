@@ -665,7 +665,7 @@ class StreamingFirstLoadTests(unittest.TestCase):
 
     def test_streaming_assets_are_cache_busted(self):
         self.assertIn("css/style.css?v=20261116-icon1", self.html)
-        self.assertIn("js/app.v5.js?v=20261116-icon1", self.html)
+        self.assertIn("js/app.v5.js?v=20261118-report1", self.html)
 
     def test_icon_publish_gate_is_wired(self):
         # issue #232: publishing requires a usable icon; the warning lives at

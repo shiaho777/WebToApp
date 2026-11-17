@@ -843,6 +843,9 @@ import_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl
 analyze_rate_limiter = IPRateLimiter(max_requests=20, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
 # Comments are unauthenticated (fingerprint identity) — cap writes.
 comment_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
+# Abuse reports are unauthenticated too — cap them so the queue can't be
+# flooded (#240).
+report_rate_limiter = IPRateLimiter(max_requests=5, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
 retention_task = None
 
 
@@ -1862,6 +1865,62 @@ def delete_comment(comment_id: int, request: Request):
     if result == "forbidden":
         raise HTTPException(403, "Not your comment")
     return {"deleted": True, "id": comment_id}
+
+
+# --- Abuse reports & admin takedown (#240) ---
+class ReportPayload(BaseModel):
+    reason: str = ""
+
+
+@app.post("/api/apps/{app_id}/report")
+async def report_app(app_id: str, payload: ReportPayload, request: Request):
+    """Public abuse report. No account needed; rate-limited per IP. The
+    report is queued for admin review — it does not auto-unpublish."""
+    if not await report_rate_limiter.allow(_client_ip(request)):
+        raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
+    if not (APPS_DIR / app_id / "recipe.json").exists():
+        raise HTTPException(404, "App not found")
+    reason = str(payload.reason or "").strip()
+    if not reason:
+        raise HTTPException(422, "reason_required")
+    fp = _device_fingerprint(request) or ""
+    try:
+        report = await asyncio.to_thread(community_store.add_report, app_id, fp, reason)
+    except ValueError:
+        raise HTTPException(422, "reason_required")
+    log_event("app_reported", app_id=app_id, report_id=report["id"])
+    return {"reported": True, "id": report["id"]}
+
+
+@app.get("/api/admin/reports")
+def admin_list_reports(request: Request, status: str = "open", limit: int = 200):
+    if not _admin_authorized(request):
+        raise HTTPException(403, "Admin token required")
+    status = status if status in ("open", "resolved", "all") else "open"
+    reports = community_store.list_reports(status=None if status == "all" else status, limit=limit)
+    return {"reports": reports, "status": status}
+
+
+@app.post("/api/admin/apps/{app_id}/takedown")
+def admin_takedown_app(app_id: str, request: Request):
+    """Unpublish an app (market removal, download page stays) and resolve
+    its open reports. Audit-logged. Requires the admin token."""
+    if not _admin_authorized(request):
+        raise HTTPException(403, "Admin token required")
+    recipe_path = APPS_DIR / app_id / "recipe.json"
+    if not recipe_path.exists():
+        raise HTTPException(404, "App not found")
+    if not history_store.set_app_visibility(app_id, "private"):
+        raise HTTPException(500, "Update failed")
+    try:
+        stored = json.loads(recipe_path.read_text())
+        stored["visibility"] = "private"
+        recipe_path.write_text(json.dumps(stored, ensure_ascii=False))
+    except Exception:
+        pass
+    resolved = community_store.resolve_reports(app_id)
+    log_event("admin_takedown", app_id=app_id, resolved_reports=resolved)
+    return {"taken_down": True, "app_id": app_id, "resolved_reports": resolved}
 
 
 @app.post("/api/history/{app_id}/visibility")

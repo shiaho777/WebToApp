@@ -72,6 +72,17 @@ class CommunityStore:
                     created_at TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS idx_comments_app ON comments(app_id);
+                CREATE TABLE IF NOT EXISTS app_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    app_id TEXT NOT NULL,
+                    fp TEXT NOT NULL DEFAULT '',
+                    reason TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'open',
+                    created_at TEXT NOT NULL,
+                    resolved_at TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_reports_app ON app_reports(app_id);
+                CREATE INDEX IF NOT EXISTS idx_reports_status ON app_reports(status);
                 """
             )
 
@@ -333,6 +344,61 @@ class CommunityStore:
                 ids,
             ).fetchall()
             return {r["app_id"]: {"avg": round(float(r["avg_r"]), 2), "count": int(r["cnt"])} for r in rows}
+
+    # ---------- abuse reports (#240) ----------
+
+    MAX_REPORT_LEN = 1000
+
+    def add_report(self, app_id: str, fp: str, reason: str) -> dict:
+        """Record an abuse report. Anyone may report; the fingerprint is
+        stored for dedup/audit but never exposed publicly."""
+        app_id = str(app_id or "").strip()
+        reason = str(reason or "").strip()[: self.MAX_REPORT_LEN]
+        if not app_id or not reason:
+            raise ValueError("app_id and reason are required")
+        now = _utc_now()
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO app_reports(app_id, fp, reason, status, created_at) VALUES (?, ?, ?, 'open', ?)",
+                (app_id, str(fp or ""), reason, now),
+            )
+            return {"id": cur.lastrowid, "app_id": app_id, "created_at": now}
+
+    def list_reports(self, status: Optional[str] = "open", limit: int = 200) -> List[dict]:
+        """Admin view: newest reports first, with the public app name."""
+        with self._lock:
+            if status:
+                rows = self._conn.execute(
+                    "SELECT * FROM app_reports WHERE status = ? ORDER BY id DESC LIMIT ?",
+                    (status, int(limit)),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM app_reports ORDER BY id DESC LIMIT ?", (int(limit),)
+                ).fetchall()
+            return [
+                {
+                    "id": r["id"],
+                    "app_id": r["app_id"],
+                    "reason": r["reason"],
+                    "status": r["status"],
+                    "created_at": r["created_at"],
+                    "resolved_at": r["resolved_at"],
+                }
+                for r in rows
+            ]
+
+    def resolve_reports(self, app_id: str) -> int:
+        """Mark every open report for an app resolved (after takedown)."""
+        app_id = str(app_id or "").strip()
+        if not app_id:
+            return 0
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE app_reports SET status = 'resolved', resolved_at = ? WHERE app_id = ? AND status = 'open'",
+                (_utc_now(), app_id),
+            )
+            return cur.rowcount
 
     # ---------- backfill ----------
 
