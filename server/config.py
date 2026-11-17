@@ -330,6 +330,66 @@ def r2_configured() -> bool:
 #   CLOUDFLARE_API_TOKEN  Scoped token with "Zone Cache Purge" permission
 #   CLOUDFLARE_ZONE_ID    Target zone ID
 
+# --- Resource-exhaustion defenses (#242) ---
+# Identity-independent throughput budgets: fingerprints are client-minted
+# and IPs rotate, so the real ceiling is total system load, not per-identity
+# counts. All caps are env-tunable; 0 disables a given budget.
+
+def global_build_budget_per_hour() -> int:
+    """Max build submissions per hour across ALL identities (default 240)."""
+    try:
+        return max(0, int(os.environ.get("GLOBAL_BUILD_BUDGET_PER_HOUR", "240").strip() or "240"))
+    except ValueError:
+        return 240
+
+
+def ip_daily_build_cap() -> int:
+    """Max build submissions per IP per rolling 24h (default 60)."""
+    try:
+        return max(0, int(os.environ.get("IP_DAILY_BUILD_CAP", "60").strip() or "60"))
+    except ValueError:
+        return 60
+
+
+def url_daily_build_cap() -> int:
+    """Max distinct builds per normalized target URL per rolling 24h
+    (default 5) — stops name-variation副本 farming of the same site."""
+    try:
+        return max(0, int(os.environ.get("URL_DAILY_BUILD_CAP", "5").strip() or "5"))
+    except ValueError:
+        return 5
+
+
+def zero_signal_retention_hours() -> int:
+    """Private apps with zero visits AND zero downloads are reclaimed after
+    this many hours (default 72) instead of the 30-day inactivity window.
+    Real creators open their own download page within minutes; abuse junk
+    never gets a single hit. 0 disables fast reclaim."""
+    try:
+        return max(0, int(os.environ.get("ZERO_SIGNAL_RETENTION_HOURS", "72").strip() or "72"))
+    except ValueError:
+        return 72
+
+
+def generated_disk_budget_mb() -> int:
+    """Soft disk budget for generated/ in MB (default 2048). Over budget:
+    zero-signal apps are purged oldest-first regardless of age, and HTML
+    uploads are paused until usage drops back under the budget."""
+    try:
+        return max(0, int(os.environ.get("GENERATED_DISK_BUDGET_MB", "2048").strip() or "2048"))
+    except ValueError:
+        return 2048
+
+
+def tool_timeout_seconds() -> int:
+    """Wall-clock cap for every toolchain subprocess (aapt2/d8/javac/openssl/
+    keytool/apksigner/zipalign). Prevents a hung tool from pinning a worker."""
+    try:
+        return max(10, int(os.environ.get("TOOL_TIMEOUT_SECONDS", "180").strip() or "180"))
+    except ValueError:
+        return 180
+
+
 def cloudflare_api_token() -> str:
     return os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
 

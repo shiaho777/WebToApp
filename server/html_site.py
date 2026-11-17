@@ -12,6 +12,7 @@ written to disk.
 import base64
 import hashlib
 import io
+import os
 import re
 import shutil
 import tempfile
@@ -295,12 +296,77 @@ def stage_html_app(data: bytes, filename: str, name: str, apps_dir: Path) -> dic
         if site_dir.exists():
             shutil.rmtree(site_dir)
         site_dir.parent.mkdir(parents=True, exist_ok=True)
-        probe.replace(site_dir)
+        # Content dedup (#242): app_id = hash(content:name), so renaming the
+        # same bundle used to store a full second copy. Hardlink from an
+        # existing identical-content site instead — one inode, N apps. Files
+        # are never modified in place (rebuilds rmtree + re-stage), so links
+        # are safe; cross-device or permission failures fall back to rename.
+        donor = _find_content_donor(apps_dir, info["content_hash"], app_id)
+        if donor is not None and _hardlink_tree(donor, site_dir):
+            shutil.rmtree(probe, ignore_errors=True)
+        else:
+            probe.replace(site_dir)
         info.update({"app_id": app_id, "name": clean_name, "site_dir": site_dir})
         return info
     except Exception:
         shutil.rmtree(probe, ignore_errors=True)
         raise
+
+
+def _content_hash_of_site(site_dir: Path) -> str:
+    try:
+        names = sorted(
+            p.relative_to(site_dir).as_posix()
+            for p in site_dir.rglob("*") if p.is_file()
+        )
+        if not names:
+            return ""
+        return _hash_files(site_dir, names)
+    except (OSError, HtmlUploadError):
+        return ""
+
+
+def _find_content_donor(apps_dir: Path, content_hash: str, exclude_app_id: str) -> Optional[Path]:
+    """An existing staged site with identical content (newest first)."""
+    if not content_hash:
+        return None
+    candidates = []
+    try:
+        for app_dir in apps_dir.iterdir():
+            if not app_dir.is_dir() or app_dir.name.startswith((".", "_")):
+                continue
+            if app_dir.name == exclude_app_id:
+                continue
+            site = app_dir / "site"
+            if site.is_dir():
+                candidates.append(site)
+    except OSError:
+        return None
+    candidates.sort(key=lambda p: p.stat().st_mtime_ns if p.exists() else 0, reverse=True)
+    for site in candidates[:32]:  # bounded scan; dedup is best-effort
+        if _content_hash_of_site(site) == content_hash:
+            return site
+    return None
+
+
+def _hardlink_tree(src: Path, dest: Path) -> bool:
+    """Recreate src's tree at dest using hardlinks. All-or-nothing: on any
+    failure the partial dest is removed and False returned (caller falls
+    back to a normal rename of the freshly extracted probe)."""
+    try:
+        dest.mkdir(parents=True, exist_ok=False)
+        for path in sorted(src.rglob("*")):
+            rel = path.relative_to(src)
+            target = dest / rel
+            if path.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+            elif path.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                os.link(path, target)
+        return True
+    except OSError:
+        shutil.rmtree(dest, ignore_errors=True)
+        return False
 
 
 _VIEWPORT_META_RE = re.compile(

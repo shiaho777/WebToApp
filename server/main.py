@@ -846,6 +846,58 @@ comment_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_tt
 # Abuse reports are unauthenticated too — cap them so the queue can't be
 # flooded (#240).
 report_rate_limiter = IPRateLimiter(max_requests=5, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
+
+# --- Identity-independent throughput budgets (#242) ---
+# Fingerprints are client-minted (free to rotate) and IPs rotate too, so
+# per-identity caps alone cannot stop sustained "drain the CPU/disk" abuse.
+# These budgets key on TOTAL system load / raw IP / target URL instead.
+_GLOBAL_BUDGET_KEY = "__global__"
+global_build_budget = IPRateLimiter(
+    max_requests=config.global_build_budget_per_hour(), window_seconds=3600, idle_ttl=7200)
+ip_daily_build_limiter = IPRateLimiter(
+    max_requests=config.ip_daily_build_cap(), window_seconds=86400, idle_ttl=90000)
+url_daily_build_limiter = IPRateLimiter(
+    max_requests=config.url_daily_build_cap(), window_seconds=86400, idle_ttl=90000)
+
+
+def _normalize_target_key(url: str) -> str:
+    """Canonical key for per-target budgets: scheme/host/path lowercased,
+    www. stripped, query dropped (cache-busting params must not mint novelty)."""
+    try:
+        parsed = urlparse(str(url or "").strip())
+        host = (parsed.hostname or "").lower()
+        if host.startswith("www."):
+            host = host[4:]
+        path = (parsed.path or "/").rstrip("/").lower() or "/"
+        return f"{host}{path}"
+    except ValueError:
+        return str(url or "").strip().lower()
+
+
+async def _enforce_build_budgets(request: Request, target_url: str) -> None:
+    """Shared admission gate for both build endpoints. Order: global budget
+    first (cheapest to reason about), then per-IP daily, then per-target."""
+    if not await global_build_budget.allow(_GLOBAL_BUDGET_KEY):
+        raise HTTPException(
+            status_code=429,
+            detail="系统生成额度已满，请稍后再试。",
+            headers={"Retry-After": "300"},
+        )
+    if not await ip_daily_build_limiter.allow(_client_ip(request)):
+        raise HTTPException(
+            status_code=429,
+            detail="今日生成次数已达上限，请明天再试。",
+            headers={"Retry-After": "3600"},
+        )
+    target_key = _normalize_target_key(target_url)
+    if target_key and not await url_daily_build_limiter.allow(target_key):
+        raise HTTPException(
+            status_code=429,
+            detail="该网址今日生成次数已达上限，请明天再试。",
+            headers={"Retry-After": "3600"},
+        )
+
+
 retention_task = None
 
 
@@ -943,6 +995,61 @@ def _purge_orphan_keystores() -> int:
             pass
     return removed
 
+# --- Storage economics (#242) ---
+_disk_usage_cache: Dict[str, object] = {"at": 0.0, "bytes": 0}
+_disk_usage_lock = threading.Lock()
+_DISK_USAGE_TTL_SECONDS = 60
+
+
+def _generated_disk_bytes() -> int:
+    """Total size of generated/ (60s cached — the tree can hold thousands of
+    apps; walking it per upload request would be its own DoS vector)."""
+    now = time.time()
+    with _disk_usage_lock:
+        if now - float(_disk_usage_cache["at"]) < _DISK_USAGE_TTL_SECONDS:
+            return int(_disk_usage_cache["bytes"])
+    total = 0
+    try:
+        for path in APPS_DIR.rglob("*"):
+            try:
+                if path.is_file():
+                    total += path.stat().st_size
+            except OSError:
+                continue
+    except OSError:
+        pass
+    with _disk_usage_lock:
+        _disk_usage_cache["at"] = time.time()
+        _disk_usage_cache["bytes"] = total
+    return total
+
+
+def _disk_budget_exceeded() -> bool:
+    budget_mb = config.generated_disk_budget_mb()
+    if budget_mb <= 0:
+        return False
+    return _generated_disk_bytes() > budget_mb * 1024 * 1024
+
+
+def _app_dir_size(app_id: str) -> int:
+    total = 0
+    try:
+        for path in (APPS_DIR / app_id).rglob("*"):
+            try:
+                if path.is_file():
+                    total += path.stat().st_size
+            except OSError:
+                continue
+    except OSError:
+        pass
+    return total
+
+
+def _invalidate_disk_usage_cache() -> None:
+    with _disk_usage_lock:
+        _disk_usage_cache["at"] = 0.0
+
+
 # R2 deletes that failed (network blip, 5xx) are retried on later sweeps —
 # otherwise the CDN keeps orphan objects forever with no compensation path.
 _r2_delete_retry_ids: set = set()
@@ -951,6 +1058,36 @@ _R2_DELETE_RETRY_CAP = 1000
 
 def _purge_expired_generated_apps() -> int:
     expired = history_store.list_expired_apps(_retention_cutoff_iso())
+    # Fast reclaim (#242): private apps with zero visits/downloads die after
+    # zero_signal_retention_hours instead of waiting out the 30-day window.
+    zero_hours = config.zero_signal_retention_hours()
+    if zero_hours > 0:
+        zero_cutoff = (
+            datetime.now(timezone.utc) - timedelta(hours=zero_hours)
+        ).isoformat().replace("+00:00", "Z")
+        seen = {item["app_id"] for item in expired}
+        for item in history_store.list_zero_signal_apps(zero_cutoff):
+            if item["app_id"] not in seen:
+                expired.append(item)
+                seen.add(item["app_id"])
+    # Disk watermark (#242): over budget, purge zero-signal apps oldest-first
+    # regardless of age until usage drops back under the budget.
+    if _disk_budget_exceeded():
+        forced = history_store.list_zero_signal_apps(
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        )
+        seen = {item["app_id"] for item in expired}
+        budget_bytes = config.generated_disk_budget_mb() * 1024 * 1024
+        usage = _generated_disk_bytes()
+        for item in forced:
+            if usage <= budget_bytes:
+                break
+            if item["app_id"] in seen:
+                continue
+            expired.append(item)
+            seen.add(item["app_id"])
+            usage -= _app_dir_size(item["app_id"])
+        log_event("disk_budget_enforced", usage_bytes=_generated_disk_bytes())
     removed_ids = []
     for item in expired:
         app_id = item["app_id"]
@@ -968,6 +1105,7 @@ def _purge_expired_generated_apps() -> int:
                 _recipe_cache.pop(app_id, None)
         keystore_removed = _purge_keystores_for_apps(removed_ids)
         orphan_removed = _purge_orphan_keystores()
+        _invalidate_disk_usage_cache()
         log_event(
             "retention_purged",
             count=len(removed_ids),
@@ -1076,6 +1214,7 @@ async def distill_app(req: DistillRequest, request: Request):
     parsed_target = urlparse(str(req.url or "").strip())
     if parsed_target.scheme.lower() not in ("http", "https") or not parsed_target.netloc:
         raise HTTPException(status_code=422, detail="URL must be an absolute http(s) URL")
+    await _enforce_build_budgets(request, str(req.url))
     try:
         task = await distill_queue.submit(
             {
@@ -1183,6 +1322,12 @@ def _analyze_html_bytes(data: bytes, filename: str) -> dict:
 async def analyze_html_upload(request: Request, file: UploadFile = File(...)):
     if not await distill_rate_limiter.allow(_client_ip(request)):
         raise HTTPException(status_code=429, detail="提交太频繁，请稍后再试。")
+    if _disk_budget_exceeded():
+        raise HTTPException(
+            status_code=503,
+            detail="存储空间紧张，HTML 上传暂停，请稍后再试。",
+            headers={"Retry-After": "600"},
+        )
     data = await _read_upload_capped(file)
     try:
         async with _upload_slots:
@@ -1221,6 +1366,13 @@ async def distill_html_app(
     device_fingerprint = _device_fingerprint(request)
     identity = _quota_identity(request, device_fingerprint)
     _enforce_daily_quota(identity)
+    await _enforce_build_budgets(request, f"html:{name or file.filename or ''}")
+    if _disk_budget_exceeded():
+        raise HTTPException(
+            status_code=503,
+            detail="存储空间紧张，HTML 上传暂停，请稍后再试。",
+            headers={"Retry-After": "600"},
+        )
     try:
         parsed_options = json.loads(options) if str(options).strip() else {}
         if not isinstance(parsed_options, dict):

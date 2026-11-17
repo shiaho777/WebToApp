@@ -38,6 +38,14 @@ from server.engine import apk_v2_signer
 from server.logging_util import log_event
 
 
+def _run_tool(cmd, **kwargs):
+    """subprocess.run with a wall-clock cap (#242): a hung aapt2/d8/javac/
+    openssl must not pin a build worker forever. Timeout propagates as
+    subprocess.TimeoutExpired and the build fails cleanly (PWA fallback)."""
+    kwargs.setdefault("timeout", config.tool_timeout_seconds())
+    return subprocess.run(cmd, **kwargs)
+
+
 class _AxmlPatcher:
     """Minimal binary (compiled) Android XML editor.
 
@@ -1310,7 +1318,7 @@ class ApkBuilder:
 
             classes = tmp / "classes"
             classes.mkdir()
-            subprocess.run(
+            _run_tool(
                 # -proc:none skips the annotation-processor classpath scan,
                 # which is pure startup overhead for a processor-less build.
                 [javac, "-proc:none", "-source", "1.8", "-target", "1.8", "-bootclasspath", jar, "-d", str(classes), str(src / "M.java")],
@@ -1321,7 +1329,7 @@ class ApkBuilder:
             dex_out = tmp / "dex"
             dex_out.mkdir()
             class_files = [str(f) for f in classes.rglob("*.class")]
-            subprocess.run([d8, "--output", str(dex_out)] + class_files, check=True, capture_output=True)
+            _run_tool([d8, "--output", str(dex_out)] + class_files, check=True, capture_output=True)
 
             with zipfile.ZipFile(apk_unsigned, "a") as z:
                 z.write(dex_out / "classes.dex", "classes.dex")
@@ -1333,7 +1341,7 @@ class ApkBuilder:
             signed = tmp / "app-signed.apk"
             shutil.copy(aligned, signed)
             keystore, password, alias = self._ensure_template_keystore()
-            subprocess.run(
+            _run_tool(
                 [
                     apksigner,
                     "sign",
@@ -1445,7 +1453,7 @@ class ApkBuilder:
 
     def _generate_keystore(self, keystore: Path, password: str, alias: str, dname: str):
         keystore.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
+        _run_tool(
             [
                 "keytool",
                 "-J-Djava.security.egd=file:/dev/urandom",
@@ -1513,13 +1521,13 @@ class ApkBuilder:
         key_pem = tmp / "key.pem"
         cert_pem = tmp / "cert.pem"
         # private key (unencrypted PEM)
-        subprocess.run(
+        _run_tool(
             ["openssl", "pkcs12", "-in", str(p12), "-nodes", "-nocerts",
              "-passin", f"pass:{password}", "-out", str(key_pem)],
             check=True, capture_output=True,
         )
         # leaf certificate (PEM)
-        subprocess.run(
+        _run_tool(
             ["openssl", "pkcs12", "-in", str(p12), "-nokeys", "-clcerts",
              "-passin", f"pass:{password}", "-out", str(cert_pem)],
             check=True, capture_output=True,
@@ -1527,17 +1535,17 @@ class ApkBuilder:
         key_der = tmp / "key.der"
         cert_der = tmp / "cert.der"
         pub_der = tmp / "pub.der"
-        subprocess.run(["openssl", "pkcs8", "-topk8", "-nocrypt", "-in", str(key_pem),
+        _run_tool(["openssl", "pkcs8", "-topk8", "-nocrypt", "-in", str(key_pem),
                         "-outform", "DER", "-out", str(key_der)], check=True, capture_output=True)
-        subprocess.run(["openssl", "x509", "-in", str(cert_pem), "-outform", "DER",
+        _run_tool(["openssl", "x509", "-in", str(cert_pem), "-outform", "DER",
                         "-out", str(cert_der)], check=True, capture_output=True)
-        pub_pem = subprocess.run(["openssl", "x509", "-in", str(cert_pem), "-noout", "-pubkey"],
+        pub_pem = _run_tool(["openssl", "x509", "-in", str(cert_pem), "-noout", "-pubkey"],
                                  check=True, capture_output=True).stdout
         (tmp / "pub.pem").write_bytes(pub_pem)
-        res = subprocess.run(["openssl", "rsa", "-pubin", "-in", str(tmp / "pub.pem"),
+        res = _run_tool(["openssl", "rsa", "-pubin", "-in", str(tmp / "pub.pem"),
                               "-outform", "DER", "-out", str(pub_der)], capture_output=True)
         if res.returncode != 0:
-            subprocess.run(["openssl", "pkey", "-pubin", "-in", str(tmp / "pub.pem"),
+            _run_tool(["openssl", "pkey", "-pubin", "-in", str(tmp / "pub.pem"),
                             "-outform", "DER", "-out", str(pub_der)], check=True, capture_output=True)
         key_der_bytes = key_der.read_bytes()
         cert_der_bytes = cert_der.read_bytes()
@@ -1659,7 +1667,7 @@ class ApkBuilder:
         zipalign = self._find_tool("zipalign")
         output.parent.mkdir(parents=True, exist_ok=True)
         if zipalign:
-            subprocess.run([zipalign, "-f", "4", str(source), str(output)], check=True, capture_output=True)
+            _run_tool([zipalign, "-f", "4", str(source), str(output)], check=True, capture_output=True)
             return
         self._python_zipalign(source, output, alignment=4)
 
@@ -1738,8 +1746,8 @@ class ApkBuilder:
                     res_zip.unlink()
                 if apk_unsigned.exists():
                     apk_unsigned.unlink()
-                subprocess.run([aapt2, "compile", "-o", str(res_zip), "--dir", str(tmp / "res")], check=True, capture_output=True)
-                subprocess.run([aapt2, "link", "-o", str(apk_unsigned), "-I", jar, "--manifest", str(manifest), str(res_zip)], check=True, capture_output=True)
+                _run_tool([aapt2, "compile", "-o", str(res_zip), "--dir", str(tmp / "res")], check=True, capture_output=True)
+                _run_tool([aapt2, "link", "-o", str(apk_unsigned), "-I", jar, "--manifest", str(manifest), str(res_zip)], check=True, capture_output=True)
                 return aapt2
             except subprocess.CalledProcessError as e:
                 print(f"[ApkBuilder] aapt2 {aapt2} failed (exit={e.returncode}), trying next version")
