@@ -191,6 +191,42 @@ async def add_cache_headers(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Baseline security headers on EVERY response, independent of any CDN
+    edge config (#238): direct-IP deployments previously shipped none.
+
+    - nosniff + Referrer-Policy everywhere.
+    - Anti-framing: CSP frame-ancestors + X-Frame-Options. Hosted user content
+      (/a/<id>/site/) is denied framing outright; first-party pages allow
+      same-origin framing (the download page previews its PWA in an iframe).
+    - HSTS on HTTPS (incl. via a trusted proxy's X-Forwarded-Proto). The edge
+      may already add HSTS; browsers enforce the strictest policy seen, so a
+      second, stronger header is safe.
+    """
+    response = await call_next(request)
+    headers = response.headers
+    if "x-content-type-options" not in headers:
+        headers["X-Content-Type-Options"] = "nosniff"
+    if "referrer-policy" not in headers:
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    normalized = _normalize_request_path(request.url.path)
+    is_site_content = normalized.startswith("/a/") and "/site" in normalized
+    if "x-frame-options" not in headers:
+        headers["X-Frame-Options"] = "DENY" if is_site_content else "SAMEORIGIN"
+    if "content-security-policy" not in headers:
+        headers["Content-Security-Policy"] = (
+            "frame-ancestors 'none'" if is_site_content else "frame-ancestors 'self'"
+        )
+    https = request.url.scheme == "https" or (
+        _request_is_from_trusted_proxy(request)
+        and request.headers.get("x-forwarded-proto", "").lower() == "https"
+    )
+    if https and "strict-transport-security" not in headers:
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    return response
+
+
 # Registered last so it wraps every other middleware and compresses the final
 # response, headers included.
 app.add_middleware(TextCompressionMiddleware)
@@ -964,6 +1000,12 @@ async def _retention_loop() -> None:
 @app.on_event("startup")
 async def _startup_services():
     global retention_task
+    if not config.site_public_base_url():
+        log_event(
+            "site_isolation_disabled",
+            hint="Set SITE_PUBLIC_BASE_URL to an isolated origin for uploaded HTML "
+                 "(issue #20); serving fails closed unless SITE_ALLOW_SAME_ORIGIN=1.",
+        )
     await asyncio.to_thread(_purge_expired_generated_apps)
     try:
         summary = await asyncio.to_thread(
@@ -2068,6 +2110,16 @@ async def serve_app_site(app_id: str, request: Request, file_path: str = ""):
             if query:
                 target = f"{target}?{query}"
             return RedirectResponse(target, status_code=301)
+    elif not config.site_allow_same_origin():
+        # Fail closed (#238): without an isolated sandbox origin, uploaded JS
+        # would run same-origin with the API and could read the device
+        # fingerprint cookie AND localStorage edit tokens. Legacy same-origin
+        # hosting now requires an explicit SITE_ALLOW_SAME_ORIGIN=1 opt-in.
+        raise HTTPException(
+            503,
+            "Hosted HTML content requires SITE_PUBLIC_BASE_URL (isolated origin); "
+            "set SITE_ALLOW_SAME_ORIGIN=1 to explicitly opt into legacy same-origin serving.",
+        )
     site_dir = APPS_DIR / app_id / "site"
     if not site_dir.is_dir():
         raise HTTPException(404, "Site not found")
