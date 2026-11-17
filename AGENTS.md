@@ -54,6 +54,28 @@ manual cache cleanup: the effective template revision is derived from the
 `server/engine/_android_template/android-template.apk` is rebuilt
 automatically on the first build after the source changes.
 
+### Resource fences (#242)
+
+Builds are unauthenticated and CPU/disk-heavy, so the service is fenced at
+three layers. App-level budgets (global hourly / per-IP daily / per-target
+daily, zero-signal fast reclaim, disk watermark, tool timeouts) are configured
+via env — see `.env.example`. At the OS/proxy layer, also apply:
+
+```ini
+# systemd unit override (systemctl edit webtoapp):
+[Service]
+CPUQuota=150%
+MemoryMax=1500M
+Nice=10
+```
+
+```nginx
+# nginx http {}: limit build submissions at the proxy, before Python sees them
+limit_req_zone $binary_remote_addr zone=wta_build:10m rate=10r/m;
+# server/location for /api/distill and /api/distill/html:
+limit_req zone=wta_build burst=20 nodelay;
+```
+
 ## Overrides
 
 User overrides win for that turn only (e.g. skip Issue, direct push to `main`,

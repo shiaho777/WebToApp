@@ -30,6 +30,13 @@ import zipfile
 from pathlib import Path
 from typing import List, Tuple
 
+def _tool_timeout() -> int:
+    """Wall-clock cap for signing subprocesses (#242). Lazy import keeps this
+    module free of a config dependency at import time."""
+    from server import config
+    return config.tool_timeout_seconds()
+
+
 APK_SIG_BLOCK_MAGIC = b"APK Sig Block 42"
 APK_SIGNATURE_SCHEME_V2_BLOCK_ID = 0x7109871A
 APK_SIGNATURE_SCHEME_V3_BLOCK_ID = 0xF05368C0
@@ -98,7 +105,7 @@ def build_v1(apk_path: Path, key_pem: Path, cert_pem: Path, alias: str,
             ["openssl", "smime", "-sign", "-binary", "-noattr",
              "-in", str(sf_file), "-signer", str(cert_pem), "-inkey", str(key_pem),
              "-outform", "DER", "-md", "sha256", "-out", str(p7)],
-            capture_output=True,
+            capture_output=True, timeout=_tool_timeout(),
         )
         if res.returncode != 0:
             raise V2SignError("openssl v1 PKCS7 failed: " + res.stderr.decode("utf-8", "ignore"))
@@ -188,7 +195,7 @@ def sign_v2(apk_path: Path, key_der: bytes, cert_der: bytes, pubkey_der: bytes) 
             res = subprocess.run(
                 ["openssl", "dgst", "-sha256", "-sign", str(kf),
                  "-keyform", "DER", "-out", str(sig), str(sd)],
-                capture_output=True,
+                capture_output=True, timeout=_tool_timeout(),
             )
             if res.returncode != 0:
                 raise V2SignError("openssl sign failed: " + res.stderr.decode("utf-8", "ignore"))

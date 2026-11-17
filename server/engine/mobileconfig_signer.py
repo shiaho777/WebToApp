@@ -70,7 +70,7 @@ def sign(unsigned_xml: bytes) -> bytes:
         if chain:
             cmd += ["-certfile", chain]
 
-        result = subprocess.run(cmd, capture_output=True)
+        result = subprocess.run(cmd, capture_output=True, timeout=config.tool_timeout_seconds())
         if result.returncode != 0:
             raise SigningUnavailable(
                 f"openssl cms failed (exit={result.returncode}): "

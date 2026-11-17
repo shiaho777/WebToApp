@@ -959,6 +959,41 @@ class HistoryStore:
             expired.sort(key=lambda item: item.get("last_active_at") or "")
             return expired
 
+    def list_zero_signal_apps(self, cutoff_iso: str) -> List[dict]:
+        """Private apps created before the cutoff with ZERO activity of any
+        kind (no visits, no downloads, no launch). Real creators open their
+        own download page within minutes of building; abuse junk never gets
+        a single hit, so it can be reclaimed far earlier than the 30-day
+        inactivity window (#242)."""
+        cutoff = _parse_utc(cutoff_iso)
+        if cutoff is None:
+            return []
+        with self._lock:
+            self._flush_visits_locked()
+            rows = self._conn.execute(
+                """SELECT a.app_id, a.name, a.created_at FROM apps a
+                   LEFT JOIN visits v ON v.app_id = a.app_id
+                   WHERE a.visibility = 'private'
+                     AND COALESCE(v.total, 0) = 0
+                     AND COALESCE(v.landing, 0) = 0
+                     AND COALESCE(v.install, 0) = 0
+                     AND COALESCE(v.pwa, 0) = 0
+                     AND COALESCE(v.launch, 0) = 0
+                     AND COALESCE(v.downloads_json, '{}') IN ('{}', '')"""
+            ).fetchall()
+            items = []
+            for row in rows:
+                created = _parse_utc(row["created_at"])
+                if created is None or created >= cutoff:
+                    continue
+                items.append({
+                    "app_id": row["app_id"],
+                    "name": row["name"] or row["app_id"],
+                    "last_active_at": row["created_at"],
+                })
+            items.sort(key=lambda item: item.get("last_active_at") or "")
+            return items
+
     def purge_apps(self, app_ids: List[str]) -> int:
         purge_ids = {str(app_id or "").strip() for app_id in app_ids if str(app_id or "").strip()}
         if not purge_ids:

@@ -43,7 +43,7 @@ def test_mobile_sign_success_with_optional_chain(monkeypatch, chain):
     monkeypatch.setattr(mobile_signer.shutil, "which", lambda name: "/mock/openssl")
     commands = []
 
-    def fake_run(cmd, capture_output):
+    def fake_run(cmd, capture_output, timeout=None):
         assert capture_output is True
         commands.append(cmd)
         in_path = Path(cmd[cmd.index("-in") + 1])
@@ -124,7 +124,7 @@ def test_v1_manifest_entry_and_successful_build(monkeypatch, tmp_path):
     _make_apk(apk, include_directory=True)
     commands = []
 
-    def fake_run(cmd, capture_output):
+    def fake_run(cmd, capture_output, timeout=None):
         assert capture_output is True
         commands.append(cmd)
         sf_path = Path(cmd[cmd.index("-in") + 1])
@@ -198,7 +198,7 @@ def test_v2_sign_builds_minimal_v2_v3_block_and_patches_eocd(monkeypatch, tmp_pa
     old_cd = struct.unpack_from("<I", original, old_eocd + 16)[0]
     signed_inputs = []
 
-    def fake_run(cmd, capture_output):
+    def fake_run(cmd, capture_output, timeout=None):
         assert capture_output is True
         data_path = Path(cmd[-1])
         signed_inputs.append(data_path.read_bytes())
