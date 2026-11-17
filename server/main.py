@@ -33,6 +33,7 @@ from typing import Dict, List, Optional
 
 from server import config
 from server import html_site
+from server import pow as pow_gate
 from server.engine.analyzer import SiteAnalyzer
 from server.engine.distiller import Distiller
 from server.engine.recipe import RecipeStore
@@ -568,6 +569,8 @@ class DistillRequest(BaseModel):
     display: str = "fullscreen"
     orientation: str = "any"
     options: dict = {}
+    pow_challenge: str = ""
+    pow_solution: str = ""
 
 
 class HistoryImportPayload(BaseModel):
@@ -1204,6 +1207,25 @@ def _raise_if_over_quota(identity: str, quota: int) -> None:
         )
 
 
+@app.get("/api/pow/challenge")
+async def pow_challenge():
+    """Issue an adaptive-difficulty PoW challenge for build submission (#244).
+    Difficulty rises with queue depth and recent submission rate."""
+    pending = sum(1 for t in distill_queue._tasks.values() if t.get("status") == "pending")
+    recent = len(global_build_budget._buckets.get(_GLOBAL_BUDGET_KEY, []))
+    return pow_gate.issue(pending=pending, recent_submissions=recent)
+
+
+def _require_pow(challenge: str, solution: str) -> None:
+    if not config.pow_enabled():
+        return
+    if not pow_gate.verify(challenge, solution):
+        raise HTTPException(
+            status_code=428,
+            detail={"code": "pow.required", "message": "请先完成工作量证明再提交生成。"},
+        )
+
+
 @app.post("/api/distill")
 async def distill_app(req: DistillRequest, request: Request):
     if not await distill_rate_limiter.allow(_client_ip(request)):
@@ -1215,6 +1237,7 @@ async def distill_app(req: DistillRequest, request: Request):
     if parsed_target.scheme.lower() not in ("http", "https") or not parsed_target.netloc:
         raise HTTPException(status_code=422, detail="URL must be an absolute http(s) URL")
     await _enforce_build_budgets(request, str(req.url))
+    _require_pow(req.pow_challenge, req.pow_solution)
     try:
         task = await distill_queue.submit(
             {
@@ -1355,6 +1378,8 @@ async def distill_html_app(
     display: str = Form("fullscreen"),
     orientation: str = Form("any"),
     options: str = Form(""),
+    pow_challenge: str = Form(""),
+    pow_solution: str = Form(""),
 ):
     """Build an app from uploaded HTML content (single .html or .zip bundle).
 
@@ -1367,6 +1392,7 @@ async def distill_html_app(
     identity = _quota_identity(request, device_fingerprint)
     _enforce_daily_quota(identity)
     await _enforce_build_budgets(request, f"html:{name or file.filename or ''}")
+    _require_pow(pow_challenge, pow_solution)
     if _disk_budget_exceeded():
         raise HTTPException(
             status_code=503,

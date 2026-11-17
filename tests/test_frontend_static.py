@@ -665,7 +665,15 @@ class StreamingFirstLoadTests(unittest.TestCase):
 
     def test_streaming_assets_are_cache_busted(self):
         self.assertIn("css/style.css?v=20261116-icon1", self.html)
-        self.assertIn("js/app.v5.js?v=20261118-report1", self.html)
+        self.assertIn("js/app.v5.js?v=20261118-pow1", self.html)
+
+    def test_pow_solver_loads_before_app(self):
+        # #244: the invisible PoW solver must be available before app.v5.js
+        # submits builds.
+        self.assertIn("js/pow.js?v=", self.html)
+        self.assertLess(self.html.index("js/pow.js"), self.html.index("js/app.v5.js"))
+        self.assertIn("window.WtaPow", _read("js/pow.js"))
+        self.assertIn("WtaPow.solve()", self.js)
 
     def test_icon_publish_gate_is_wired(self):
         # issue #232: publishing requires a usable icon; the warning lives at

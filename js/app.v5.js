@@ -1824,6 +1824,16 @@
     options['about-text'] = aboutTextInput.value || '';
     if (aboutImageDataUrls !== null) options['about-images'] = aboutImageDataUrls;
 
+    // Invisible proof-of-work (#244): mirrors build cost back to the
+    // submitter. Solved in a Worker before the request; null only when the
+    // solver is unavailable, in which case the server's 428 explains why.
+    let pow = null;
+    if (window.WtaPow) {
+      updateBuildProgress('queued', null);
+      pow = await window.WtaPow.solve();
+    }
+    const powFields = pow ? { pow_challenge: pow.challenge, pow_solution: pow.solution } : {};
+
     let submitRes;
     if (inputMode === 'html') {
       if (!htmlFile) throw new Error(t('err.htmlNoFile'));
@@ -1834,6 +1844,10 @@
       form.append('display', 'fullscreen');
       form.append('orientation', 'any');
       form.append('options', JSON.stringify(options));
+      if (pow) {
+        form.append('pow_challenge', pow.challenge);
+        form.append('pow_solution', pow.solution);
+      }
       submitRes = await fetch('/api/distill/html', {
         method: 'POST',
         headers: apiUploadHeaders(),
@@ -1843,14 +1857,14 @@
       submitRes = await fetch('/api/distill', {
         method: 'POST',
         headers: apiHeaders(),
-        body: JSON.stringify({
+        body: JSON.stringify(Object.assign({
           url: currentUrl,
           name: appNameInput.value,
           color: appColorInput.value,
           display: 'fullscreen',
           orientation: 'any',
           options: options,
-        }),
+        }, powFields)),
       });
     }
     if (!submitRes.ok) {
