@@ -390,6 +390,38 @@ def tool_timeout_seconds() -> int:
         return 180
 
 
+# --- Proof-of-work gate (#244) ---
+
+def pow_enabled() -> bool:
+    """Invisible PoW before build submissions. Default on; set POW_ENABLED=0
+    to disable (e.g. local development)."""
+    return os.environ.get("POW_ENABLED", "1").strip() != "0"
+
+
+def pow_base_bits() -> int:
+    """Idle difficulty: leading zero bits required (~2^16 hashes, <1s in a
+    Web Worker on typical hardware)."""
+    try:
+        return max(8, min(24, int(os.environ.get("POW_BASE_BITS", "16").strip() or "16")))
+    except ValueError:
+        return 16
+
+
+def pow_max_bits() -> int:
+    """Ceiling difficulty under load (~2^22 hashes — minutes of attacker cpu
+    per submission, while real users just wait a bit longer)."""
+    try:
+        return max(12, min(26, int(os.environ.get("POW_MAX_BITS", "22").strip() or "22")))
+    except ValueError:
+        return 22
+
+
+def pow_secret() -> str:
+    """Optional stable HMAC key for challenge signing. Empty = per-process
+    random (a restart invalidates outstanding challenges; clients refetch)."""
+    return os.environ.get("POW_SECRET", "").strip()
+
+
 def cloudflare_api_token() -> str:
     return os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
 
