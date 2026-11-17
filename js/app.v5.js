@@ -823,6 +823,7 @@
             <button type="button" role="menuitem" data-edit="${escapeHtml(appId)}">${escapeHtml(t('history.editForm'))}</button>
             <button type="button" role="menuitem" data-regenerate="${escapeHtml(appId)}">${escapeHtml(t('history.regenerate'))}</button>
             <button type="button" role="menuitem" data-visibility-toggle="${escapeHtml(appId)}">${escapeHtml(visibilityAction)}</button>
+            <button type="button" role="menuitem" data-report="${escapeHtml(appId)}">${escapeHtml(t('history.report'))}</button>
             <button type="button" role="menuitem" class="danger" data-delete="${escapeHtml(appId)}">${escapeHtml(t('history.delete'))}</button>
           </div>
         </div>
@@ -2577,13 +2578,33 @@
       return;
     }
 
-    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate], [data-visibility-toggle], [data-delete]');
+    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate], [data-visibility-toggle], [data-report], [data-delete]');
     if (!target) {
       closeRowMenus();
       return;
     }
     closeRowMenus();
 
+    if (target.dataset.report) {
+      const appId = target.dataset.report;
+      const name = (item && (item.name || item.app_id)) || appId;
+      if (!(await ask(t('history.confirmReport', { name })))) return;
+      try {
+        target.disabled = true;
+        const res = await fetch(`/api/apps/${encodeURIComponent(appId)}/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Device-Fingerprint': deviceFingerprint },
+          body: JSON.stringify({ reason: t('history.reportDefaultReason') }),
+        });
+        if (!res.ok) throw new Error('report failed');
+        notify(t('history.reportThanks'), 'success');
+      } catch (_err) {
+        notify(t('history.reportFailed'), 'error');
+      } finally {
+        target.disabled = false;
+      }
+      return;
+    }
     if (target.dataset.delete) {
       const appId = target.dataset.delete;
       const name = (item && (item.name || item.app_id)) || appId;

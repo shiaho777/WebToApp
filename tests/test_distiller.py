@@ -371,7 +371,7 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertEqual(recipe["languages"], ["zh", "en"])
 
     def test_download_page_marker_invalidates_old_ads_cache(self):
-        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v9-korean -->")
+        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v10-report -->")
 
     def test_download_page_supports_dark_mode(self):
         page = self._page()
