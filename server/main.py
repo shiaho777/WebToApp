@@ -6,6 +6,7 @@ FastAPI backend: site analysis, content distillation, app generation & download.
 import asyncio
 import base64
 import hashlib
+import io
 import ipaddress
 import json
 import mimetypes
@@ -24,6 +25,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
+from PIL import Image, ImageOps
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse, PlainTextResponse, Response
@@ -106,7 +108,7 @@ def _is_sensitive_path(raw_path: str) -> bool:
         return False
     # Explicit routers own these namespaces (mounted before StaticFiles);
     # unknown subpaths already 404 at the routing layer, never at the mount.
-    if normalized.startswith(("/api/", "/a/", "/u/")) or normalized in ("/healthz", "/readyz"):
+    if normalized.startswith(("/api/", "/a/", "/u/", "/board/img/")) or normalized in ("/healthz", "/readyz"):
         return False
     if normalized in _STATIC_ALLOWED_FILES:
         return False
@@ -240,6 +242,10 @@ task_store = TaskStore(APPS_DIR / "_tasks.sqlite3")
 community_store = CommunityStore(APPS_DIR / "_community.sqlite3")
 AVATARS_DIR = APPS_DIR / "_avatars"
 AVATARS_DIR.mkdir(exist_ok=True)
+# Site feedback board image attachments (#248). Content-addressed by row id;
+# files are immutable once written, so they can be cached aggressively.
+BOARD_IMG_DIR = APPS_DIR / "_board"
+BOARD_IMG_DIR.mkdir(exist_ok=True)
 # One-time backfill: existing device fingerprints get sequential user_nums
 # in first-seen order, and apps they already hold get creator attribution.
 community_store.backfill_devices(history_store.device_rows())
@@ -849,6 +855,10 @@ comment_rate_limiter = IPRateLimiter(max_requests=10, window_seconds=60, idle_tt
 # Abuse reports are unauthenticated too — cap them so the queue can't be
 # flooded (#240).
 report_rate_limiter = IPRateLimiter(max_requests=5, window_seconds=60, idle_ttl=RATE_LIMIT_BUCKET_TTL)
+# Site feedback board (#248): 3 posts per identity per rolling hour, counted
+# on the device fingerprint (the spec's "per user" cap). Topics and replies
+# share the same budget. The per-IP minute cap still guards raw floods.
+board_hourly_limiter = IPRateLimiter(max_requests=3, window_seconds=3600, idle_ttl=7200)
 
 # --- Identity-independent throughput budgets (#242) ---
 # Fingerprints are client-minted (free to rotate) and IPs rotate too, so
@@ -2043,6 +2053,221 @@ def delete_comment(comment_id: int, request: Request):
     if result == "forbidden":
         raise HTTPException(403, "Not your comment")
     return {"deleted": True, "id": comment_id}
+
+
+# --- Site feedback board (#248) ---
+# Tagged threads (suggestion | question | help) anyone can post without an
+# account: 3 posts/identity/hour, <=500 chars, multiple images totaling <=5MB.
+# Toggleable likes (one per identity), threaded replies, cascade delete that
+# also removes replies and image files. Admins reply with a visible badge.
+BOARD_MAX_IMAGES = 6
+BOARD_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+BOARD_IMAGE_MAX_PIXELS = 40_000_000
+BOARD_IMAGE_SIDE = 2048
+
+
+def _normalize_board_image(raw: bytes) -> Optional[bytes]:
+    """Decode, strip EXIF/orientation, downscale and re-encode to WebP.
+    Returns None for anything that isn't a real, sane image."""
+    try:
+        Image.MAX_IMAGE_PIXELS = BOARD_IMAGE_MAX_PIXELS
+        with Image.open(io.BytesIO(raw)) as probe:
+            probe.verify()
+        with Image.open(io.BytesIO(raw)) as im:
+            im = ImageOps.exif_transpose(im)
+            if im.mode not in ("RGB", "RGBA"):
+                im = im.convert("RGBA" if "A" in im.getbands() else "RGB")
+            if max(im.size) > BOARD_IMAGE_SIDE:
+                ratio = BOARD_IMAGE_SIDE / max(im.size)
+                im = im.resize((max(1, int(im.width * ratio)), max(1, int(im.height * ratio))),
+                               Image.LANCZOS)
+            out = io.BytesIO()
+            im.save(out, format="WEBP", quality=85, method=4)
+            return out.getvalue()
+    except Exception:  # noqa: BLE001 - any decode failure means "not an image"
+        return None
+
+
+async def _read_board_images(files: List[UploadFile]) -> List[dict]:
+    """Read + validate + normalize uploaded images. Enforces per-file and
+    total 5MB caps and the count limit. Returns [{ext, data}]."""
+    files = [f for f in (files or []) if f is not None and f.filename]
+    if len(files) > BOARD_MAX_IMAGES:
+        raise HTTPException(422, "board.tooManyImages")
+    specs: List[dict] = []
+    total = 0
+    for f in files:
+        raw = await f.read(BOARD_IMAGE_MAX_BYTES + 1)
+        if len(raw) > BOARD_IMAGE_MAX_BYTES:
+            raise HTTPException(413, "board.imageTooLarge")
+        total += len(raw)
+        if total > BOARD_IMAGE_MAX_BYTES:
+            raise HTTPException(413, "board.imagesTooLarge")
+        webp = await asyncio.to_thread(_normalize_board_image, raw)
+        if not webp:
+            raise HTTPException(422, "board.badImage")
+        specs.append({"ext": "webp", "data": webp})
+    return specs
+
+
+def _write_board_image_files(specs: List[dict], descriptors: List[dict]) -> None:
+    for spec, desc in zip(specs, descriptors):
+        (BOARD_IMG_DIR / f"{desc['id']}.{spec['ext']}").write_bytes(spec["data"])
+
+
+def _remove_board_image_files(names: List[str]) -> None:
+    for name in names or []:
+        try:
+            (BOARD_IMG_DIR / name).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+async def _enforce_board_post_limit(request: Request, fp: str) -> None:
+    if not await comment_rate_limiter.allow(_client_ip(request)):
+        raise HTTPException(429, "board.tooFast")
+    if not await board_hourly_limiter.allow(fp):
+        raise HTTPException(429, "board.hourlyLimit", headers={"Retry-After": "600"})
+
+
+@app.get("/api/board/topics")
+def board_topics(request: Request, tag: str = "", limit: int = 20, offset: int = 0):
+    tag = tag.strip().lower()
+    if tag and tag not in CommunityStore.BOARD_TAGS:
+        raise HTTPException(422, "board.badTag")
+    viewer_fp = _device_fingerprint(request)
+    return community_store.list_board_topics(
+        tag=tag or None, limit=limit, offset=offset, viewer_fp=viewer_fp)
+
+
+@app.get("/api/board/topics/{topic_id}")
+def board_topic_detail(topic_id: int, request: Request):
+    viewer_fp = _device_fingerprint(request)
+    topic = community_store.board_topic_detail(topic_id, viewer_fp=viewer_fp)
+    if not topic:
+        raise HTTPException(404, "board.notFound")
+    return {"topic": topic}
+
+
+@app.post("/api/board/topics")
+async def create_board_topic(
+    request: Request,
+    tag: str = Form(""),
+    body: str = Form(""),
+    images: List[UploadFile] = File(default=[]),
+):
+    fp = _require_fingerprint(request)
+    await _enforce_board_post_limit(request, fp)
+    tag = tag.strip().lower()
+    if tag not in CommunityStore.BOARD_TAGS:
+        raise HTTPException(422, "board.tagRequired")
+    body = body.strip()
+    if not body:
+        raise HTTPException(422, "board.emptyBody")
+    if len(body) > CommunityStore.MAX_BOARD_BODY_LEN:
+        raise HTTPException(422, "board.bodyTooLong")
+    specs = await _read_board_images(images)
+    admin = _admin_authorized(request)
+    try:
+        topic = await asyncio.to_thread(
+            community_store.add_board_topic, fp, tag, body, admin)
+        descriptors = await asyncio.to_thread(
+            community_store.attach_board_images, specs, topic_id=topic["id"])
+        await asyncio.to_thread(_write_board_image_files, specs, descriptors)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    topic = await asyncio.to_thread(
+        community_store.board_topic_by_id, topic["id"], fp)
+    return {"topic": topic}
+
+
+@app.post("/api/board/topics/{topic_id}/replies")
+async def create_board_reply(
+    topic_id: int,
+    request: Request,
+    body: str = Form(""),
+    images: List[UploadFile] = File(default=[]),
+):
+    fp = _require_fingerprint(request)
+    await _enforce_board_post_limit(request, fp)
+    body = body.strip()
+    if not body:
+        raise HTTPException(422, "board.emptyBody")
+    if len(body) > CommunityStore.MAX_BOARD_BODY_LEN:
+        raise HTTPException(422, "board.bodyTooLong")
+    specs = await _read_board_images(images)
+    admin = _admin_authorized(request)
+    try:
+        reply = await asyncio.to_thread(
+            community_store.add_board_reply, topic_id, fp, body, admin)
+        descriptors = await asyncio.to_thread(
+            community_store.attach_board_images, specs, reply_id=reply["id"])
+        await asyncio.to_thread(_write_board_image_files, specs, descriptors)
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(404 if code == "topic_not_found" else 422, code)
+    reply = await asyncio.to_thread(
+        community_store.board_reply_by_id, reply["id"], fp)
+    return {"reply": reply}
+
+
+@app.post("/api/board/{target_type}/{target_id}/like")
+def toggle_board_like(target_type: str, target_id: int, request: Request):
+    fp = _require_fingerprint(request)
+    if target_type not in ("topic", "reply"):
+        raise HTTPException(422, "board.badTarget")
+    try:
+        info = community_store.toggle_board_like(target_type, target_id, fp)
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(404 if code == "not_found" else 422, code)
+    return info
+
+
+@app.delete("/api/board/topics/{topic_id}")
+async def delete_board_topic(topic_id: int, request: Request):
+    admin = _admin_authorized(request)
+    fp = _device_fingerprint(request)
+    result = await asyncio.to_thread(
+        community_store.delete_board_topic, topic_id, fp, admin)
+    if result["result"] == "not_found":
+        raise HTTPException(404, "board.notFound")
+    if result["result"] == "forbidden":
+        raise HTTPException(403, "board.forbidden")
+    await asyncio.to_thread(_remove_board_image_files, result["image_files"])
+    return {"deleted": True, "id": topic_id}
+
+
+@app.delete("/api/board/replies/{reply_id}")
+async def delete_board_reply(reply_id: int, request: Request):
+    admin = _admin_authorized(request)
+    fp = _device_fingerprint(request)
+    result = await asyncio.to_thread(
+        community_store.delete_board_reply, reply_id, fp, admin)
+    if result["result"] == "not_found":
+        raise HTTPException(404, "board.notFound")
+    if result["result"] == "forbidden":
+        raise HTTPException(403, "board.forbidden")
+    await asyncio.to_thread(_remove_board_image_files, result["image_files"])
+    return {"deleted": True, "id": reply_id}
+
+
+@app.get("/board/img/{filename}")
+def board_image(filename: str):
+    match = re.fullmatch(r"(\d+)\.(webp|png|jpg)", filename)
+    if not match:
+        raise HTTPException(404)
+    info = community_store.board_image_path(int(match.group(1)))
+    if not info or info["ext"] != match.group(2):
+        raise HTTPException(404)
+    path = BOARD_IMG_DIR / f"{info['id']}.{info['ext']}"
+    if not path.exists():
+        raise HTTPException(404)
+    media = {"webp": "image/webp", "png": "image/png", "jpg": "image/jpeg"}[info["ext"]]
+    return FileResponse(
+        path, media_type=media,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 # --- Abuse reports & admin takedown (#240) ---

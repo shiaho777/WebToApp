@@ -708,8 +708,31 @@ class StreamingFirstLoadTests(unittest.TestCase):
         self.assertIn("promise.catch(function () {})", self.html)
 
     def test_streaming_assets_are_cache_busted(self):
-        self.assertIn("css/style.css?v=20261116-icon1", self.html)
-        self.assertIn("js/app.v5.js?v=20261118-pow1", self.html)
+        self.assertIn("css/style.css?v=20261118-board1", self.html)
+        self.assertIn("js/app.v5.js?v=20261118-board1", self.html)
+
+    def test_feedback_board_is_wired(self):
+        # #248: nav entry + modal + the board module in app.v5.js.
+        self.assertIn('id="board-btn"', self.html)
+        self.assertIn('id="board-modal"', self.html)
+        self.assertIn('id="board-form"', self.html)
+        self.assertIn('data-board-filter="suggestion"', self.html)
+        self.assertIn('data-board-filter="question"', self.html)
+        self.assertIn('data-board-filter="help"', self.html)
+        self.assertIn("function initBoard()", self.js)
+        self.assertIn("/api/board/topics", self.js)
+        self.assertIn(".board-modal", self.css)
+        # Every board key exists in all ten languages.
+        board_keys = [
+            "board.title", "board.tag.suggestion", "board.tag.question", "board.tag.help",
+            "board.tagHint.suggestion", "board.tagHint.question", "board.tagHint.help",
+            "board.post", "board.reply", "board.delete", "board.confirmDeleteTopic",
+            "board.hourlyLimit", "board.imagesTooLarge", "board.admin", "board.loadMore",
+        ]
+        for lang in LANGS:
+            src = _read(f"js/i18n.{lang}.js")
+            for key in board_keys:
+                self.assertIn(f"'{key}'", src, f"{lang}: {key}")
 
     def test_pow_solver_loads_before_app(self):
         # #244: the invisible PoW solver must be available before app.v5.js

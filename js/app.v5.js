@@ -2970,4 +2970,401 @@
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+  // --- Site feedback board (#248) ---
+  (function initBoard() {
+    const modal = document.getElementById('board-modal');
+    const openBtn = document.getElementById('board-btn');
+    if (!modal || !openBtn) return;
+    const closeBtn = document.getElementById('board-close');
+    const form = document.getElementById('board-form');
+    const bodyInput = document.getElementById('board-body');
+    const countEl = document.getElementById('board-count');
+    const imagesInput = document.getElementById('board-images');
+    const previewsEl = document.getElementById('board-previews');
+    const submitBtn = document.getElementById('board-submit');
+    const formMsg = document.getElementById('board-form-msg');
+    const tagHint = document.getElementById('board-tag-hint');
+    const listEl = document.getElementById('board-list');
+    const emptyEl = document.getElementById('board-empty');
+    const errorEl = document.getElementById('board-error');
+    const retryBtn = document.getElementById('board-retry');
+    const loadMoreBtn = document.getElementById('board-load-more');
+    const filters = Array.from(modal.querySelectorAll('.board-filter'));
+
+    const PAGE = 20;
+    const MAX_IMAGES = 6;
+    const MAX_TOTAL = 5 * 1024 * 1024;
+    let currentTag = '';
+    let items = [];
+    let hasMore = false;
+    let loading = false;
+    let reqSeq = 0;
+    let pickedFiles = [];
+    let returnFocus = null;
+
+    const TAG_HINT = {
+      suggestion: 'board.tagHint.suggestion',
+      question: 'board.tagHint.question',
+      help: 'board.tagHint.help',
+    };
+
+    function isOpen() { return !modal.classList.contains('hidden'); }
+
+    function openBoard() {
+      returnFocus = document.activeElement;
+      modal.classList.remove('hidden');
+      openBtn.setAttribute('aria-expanded', 'true');
+      closeBtn.focus();
+      loadBoard(false);
+    }
+    function closeBoard() {
+      modal.classList.add('hidden');
+      openBtn.setAttribute('aria-expanded', 'false');
+      if (returnFocus && returnFocus.focus) returnFocus.focus();
+    }
+
+    openBtn.addEventListener('click', openBoard);
+    closeBtn.addEventListener('click', closeBoard);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeBoard(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen() && !e.defaultPrevented) closeBoard();
+    });
+
+    // Tag selection drives the hint text.
+    form.querySelectorAll('input[name="board-tag"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        tagHint.textContent = t(TAG_HINT[radio.value] || 'board.tagHint.default');
+      });
+    });
+
+    bodyInput.addEventListener('input', () => {
+      countEl.textContent = `${bodyInput.value.length} / 500`;
+    });
+
+    // Image picking with client-side caps mirroring the server.
+    imagesInput.addEventListener('change', () => {
+      const chosen = Array.from(imagesInput.files || []);
+      let total = pickedFiles.reduce((s, f) => s + f.size, 0);
+      for (const f of chosen) {
+        if (pickedFiles.length >= MAX_IMAGES) { notify(t('board.tooManyImages'), 'error'); break; }
+        if (f.size > MAX_TOTAL) { notify(t('board.imageTooLarge'), 'error'); continue; }
+        if (total + f.size > MAX_TOTAL) { notify(t('board.imagesTooLarge'), 'error'); break; }
+        pickedFiles.push(f);
+        total += f.size;
+      }
+      imagesInput.value = '';
+      renderPreviews();
+    });
+
+    function renderPreviews() {
+      previewsEl.innerHTML = '';
+      pickedFiles.forEach((f, idx) => {
+        const wrap = document.createElement('span');
+        wrap.className = 'board-preview';
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.alt = f.name;
+        img.src = URL.createObjectURL(f);
+        img.onload = () => URL.revokeObjectURL(img.src);
+        const rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'board-preview-rm';
+        rm.textContent = '×';
+        rm.setAttribute('aria-label', t('board.removeImage'));
+        rm.addEventListener('click', () => { pickedFiles.splice(idx, 1); renderPreviews(); });
+        wrap.appendChild(img);
+        wrap.appendChild(rm);
+        previewsEl.appendChild(wrap);
+      });
+    }
+
+    function authorHtml(item) {
+      const name = item.name || ('#' + item.user_num);
+      const avatar = item.avatar_url
+        ? `<img class="board-avatar" loading="lazy" src="${escapeHtml(item.avatar_url)}" alt="">`
+        : `<span class="board-avatar board-avatar-fallback" aria-hidden="true">${escapeHtml((name || '#').charAt(0).toUpperCase())}</span>`;
+      const badge = item.is_admin ? `<span class="board-admin-badge">${escapeHtml(t('board.admin'))}</span>` : '';
+      return `<a class="board-author" href="/?u=${item.user_num}" data-board-user="${item.user_num}">${avatar}<span class="board-author-name">${escapeHtml(name)}</span></a>${badge}`;
+    }
+
+    function imagesHtml(images) {
+      if (!images || !images.length) return '';
+      return `<div class="board-images">${images.map((im) =>
+        `<a class="board-image-link" href="${escapeHtml(im.url)}" target="_blank" rel="noopener"><img class="board-image" loading="lazy" src="${escapeHtml(im.url)}" alt=""></a>`
+      ).join('')}</div>`;
+    }
+
+    function likeHtml(item, type) {
+      const cls = item.liked ? 'board-like liked' : 'board-like';
+      return `<button type="button" class="${cls}" data-board-like="${type}:${item.id}" aria-pressed="${item.liked ? 'true' : 'false'}">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="${item.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+        <span class="board-like-count">${item.like_count || 0}</span></button>`;
+    }
+
+    function replyHtml(reply) {
+      const del = reply.mine
+        ? `<button type="button" class="board-del" data-board-del-reply="${reply.id}">${escapeHtml(t('board.delete'))}</button>` : '';
+      return `<div class="board-reply" data-board-reply="${reply.id}">
+        <div class="board-reply-head">${authorHtml(reply)}<span class="board-when">${escapeHtml(relTime(reply.created_at))}</span>${del}</div>
+        <div class="board-reply-body">${escapeHtml(reply.body).replace(/\n/g, '<br>')}</div>
+        ${imagesHtml(reply.images)}
+        <div class="board-reply-foot">${likeHtml(reply, 'reply')}</div>
+      </div>`;
+    }
+
+    function topicHtml(topic) {
+      const del = topic.mine
+        ? `<button type="button" class="board-del" data-board-del-topic="${topic.id}">${escapeHtml(t('board.delete'))}</button>` : '';
+      const replies = (topic.replies || []).map(replyHtml).join('');
+      const replyToggle = `<button type="button" class="board-reply-toggle" data-board-reply-toggle="${topic.id}">${escapeHtml(t('board.reply'))}</button>`;
+      return `<article class="board-topic" data-board-topic="${topic.id}">
+        <div class="board-topic-head">
+          <span class="board-tag-chip tag-${escapeHtml(topic.tag)}">${escapeHtml(t('board.tag.' + topic.tag))}</span>
+          ${authorHtml(topic)}
+          <span class="board-when">${escapeHtml(relTime(topic.created_at))}</span>
+          ${del}
+        </div>
+        <div class="board-topic-body">${escapeHtml(topic.body).replace(/\n/g, '<br>')}</div>
+        ${imagesHtml(topic.images)}
+        <div class="board-topic-foot">
+          ${likeHtml(topic, 'topic')}
+          ${replyToggle}
+          <span class="board-reply-count">${topic.reply_count || 0} ${escapeHtml(t('board.replies'))}</span>
+        </div>
+        <div class="board-replies">${replies}</div>
+        <form class="board-reply-form hidden" data-board-reply-form="${topic.id}">
+          <textarea class="board-reply-input" rows="2" maxlength="500" data-i18n-placeholder="board.replyPlaceholder" placeholder="${escapeHtml(t('board.replyPlaceholder'))}"></textarea>
+          <button type="submit" class="btn-secondary board-reply-submit">${escapeHtml(t('board.sendReply'))}</button>
+        </form>
+      </article>`;
+    }
+
+    function renderList() {
+      listEl.innerHTML = items.map(topicHtml).join('');
+      listEl.setAttribute('aria-busy', 'false');
+      emptyEl.classList.toggle('hidden', items.length > 0);
+      loadMoreBtn.classList.toggle('hidden', !hasMore);
+    }
+
+    async function loadBoard(append) {
+      if (loading) return;
+      loading = true;
+      const seq = ++reqSeq;
+      errorEl.classList.add('hidden');
+      listEl.setAttribute('aria-busy', 'true');
+      const params = new URLSearchParams({ limit: String(PAGE), offset: append ? String(items.length) : '0' });
+      if (currentTag) params.set('tag', currentTag);
+      try {
+        const res = await fetch(`/api/board/topics?${params.toString()}`, { headers: apiHeaders() });
+        if (seq !== reqSeq) return;
+        if (!res.ok) throw new Error('load failed');
+        const data = await res.json();
+        if (seq !== reqSeq) return;
+        items = append ? items.concat(data.items || []) : (data.items || []);
+        hasMore = !!data.has_more;
+        renderList();
+      } catch (_err) {
+        if (seq !== reqSeq) return;
+        listEl.setAttribute('aria-busy', 'false');
+        if (append) notify(t('board.loadFailed'), 'error');
+        else { errorEl.classList.remove('hidden'); emptyEl.classList.add('hidden'); }
+      } finally {
+        if (seq === reqSeq) loading = false;
+      }
+    }
+
+    filters.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        currentTag = btn.dataset.boardFilter || '';
+        filters.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        items = [];
+        loadBoard(false);
+      });
+    });
+    retryBtn.addEventListener('click', () => loadBoard(false));
+    loadMoreBtn.addEventListener('click', () => loadBoard(true));
+
+    // Submit a new topic.
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      formMsg.textContent = '';
+      const tag = (form.querySelector('input[name="board-tag"]:checked') || {}).value || '';
+      const body = bodyInput.value.trim();
+      if (!tag) { formMsg.textContent = t('board.tagRequired'); return; }
+      if (!body) { formMsg.textContent = t('board.emptyBody'); return; }
+      if (body.length > 500) { formMsg.textContent = t('board.bodyTooLong'); return; }
+      submitBtn.disabled = true;
+      const fd = new FormData();
+      fd.append('tag', tag);
+      fd.append('body', body);
+      pickedFiles.forEach((f) => fd.append('images', f, f.name));
+      try {
+        const res = await fetch('/api/board/topics', { method: 'POST', headers: apiUploadHeaders(), body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          formMsg.textContent = boardErrorText(res.status, data.detail);
+          return;
+        }
+        bodyInput.value = '';
+        countEl.textContent = '0 / 500';
+        pickedFiles = [];
+        renderPreviews();
+        form.reset();
+        tagHint.textContent = t('board.tagHint.default');
+        notify(t('board.posted'), 'success');
+        items = [];
+        await loadBoard(false);
+      } catch (_err) {
+        formMsg.textContent = t('board.postFailed');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function boardErrorText(status, detail) {
+      const code = typeof detail === 'string' ? detail : (detail && detail.code) || '';
+      if (status === 429) {
+        return code === 'board.hourlyLimit' ? t('board.hourlyLimit') : t('board.tooFast');
+      }
+      const map = {
+        'board.tagRequired': 'board.tagRequired',
+        'board.emptyBody': 'board.emptyBody',
+        'board.bodyTooLong': 'board.bodyTooLong',
+        'board.imageTooLarge': 'board.imageTooLarge',
+        'board.imagesTooLarge': 'board.imagesTooLarge',
+        'board.tooManyImages': 'board.tooManyImages',
+        'board.badImage': 'board.badImage',
+      };
+      return t(map[code] || 'board.postFailed');
+    }
+
+    // Delegated actions: like, reply toggle, delete, author link.
+    listEl.addEventListener('click', async (e) => {
+      const userLink = e.target.closest('[data-board-user]');
+      if (userLink) {
+        e.preventDefault();
+        closeBoard();
+        openProfileViaLink(Number(userLink.dataset.boardUser));
+        return;
+      }
+      const likeBtn = e.target.closest('[data-board-like]');
+      if (likeBtn) {
+        const [type, id] = likeBtn.dataset.boardLike.split(':');
+        likeBtn.disabled = true;
+        try {
+          const res = await fetch(`/api/board/${type}/${id}/like`, { method: 'POST', headers: apiHeaders() });
+          if (res.ok) {
+            const info = await res.json();
+            likeBtn.classList.toggle('liked', info.liked);
+            likeBtn.setAttribute('aria-pressed', info.liked ? 'true' : 'false');
+            likeBtn.querySelector('.board-like-count').textContent = info.like_count;
+            const svg = likeBtn.querySelector('svg');
+            if (svg) svg.setAttribute('fill', info.liked ? 'currentColor' : 'none');
+            syncItemLike(type, Number(id), info);
+          }
+        } catch (_err) { /* ignore */ }
+        finally { likeBtn.disabled = false; }
+        return;
+      }
+      const replyToggle = e.target.closest('[data-board-reply-toggle]');
+      if (replyToggle) {
+        const tid = replyToggle.dataset.boardReplyToggle;
+        const rf = listEl.querySelector(`[data-board-reply-form="${tid}"]`);
+        if (rf) {
+          rf.classList.toggle('hidden');
+          if (!rf.classList.contains('hidden')) rf.querySelector('textarea').focus();
+        }
+        return;
+      }
+      const delTopic = e.target.closest('[data-board-del-topic]');
+      if (delTopic) {
+        const tid = delTopic.dataset.boardDelTopic;
+        if (!(await ask(t('board.confirmDeleteTopic'), { danger: true, okText: t('board.delete') }))) return;
+        try {
+          const res = await fetch(`/api/board/topics/${tid}`, { method: 'DELETE', headers: apiHeaders() });
+          if (res.ok) {
+            items = items.filter((i) => String(i.id) !== String(tid));
+            renderList();
+            notify(t('board.deleted'), 'success');
+          } else notify(t('board.deleteFailed'), 'error');
+        } catch (_err) { notify(t('board.deleteFailed'), 'error'); }
+        return;
+      }
+      const delReply = e.target.closest('[data-board-del-reply]');
+      if (delReply) {
+        const rid = delReply.dataset.boardDelReply;
+        if (!(await ask(t('board.confirmDeleteReply'), { danger: true, okText: t('board.delete') }))) return;
+        try {
+          const res = await fetch(`/api/board/replies/${rid}`, { method: 'DELETE', headers: apiHeaders() });
+          if (res.ok) {
+            const article = delReply.closest('.board-topic');
+            const tid = article && article.dataset.boardTopic;
+            await refreshTopic(tid);
+            notify(t('board.deleted'), 'success');
+          } else notify(t('board.deleteFailed'), 'error');
+        } catch (_err) { notify(t('board.deleteFailed'), 'error'); }
+        return;
+      }
+    });
+
+    function syncItemLike(type, id, info) {
+      const item = items.find((i) => String(i.id) === String(id));
+      if (type === 'topic' && item) { item.liked = info.liked; item.like_count = info.like_count; }
+    }
+
+    async function refreshTopic(tid) {
+      if (!tid) return;
+      try {
+        const res = await fetch(`/api/board/topics/${tid}`, { headers: apiHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const idx = items.findIndex((i) => String(i.id) === String(tid));
+        if (idx >= 0 && data.topic) {
+          items[idx] = data.topic;
+          const article = listEl.querySelector(`[data-board-topic="${tid}"]`);
+          if (article) article.outerHTML = topicHtml(data.topic);
+        }
+      } catch (_err) { /* ignore */ }
+    }
+
+    // Reply submission (delegated submit).
+    listEl.addEventListener('submit', async (e) => {
+      const rf = e.target.closest('[data-board-reply-form]');
+      if (!rf) return;
+      e.preventDefault();
+      const tid = rf.dataset.boardReplyForm;
+      const input = rf.querySelector('textarea');
+      const body = input.value.trim();
+      if (!body) return;
+      const btn = rf.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      const fd = new FormData();
+      fd.append('body', body);
+      try {
+        const res = await fetch(`/api/board/topics/${tid}/replies`, { method: 'POST', headers: apiUploadHeaders(), body: fd });
+        if (res.ok) {
+          input.value = '';
+          rf.classList.add('hidden');
+          await refreshTopic(tid);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          notify(boardErrorText(res.status, data.detail), 'error');
+        }
+      } catch (_err) {
+        notify(t('board.postFailed'), 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Re-render on language change while open.
+    window.addEventListener('i18n:changed', () => {
+      if (isOpen() && items.length) renderList();
+    });
+  })();
+
 })();

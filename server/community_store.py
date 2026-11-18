@@ -83,6 +83,40 @@ class CommunityStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_reports_app ON app_reports(app_id);
                 CREATE INDEX IF NOT EXISTS idx_reports_status ON app_reports(status);
+                CREATE TABLE IF NOT EXISTS board_topics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fp TEXT NOT NULL,
+                    tag TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    is_admin INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_board_topics_tag ON board_topics(tag, id);
+                CREATE TABLE IF NOT EXISTS board_replies (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    topic_id INTEGER NOT NULL,
+                    fp TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    is_admin INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_board_replies_topic ON board_replies(topic_id, id);
+                CREATE TABLE IF NOT EXISTS board_images (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    topic_id INTEGER,
+                    reply_id INTEGER,
+                    ext TEXT NOT NULL DEFAULT 'webp',
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_board_images_topic ON board_images(topic_id);
+                CREATE INDEX IF NOT EXISTS idx_board_images_reply ON board_images(reply_id);
+                CREATE TABLE IF NOT EXISTS board_likes (
+                    target_type TEXT NOT NULL,
+                    target_id INTEGER NOT NULL,
+                    fp TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (target_type, target_id, fp)
+                );
                 """
             )
 
@@ -399,6 +433,297 @@ class CommunityStore:
                 (_utc_now(), app_id),
             )
             return cur.rowcount
+
+    # ---------- site feedback board (#248) ----------
+    # Tagged threads (suggestion | question | help) with image attachments,
+    # toggleable likes (one per identity, enforced by the PK), threaded
+    # replies, and cascade delete. Identity is the device fingerprint;
+    # admin posts carry a visible badge.
+
+    BOARD_TAGS = ("suggestion", "question", "help")
+    MAX_BOARD_BODY_LEN = 500
+    MAX_BOARD_IMAGES = 6
+
+    def _board_author(self, row, viewer_fp: Optional[str]) -> dict:
+        return {
+            "user_num": row["user_num"],
+            "name": row["name"] or "",
+            "avatar_url": f"/u/{row['user_num']}/avatar.png?v={row['avatar']}" if row["avatar"] else None,
+            "is_admin": bool(row["is_admin"]),
+            "mine": bool(viewer_fp) and row["fp"] == viewer_fp,
+        }
+
+    def _board_images_locked(self, topic_id: Optional[int], reply_id: Optional[int]) -> List[dict]:
+        if topic_id is not None:
+            rows = self._conn.execute(
+                "SELECT id, ext FROM board_images WHERE topic_id = ? ORDER BY id", (topic_id,)
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT id, ext FROM board_images WHERE reply_id = ? ORDER BY id", (reply_id,)
+            ).fetchall()
+        return [{"id": r["id"], "url": f"/board/img/{r['id']}.{r['ext']}"} for r in rows]
+
+    def _board_like_info_locked(self, target_type: str, target_id: int, viewer_fp: Optional[str]) -> dict:
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM board_likes WHERE target_type = ? AND target_id = ?",
+            (target_type, target_id),
+        ).fetchone()[0]
+        liked = False
+        if viewer_fp:
+            liked = self._conn.execute(
+                "SELECT 1 FROM board_likes WHERE target_type = ? AND target_id = ? AND fp = ?",
+                (target_type, target_id, viewer_fp),
+            ).fetchone() is not None
+        return {"like_count": int(count), "liked": liked}
+
+    def add_board_topic(self, fp: str, tag: str, body: str, is_admin: bool = False) -> dict:
+        tag = str(tag or "").strip().lower()
+        if tag not in self.BOARD_TAGS:
+            raise ValueError("bad_tag")
+        body = str(body or "").strip()
+        if not body:
+            raise ValueError("empty_body")
+        if len(body) > self.MAX_BOARD_BODY_LEN:
+            raise ValueError("body_too_long")
+        self.ensure_user(fp)
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO board_topics(fp, tag, body, is_admin, created_at) VALUES (?, ?, ?, ?, ?)",
+                (fp, tag, body, 1 if is_admin else 0, _utc_now()),
+            )
+            return self.board_topic_by_id(cur.lastrowid, viewer_fp=fp)
+
+    def add_board_reply(self, topic_id: int, fp: str, body: str, is_admin: bool = False) -> dict:
+        body = str(body or "").strip()
+        if not body:
+            raise ValueError("empty_body")
+        if len(body) > self.MAX_BOARD_BODY_LEN:
+            raise ValueError("body_too_long")
+        self.ensure_user(fp)
+        with self._lock:
+            topic = self._conn.execute(
+                "SELECT id FROM board_topics WHERE id = ?", (int(topic_id),)
+            ).fetchone()
+            if not topic:
+                raise ValueError("topic_not_found")
+            cur = self._conn.execute(
+                "INSERT INTO board_replies(topic_id, fp, body, is_admin, created_at) VALUES (?, ?, ?, ?, ?)",
+                (int(topic_id), fp, body, 1 if is_admin else 0, _utc_now()),
+            )
+            return self.board_reply_by_id(cur.lastrowid, viewer_fp=fp)
+
+    def attach_board_images(self, image_specs: List[dict], topic_id: Optional[int] = None,
+                            reply_id: Optional[int] = None) -> List[dict]:
+        """Register already-written image files (specs: {ext}). Returns the
+        public descriptors. Caller writes the files first; on any later
+        failure the caller removes them."""
+        if len(image_specs) > self.MAX_BOARD_IMAGES:
+            raise ValueError("too_many_images")
+        with self._lock:
+            out = []
+            for spec in image_specs:
+                ext = str(spec.get("ext") or "webp").lower()
+                if ext not in ("webp", "png", "jpg"):
+                    ext = "webp"
+                cur = self._conn.execute(
+                    "INSERT INTO board_images(topic_id, reply_id, ext, created_at) VALUES (?, ?, ?, ?)",
+                    (topic_id, reply_id, ext, _utc_now()),
+                )
+                out.append({"id": cur.lastrowid, "url": f"/board/img/{cur.lastrowid}.{ext}"})
+            return out
+
+    def _board_reply_row_to_dict(self, row, viewer_fp: Optional[str]) -> dict:
+        item = {
+            "id": row["id"],
+            "topic_id": row["topic_id"],
+            "body": row["body"],
+            "created_at": row["created_at"],
+            "images": self._board_images_locked(None, row["id"]),
+        }
+        item.update(self._board_author(row, viewer_fp))
+        item.update(self._board_like_info_locked("reply", row["id"], viewer_fp))
+        return item
+
+    def board_reply_by_id(self, reply_id: int, viewer_fp: Optional[str] = None) -> dict:
+        with self._lock:
+            row = self._conn.execute(
+                """SELECT r.*, p.user_num, p.name, p.avatar FROM board_replies r
+                   LEFT JOIN profiles p ON p.fp = r.fp WHERE r.id = ?""",
+                (int(reply_id),),
+            ).fetchone()
+            return self._board_reply_row_to_dict(row, viewer_fp) if row else {}
+
+    def board_topic_by_id(self, topic_id: int, viewer_fp: Optional[str] = None) -> dict:
+        with self._lock:
+            row = self._conn.execute(
+                """SELECT t.*, p.user_num, p.name, p.avatar FROM board_topics t
+                   LEFT JOIN profiles p ON p.fp = t.fp WHERE t.id = ?""",
+                (int(topic_id),),
+            ).fetchone()
+            if not row:
+                return {}
+            item = {
+                "id": row["id"],
+                "tag": row["tag"],
+                "body": row["body"],
+                "created_at": row["created_at"],
+                "images": self._board_images_locked(row["id"], None),
+            }
+            item.update(self._board_author(row, viewer_fp))
+            item.update(self._board_like_info_locked("topic", row["id"], viewer_fp))
+            replies = self._conn.execute(
+                """SELECT r.*, p.user_num, p.name, p.avatar FROM board_replies r
+                   LEFT JOIN profiles p ON p.fp = r.fp
+                   WHERE r.topic_id = ? ORDER BY r.id""",
+                (row["id"],),
+            ).fetchall()
+            item["replies"] = [self._board_reply_row_to_dict(r, viewer_fp) for r in replies]
+            item["reply_count"] = len(item["replies"])
+            return item
+
+    def list_board_topics(self, tag: Optional[str] = None, limit: int = 20, offset: int = 0,
+                          viewer_fp: Optional[str] = None) -> dict:
+        limit = max(1, min(50, int(limit or 20)))
+        offset = max(0, int(offset or 0))
+        with self._lock:
+            if tag:
+                total = self._conn.execute(
+                    "SELECT COUNT(*) FROM board_topics WHERE tag = ?", (tag,)
+                ).fetchone()[0]
+                rows = self._conn.execute(
+                    """SELECT t.*, p.user_num, p.name, p.avatar FROM board_topics t
+                       LEFT JOIN profiles p ON p.fp = t.fp
+                       WHERE t.tag = ? ORDER BY t.id DESC LIMIT ? OFFSET ?""",
+                    (tag, limit + 1, offset),
+                ).fetchall()
+            else:
+                total = self._conn.execute("SELECT COUNT(*) FROM board_topics").fetchone()[0]
+                rows = self._conn.execute(
+                    """SELECT t.*, p.user_num, p.name, p.avatar FROM board_topics t
+                       LEFT JOIN profiles p ON p.fp = t.fp
+                       ORDER BY t.id DESC LIMIT ? OFFSET ?""",
+                    (limit + 1, offset),
+                ).fetchall()
+            has_more = len(rows) > limit
+            items = []
+            for row in rows[:limit]:
+                item = {
+                    "id": row["id"],
+                    "tag": row["tag"],
+                    "body": row["body"],
+                    "created_at": row["created_at"],
+                    "images": self._board_images_locked(row["id"], None),
+                }
+                item.update(self._board_author(row, viewer_fp))
+                item.update(self._board_like_info_locked("topic", row["id"], viewer_fp))
+                item["reply_count"] = self._conn.execute(
+                    "SELECT COUNT(*) FROM board_replies WHERE topic_id = ?", (row["id"],)
+                ).fetchone()[0]
+                items.append(item)
+            return {"items": items, "total": int(total), "limit": limit,
+                    "offset": offset, "has_more": has_more}
+
+    def board_topic_detail(self, topic_id: int, viewer_fp: Optional[str] = None) -> dict:
+        return self.board_topic_by_id(topic_id, viewer_fp=viewer_fp)
+
+    def toggle_board_like(self, target_type: str, target_id: int, fp: str) -> dict:
+        """Like/unlike toggle. The (target_type, target_id, fp) primary key
+        makes double-liking impossible at the storage level."""
+        if target_type not in ("topic", "reply"):
+            raise ValueError("bad_target")
+        self.ensure_user(fp)
+        with self._lock:
+            table = "board_topics" if target_type == "topic" else "board_replies"
+            exists = self._conn.execute(
+                f"SELECT 1 FROM {table} WHERE id = ?", (int(target_id),)
+            ).fetchone()
+            if not exists:
+                raise ValueError("not_found")
+            removed = self._conn.execute(
+                "DELETE FROM board_likes WHERE target_type = ? AND target_id = ? AND fp = ?",
+                (target_type, int(target_id), fp),
+            ).rowcount
+            if not removed:
+                self._conn.execute(
+                    "INSERT INTO board_likes(target_type, target_id, fp, created_at) VALUES (?, ?, ?, ?)",
+                    (target_type, int(target_id), fp, _utc_now()),
+                )
+            info = self._board_like_info_locked(target_type, int(target_id), fp)
+            info["liked"] = not removed
+            return info
+
+    def delete_board_topic(self, topic_id: int, fp: Optional[str] = None, admin: bool = False) -> dict:
+        """Cascade delete: the topic, ALL its replies, every like on them,
+        and all image rows. Returns {'result', 'image_files'} so the caller
+        can remove the files from disk. result: deleted|not_found|forbidden."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT fp FROM board_topics WHERE id = ?", (int(topic_id),)
+            ).fetchone()
+            if not row:
+                return {"result": "not_found", "image_files": []}
+            if not admin and row["fp"] != fp:
+                return {"result": "forbidden", "image_files": []}
+            reply_ids = [r["id"] for r in self._conn.execute(
+                "SELECT id FROM board_replies WHERE topic_id = ?", (int(topic_id),)
+            ).fetchall()]
+            files = self._board_image_files_locked(int(topic_id), reply_ids)
+            self._conn.execute(
+                "DELETE FROM board_likes WHERE target_type = 'topic' AND target_id = ?", (int(topic_id),)
+            )
+            if reply_ids:
+                placeholders = ",".join("?" for _ in reply_ids)
+                self._conn.execute(
+                    f"DELETE FROM board_likes WHERE target_type = 'reply' AND target_id IN ({placeholders})",
+                    reply_ids,
+                )
+                self._conn.execute(
+                    f"DELETE FROM board_images WHERE reply_id IN ({placeholders})", reply_ids
+                )
+                self._conn.execute(
+                    f"DELETE FROM board_replies WHERE id IN ({placeholders})", reply_ids
+                )
+            self._conn.execute("DELETE FROM board_images WHERE topic_id = ?", (int(topic_id),))
+            self._conn.execute("DELETE FROM board_topics WHERE id = ?", (int(topic_id),))
+            return {"result": "deleted", "image_files": files}
+
+    def delete_board_reply(self, reply_id: int, fp: Optional[str] = None, admin: bool = False) -> dict:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT fp FROM board_replies WHERE id = ?", (int(reply_id),)
+            ).fetchone()
+            if not row:
+                return {"result": "not_found", "image_files": []}
+            if not admin and row["fp"] != fp:
+                return {"result": "forbidden", "image_files": []}
+            files = self._board_image_files_locked(None, [int(reply_id)])
+            self._conn.execute(
+                "DELETE FROM board_likes WHERE target_type = 'reply' AND target_id = ?", (int(reply_id),)
+            )
+            self._conn.execute("DELETE FROM board_images WHERE reply_id = ?", (int(reply_id),))
+            self._conn.execute("DELETE FROM board_replies WHERE id = ?", (int(reply_id),))
+            return {"result": "deleted", "image_files": files}
+
+    def _board_image_files_locked(self, topic_id: Optional[int], reply_ids: List[int]) -> List[str]:
+        rows = []
+        if topic_id is not None:
+            rows += self._conn.execute(
+                "SELECT id, ext FROM board_images WHERE topic_id = ?", (topic_id,)
+            ).fetchall()
+        if reply_ids:
+            placeholders = ",".join("?" for _ in reply_ids)
+            rows += self._conn.execute(
+                f"SELECT id, ext FROM board_images WHERE reply_id IN ({placeholders})", reply_ids
+            ).fetchall()
+        return [f"{r['id']}.{r['ext']}" for r in rows]
+
+    def board_image_path(self, image_id: int) -> Optional[dict]:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, ext FROM board_images WHERE id = ?", (int(image_id),)
+            ).fetchone()
+            return {"id": row["id"], "ext": row["ext"]} if row else None
 
     # ---------- backfill ----------
 

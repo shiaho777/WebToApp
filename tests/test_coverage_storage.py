@@ -175,14 +175,21 @@ def test_upload_app_downloads_noops_and_filters_entries(monkeypatch, tmp_path):
     (existing / "nested").mkdir()
     (existing / "a.apk").write_bytes(b"a")
     (existing / "b.zip").write_bytes(b"b")
-    upload = Mock(side_effect=["https://cdn/a.apk", None])
+
+    # Uploads run in a thread pool (#242), so call order is not guaranteed.
+    # Key the mock by filename instead of a positional side_effect list, and
+    # assert the set of keys rather than their order.
+    def upload_by_name(path, key, content_type=None):
+        return "https://cdn/a.apk" if path.name == "a.apk" else None
+
+    upload = Mock(side_effect=upload_by_name)
     monkeypatch.setattr(client, "upload_file", upload)
 
     assert client.upload_app_downloads("id", existing) == {"a.apk": "https://cdn/a.apk"}
-    assert [call.args[1] for call in upload.call_args_list] == [
+    assert {call.args[1] for call in upload.call_args_list} == {
         "id/downloads/a.apk",
         "id/downloads/b.zip",
-    ]
+    }
 
 
 def test_delete_app_noops_and_counts_successes(monkeypatch):
