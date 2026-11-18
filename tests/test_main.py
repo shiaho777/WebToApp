@@ -696,12 +696,18 @@ class CommunityEndpointTests(unittest.TestCase):
         main.community_store = CommunityStore(self.apps_dir / "_community.sqlite3")
         main.AVATARS_DIR = self.apps_dir / "_avatars"
         main.AVATARS_DIR.mkdir(exist_ok=True)
+        # Rate-limiter buckets are module-global; clear them so comment writes
+        # in one test don't trip the per-IP cap in another (#248 isolation).
+        main.comment_rate_limiter._buckets.clear()
+        main.board_hourly_limiter._buckets.clear()
 
     def tearDown(self):
         main.APPS_DIR = self.original_apps_dir
         main.history_store = self.original_store
         main.community_store = self.original_community
         main.AVATARS_DIR = self.original_avatars
+        main.comment_rate_limiter._buckets.clear()
+        main.board_hourly_limiter._buckets.clear()
         self._tmp.cleanup()
 
     def _cookies(self, fp):

@@ -36,7 +36,7 @@
   // made single-language users download ~90% waste and blocked first paint.
   var TRANSLATIONS = {};
   // Bump together with the per-language files' content (cache busting).
-  var LANG_VERSION = '20261118-report1';
+  var LANG_VERSION = '20261118-board1';
   var loadedLangs = { en: true };
   var pendingLangs = {};
 
