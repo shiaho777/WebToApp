@@ -362,13 +362,13 @@ def url_daily_build_cap() -> int:
 
 def zero_signal_retention_hours() -> int:
     """Private apps with zero visits AND zero downloads are reclaimed after
-    this many hours (default 72) instead of the 30-day inactivity window.
-    Real creators open their own download page within minutes; abuse junk
-    never gets a single hit. 0 disables fast reclaim."""
+    this many hours (default 720 = 30 days), matching the normal inactivity
+    window. Kept as a separate knob so abuse junk can still be reclaimed
+    earlier during an incident. 0 disables fast reclaim."""
     try:
-        return max(0, int(os.environ.get("ZERO_SIGNAL_RETENTION_HOURS", "72").strip() or "72"))
+        return max(0, int(os.environ.get("ZERO_SIGNAL_RETENTION_HOURS", "720").strip() or "720"))
     except ValueError:
-        return 72
+        return 720
 
 
 def generated_disk_budget_mb() -> int:

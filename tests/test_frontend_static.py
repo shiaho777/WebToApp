@@ -201,7 +201,7 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261118-notice1", html)
+        self.assertIn("js/announcements.js?v=20261120-reten1", html)
 
     ANTI_ABUSE_TITLES = {
         "en": "Staying fast and free: new anti-abuse defenses",
@@ -235,17 +235,19 @@ class AnnouncementTests(unittest.TestCase):
         ]
         for marker in (
             "invisible proof-of-work",
-            "72 hours",
             "no accounts and no captchas",
             "per IP per day",
-            "72 小时",
             "无账号、无验证码",
         ):
             self.assertIn(marker, block)
+        # The 72-hour zero-signal reclaim line was removed after the policy
+        # reverted to the 30-day window; it must not creep back into the notice.
+        self.assertNotIn("72 hours", block)
+        self.assertNotIn("72 小时", block)
         for lang in ("en", "zh", "ja", "ko", "ar", "ru", "es", "pt", "fr", "de"):
             match = re.search(rf'"{lang}": \[\n(.*?)\n\s+\]', block, re.S)
             self.assertIsNotNone(match, lang)
-            self.assertEqual(len(re.findall(r'^\s+"', match.group(1), re.M)), 6, lang)
+            self.assertEqual(len(re.findall(r'^\s+"', match.group(1), re.M)), 5, lang)
 
 
 class FrontendResilienceTests(unittest.TestCase):
