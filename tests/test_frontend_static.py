@@ -201,7 +201,7 @@ class AnnouncementTests(unittest.TestCase):
 
     def test_notice_script_is_cache_busted(self):
         html = _read("index.html")
-        self.assertIn("js/announcements.js?v=20261120-reten1", html)
+        self.assertIn("js/announcements.js?v=20261120-reten2", html)
 
     ANTI_ABUSE_TITLES = {
         "en": "Staying fast and free: new anti-abuse defenses",
