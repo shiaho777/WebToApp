@@ -47,7 +47,6 @@
           "Builds now carry an invisible proof-of-work: your browser solves a tiny puzzle in the background before submitting. Normal use feels the same; mass automated abuse becomes expensive.",
           "The puzzle gets harder only when the service is under load, so real users are barely affected while attackers are slowed down.",
           "Fair-use budgets now cap total builds per hour, per IP per day, and per website per day — so a flood of junk can't crowd out real creators.",
-          "Apps nobody ever opens are now reclaimed after 72 hours instead of 30 days, and identical uploaded content is stored once. Disk stays healthy.",
           "Every build tool now has a time limit, and the service is fenced at the system level. One stuck job can no longer slow everyone else down."
         ],
         "zh": [
@@ -55,7 +54,6 @@
           "生成现在带一道隐形工作量证明：浏览器在提交前于后台解一道小题。正常使用几乎无感，批量自动化滥用则变得昂贵。",
           "只有在服务承压时题目才会变难，真实用户几乎不受影响，攻击者却被拖慢。",
           "新增公平使用额度：每小时总生成数、每 IP 每日、每个网址每日都有上限，垃圾洪流挤不掉真实创作者。",
-          "没人打开的应用现在 72 小时即回收（原来 30 天），相同上传内容只存一份。磁盘保持健康。",
           "每个构建工具都有了时限，服务也在系统层面加了围栏。一个卡住的任务不再拖慢所有人。"
         ],
         "ja": [
@@ -63,7 +61,6 @@
           "生成には見えないプルーフ・オブ・ワークが付きます。ブラウザが送信前にバックグラウンドで小さなパズルを解きます。通常利用はほぼ変わらず、大量の自動滥用は高コストになります。",
           "パズルはサービスが高負荷のときだけ難しくなるので、実ユーザーはほぼ影響を受けず、攻撃者は遅くなります。",
           "公正利用の上限を追加：毎時の総生成数、IP あたり毎日、サイトあたり毎日。ジャンクの洪水が本物のクリエイターを押し出せなくなります。",
-          "誰も開かないアプリは 30 日ではなく 72 時間で回収され、同一のアップロード内容は一度だけ保存されます。ディスクは健全に保たれます。",
           "すべてのビルドツールに時間制限が付き、サービスはシステムレベルで隔離されました。一つの停止したジョブが全体を遅くすることはもうありません。"
         ],
         "ko": [
@@ -71,7 +68,6 @@
           "이제 생성에는 보이지 않는 작업 증명이 붙습니다. 브라우저가 제출 전 백그라운드에서 작은 퍼즐을 풉니다. 일반 사용은 거의 그대로이고, 대량 자동 악용은 비싸집니다.",
           "퍼즐은 서비스에 부하가 걸릴 때만 어려워지므로, 실제 사용자는 거의 영향이 없고 공격자는 느려집니다.",
           "공정 사용 한도를 추가했습니다: 시간당 총 생성 수, IP당 일일, 웹사이트당 일일. 쓰레기 홍수가 진짜 창작자를 밀어내지 못합니다.",
-          "아무도 열지 않는 앱은 30일이 아니라 72시간 후 회수되며, 동일한 업로드 내용은 한 번만 저장됩니다. 디스크가 건강하게 유지됩니다.",
           "모든 빌드 도구에 시간 제한이 붙었고, 서비스는 시스템 수준에서 격리되었습니다. 멈춘 작업 하나가 모두를 느리게 하지 못합니다."
         ],
         "ar": [
@@ -79,7 +75,6 @@
           "تحمل عمليات الإنشاء الآن إثبات عمل غير مرئي: يحل متصفحك لغزاً صغيراً في الخلفية قبل الإرسال. الاستخدام العادي يبدو كما هو، بينما تصبح الإساءة الآلية الجماعية مكلفة.",
           "يصعب اللغز فقط عندما يكون الخدمة تحت الضغط، فلا يتأثر المستخدمون الحقيقيون إلا قليلاً بينما يتباطأ المهاجمون.",
           "أضفنا حدود استخدام عادل: إجمالي الإنشاءات في الساعة، ولكل IP يومياً، ولكل موقع يومياً — فلا يزاحم فيضان المحتوى غير المرغوب المبدعين الحقيقيين.",
-          "تُسترد التطبيقات التي لا يفتحها أحد بعد 72 ساعة بدلاً من 30 يوماً، ويُخزَّن المحتوى المرفوع المتطابق مرة واحدة. يبقى القرص سليماً.",
           "أصبح لكل أداة بناء حد زمني، وتم تسييج الخدمة على مستوى النظام. لم تعد مهمة واحدة عالقة تبطئ الجميع."
         ],
         "ru": [
@@ -87,7 +82,6 @@
           "Теперь каждая сборка несёт невидимое доказательство работы: браузер решает маленькую головоломку в фоне перед отправкой. Обычное использование почти не меняется, а массовые автоматические злоупотребления становятся дорогими.",
           "Головоломка усложняется только когда сервис под нагрузкой, поэтому реальные пользователи почти не затронуты, а атакующие замедляются.",
           "Добавлены лимиты честного использования: всего сборок в час, на IP в день и на сайт в день — поток мусора не вытеснит настоящих авторов.",
-          "Приложения, которые никто не открывает, теперь удаляются через 72 часа вместо 30 дней, а одинаковый загруженный контент хранится один раз. Диск остаётся здоровым.",
           "У каждого инструмента сборки теперь есть лимит времени, а сервис ограждён на уровне системы. Одна зависшая задача больше не замедляет всех."
         ],
         "es": [
@@ -95,7 +89,6 @@
           "Las generaciones llevan ahora una prueba de trabajo invisible: tu navegador resuelve un pequeño puzzle en segundo plano antes de enviar. El uso normal se siente igual; el abuso automatizado masivo se vuelve caro.",
           "El puzzle solo se vuelve más difícil cuando el servicio está bajo carga, así que los usuarios reales apenas se ven afectados mientras los atacantes se ralentizan.",
           "Añadimos límites de uso justo: generaciones totales por hora, por IP al día y por sitio web al día — una avalancha de basura no desplaza a los creadores reales.",
-          "Las apps que nadie abre ahora se recuperan a las 72 horas en lugar de 30 días, y el contenido subido idéntico se almacena una sola vez. El disco se mantiene sano.",
           "Cada herramienta de construcción tiene ahora un límite de tiempo, y el servicio está cercado a nivel de sistema. Un trabajo atascado ya no ralentiza a todos."
         ],
         "pt": [
@@ -103,7 +96,6 @@
           "As gerações agora carregam uma prova de trabalho invisível: seu navegador resolve um pequeno quebra-cabeça em segundo plano antes de enviar. O uso normal parece o mesmo; o abuso automatizado em massa fica caro.",
           "O quebra-cabeça só fica mais difícil quando o serviço está sob carga, então usuários reais quase não são afetados enquanto atacantes desaceleram.",
           "Adicionamos limites de uso justo: gerações totais por hora, por IP por dia e por site por dia — uma enxurrada de lixo não desloca os criadores reais.",
-          "Apps que ninguém abre agora são recuperados após 72 horas em vez de 30 dias, e conteúdo enviado idêntico é armazenado uma vez. O disco permanece saudável.",
           "Cada ferramenta de build agora tem um limite de tempo, e o serviço está cercado no nível do sistema. Um trabalho travado não desacelera mais todos."
         ],
         "fr": [
@@ -111,7 +103,6 @@
           "Les générations portent désormais une preuve de travail invisible : votre navigateur résout un petit puzzle en arrière-plan avant l’envoi. L’usage normal semble identique ; l’abus automatisé massif devient coûteux.",
           "Le puzzle ne se durcit que lorsque le service est sous charge, donc les vrais utilisateurs sont à peine affectés tandis que les attaquants ralentissent.",
           "Nous avons ajouté des budgets d’usage équitable : générations totales par heure, par IP par jour et par site par jour — un déluge de déchets n’évince plus les vrais créateurs.",
-          "Les apps que personne n’ouvre sont désormais récupérées après 72 heures au lieu de 30 jours, et le contenu téléversé identique n’est stocké qu’une fois. Le disque reste sain.",
           "Chaque outil de build a désormais une limite de temps, et le service est clôturé au niveau système. Une tâche bloquée ne ralentit plus tout le monde."
         ],
         "de": [
@@ -119,7 +110,6 @@
           "Builds tragen jetzt einen unsichtbaren Arbeitsnachweis: Dein Browser löst im Hintergrund ein kleines Rätsel, bevor er sendet. Normale Nutzung fühlt sich gleich an; massenhafter automatisierter Missbrauch wird teuer.",
           "Das Rätsel wird nur schwieriger, wenn der Dienst unter Last steht, also sind echte Nutzer kaum betroffen, während Angreifer verlangsamt werden.",
           "Wir haben Fair-Use-Budgets eingebaut: Builds pro Stunde insgesamt, pro IP pro Tag und pro Website pro Tag — eine Flut aus Müll verdrängt keine echten Creator mehr.",
-          "Apps, die niemand öffnet, werden jetzt nach 72 Stunden statt 30 Tagen zurückgewonnen, und identischer hochgeladener Inhalt wird nur einmal gespeichert. Die Festplatte bleibt gesund.",
           "Jedes Build-Tool hat jetzt ein Zeitlimit, und der Dienst ist auf Systemebene eingezäunt. Ein hängender Job verlangsamt nicht mehr alle."
         ]
       }
