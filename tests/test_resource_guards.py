@@ -121,6 +121,24 @@ class ZeroSignalReclaimTests(unittest.TestCase):
         self.assertEqual(self.store.list_zero_signal_apps("2026-11-10T00:00:00Z"), [])
 
 
+class RetentionWindowTests(unittest.TestCase):
+    """The published promise is 30 days of inactivity. #242 briefly reclaimed
+    zero-signal apps after 72 hours; that was reverted in #250 because it is
+    the wrong trade for real users. Both numbers are pinned here so the fast
+    window cannot drift away from the documented 30 days by accident."""
+
+    def test_inactivity_window_is_thirty_days(self):
+        self.assertEqual(main.APP_RETENTION_DAYS, 30)
+
+    def test_zero_signal_reclaim_matches_the_thirty_day_window(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ZERO_SIGNAL_RETENTION_HOURS", None)
+            self.assertEqual(config.zero_signal_retention_hours(), 720)
+            self.assertEqual(
+                config.zero_signal_retention_hours(), main.APP_RETENTION_DAYS * 24
+            )
+
+
 class DiskWatermarkTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(main.app)

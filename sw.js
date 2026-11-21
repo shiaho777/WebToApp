@@ -4,7 +4,11 @@
    API calls, generated app pages and download pages always go to the network. */
 'use strict';
 
-const CACHE_NAME = 'wta-shell-v2';
+// v3: the retention notice reverted to 30 days and the 72-hour line was
+// dropped from announcements.js. Bumping the bucket is what actually makes
+// installed clients drop the old shell HTML + the cached notice file they
+// were still serving from wta-shell-v2.
+const CACHE_NAME = 'wta-shell-v3';
 const SHELL_KEY = '/';
 const SHELL_ASSET_PREFIXES = ['/css/', '/js/', '/assets/'];
 const SHELL_ASSET_FILES = ['/manifest.webmanifest'];
