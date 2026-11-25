@@ -13,7 +13,7 @@ self.addEventListener('install', (event) => {
       if (response && response.ok) {
         const html = await response.clone().text();
         await cache.put(SHELL_KEY, response);
-        await Promise.allSettled(shellAssetUrls(html).map((url) => cache.add(url)));
+        await cacheShellAssets(cache, html);
       }
     } catch (_err) {
     }
@@ -84,6 +84,14 @@ function shellAssetUrls(html) {
   return Array.from(urls);
 }
 
+function cacheShellAssets(cache, html) {
+  return Promise.allSettled(shellAssetUrls(html).map((url) => {
+    const isManifest = SHELL_ASSET_FILES.includes(new URL(url).pathname);
+    const request = new Request(url, { cache: isManifest ? 'reload' : 'default' });
+    return cache.add(request);
+  }));
+}
+
 async function refreshShell(request) {
   const response = await fetch(request);
   if (!response || !response.ok) return response;
@@ -95,7 +103,7 @@ async function refreshShell(request) {
 
   if (html !== oldHtml) {
     await cache.put(SHELL_KEY, response.clone());
-    await Promise.allSettled(shellAssetUrls(html).map((url) => cache.add(url)));
+    await cacheShellAssets(cache, html);
   }
   return response;
 }
