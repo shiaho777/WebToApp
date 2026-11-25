@@ -8,7 +8,7 @@
 
 رابط واحد يدخل، وتخرج منتجات جاهزة لـ **iPhone / iPad · Android · Windows · macOS · Linux** — بالإضافة إلى سوق تطبيقات عام وملفات شخصية للمنشئين وتعليقات وتقييمات، وكل ذلك دون تسجيل.
 
-[![عرض مباشر](https://img.shields.io/badge/عرض_مباشر-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs)
+[![عرض مباشر](https://img.shields.io/badge/عرض_مباشر-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs/WebToApp/)
 [![CI](https://img.shields.io/badge/CI-pytest%20336-059669?style=for-the-badge)](https://github.com/shiaho777/WebToApp/actions)
 [![الرخصة: MIT](https://img.shields.io/badge/License-MIT-1e1914?style=for-the-badge)](../LICENSE)
 [![المنصات](https://img.shields.io/badge/المنصات-5-736357?style=for-the-badge)](#ما-الذي-تحصل-عليه)
@@ -27,7 +27,7 @@
 
 كل تطبيق مُنشأ يعيش في صفحة تحميل خاصة به `/a/<id>`: خيارات تثبيت لكل منصة، وقسم قابل للطي بعنوان «عن هذه الصفحة» يمكن للمنشئ ملؤه بمحتوى حقيقي، وطبقة مجتمعية فيها تعليقات وتقييمات بالنجوم. انشره كرابط عام فيظهر أيضاً في **سوق التطبيقات** ليكتشفه الجميع.
 
-مفتوح المصدر · مجاني · بلا تسجيل. جرّبه مباشرة على **[shiaho.sbs](https://shiaho.sbs)**.
+مفتوح المصدر · مجاني · بلا تسجيل. جرّبه مباشرة على **[shiaho.sbs](https://shiaho.sbs/WebToApp/)**.
 
 ---
 

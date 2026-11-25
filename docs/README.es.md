@@ -8,7 +8,7 @@
 
 Un enlace entra, salen productos terminados para **iPhone / iPad · Android · Windows · macOS · Linux** — además de un mercado público de apps, perfiles de creador, comentarios y valoraciones, todo sin registro.
 
-[![Demo en vivo](https://img.shields.io/badge/Demo_en_vivo-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs)
+[![Demo en vivo](https://img.shields.io/badge/Demo_en_vivo-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs/WebToApp/)
 [![CI](https://img.shields.io/badge/CI-pytest%20336-059669?style=for-the-badge)](https://github.com/shiaho777/WebToApp/actions)
 [![Licencia: MIT](https://img.shields.io/badge/License-MIT-1e1914?style=for-the-badge)](../LICENSE)
 [![Plataformas](https://img.shields.io/badge/Plataformas-5-736357?style=for-the-badge)](#qué-obtienes)
@@ -27,7 +27,7 @@ Introduce una URL —o sube tu propio `.html` / `.zip`— y segundos después ob
 
 Cada app generada vive en su propia página de descarga `/a/<id>`: opciones por plataforma, una sección plegable «Acerca de esta página» que el creador puede llenar con contenido real, y una capa comunitaria con comentarios y valoraciones por estrellas. Publícala como enlace público y además aparece en el **mercado de apps** para que todos la encuentren.
 
-Open source · Gratis · Sin registro. Pruébalo en vivo en **[shiaho.sbs](https://shiaho.sbs)**.
+Open source · Gratis · Sin registro. Pruébalo en vivo en **[shiaho.sbs](https://shiaho.sbs/WebToApp/)**.
 
 ---
 

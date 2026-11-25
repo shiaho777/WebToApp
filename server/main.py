@@ -60,6 +60,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 # text/plain and browsers would ignore the manifest.
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
+_WEBTOAPP_PATH = "/WebToApp/"
+_WEBTOAPP_WORKER_PATH = _WEBTOAPP_PATH + "sw.js"
+
 _LONG_CACHE_PREFIXES = ("/css/", "/js/", "/assets/")
 _LONG_CACHE_SUFFIXES = (".css", ".js", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2")
 
@@ -80,6 +83,7 @@ _BLOCKED_STATIC_SUFFIXES = (".keystore", ".jks", ".pem", ".key", ".p12", ".pfx",
 _STATIC_ALLOWED_PREFIXES = ("/css/", "/js/", "/assets/")
 _STATIC_ALLOWED_FILES = {
     "/index.html", "/sw.js", "/manifest.webmanifest", "/favicon.ico", "/robots.txt",
+    _WEBTOAPP_PATH.rstrip("/").lower(), _WEBTOAPP_WORKER_PATH.lower(),
 }
 
 
@@ -174,7 +178,7 @@ async def add_cache_headers(request: Request, call_next):
     existing = response.headers.get("cache-control")
     if existing:
         return response
-    if path in ("/", "/index.html", "/sw.js"):
+    if path in (_WEBTOAPP_PATH, _WEBTOAPP_WORKER_PATH, "/sw.js", "/manifest.webmanifest"):
         # Entry HTML must revalidate on every load. All frontend upgrades
         # ride on ?v= cache-busters *inside* this file, so a heuristically
         # cached copy strands users on stale UI talking to a new API
@@ -183,7 +187,7 @@ async def add_cache_headers(request: Request, call_next):
         # The service worker script must revalidate too, or browsers can
         # keep running an old worker after a deploy.
         response.headers["Cache-Control"] = "no-cache"
-        if path == "/sw.js":
+        if path in (_WEBTOAPP_WORKER_PATH, "/sw.js", "/manifest.webmanifest"):
             response.headers["CDN-Cache-Control"] = "no-store"
     elif path.startswith(_LONG_CACHE_PREFIXES) or path.endswith(_LONG_CACHE_SUFFIXES):
         # 1 day fresh, 7 days stale-while-revalidate. Hashed query strings
@@ -2701,4 +2705,22 @@ async def serve_ios_install(app_id: str):
 
 
 # --- Static frontend ---
-app.mount("/", StaticFiles(directory=str(ROOT), html=True), name="static")
+static_frontend = StaticFiles(directory=str(ROOT), html=True)
+
+
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+@app.api_route("/index.html", methods=["GET", "HEAD"], include_in_schema=False)
+@app.api_route(_WEBTOAPP_PATH.rstrip("/"), methods=["GET", "HEAD"], include_in_schema=False)
+async def redirect_to_webtoapp(request: Request):
+    target = _WEBTOAPP_PATH
+    if request.url.query:
+        target += "?" + request.url.query
+    return RedirectResponse(target, status_code=307, headers={"Cache-Control": "no-store"})
+
+
+@app.api_route(_WEBTOAPP_PATH, methods=["GET", "HEAD"], include_in_schema=False)
+async def serve_webtoapp(request: Request):
+    return await static_frontend.get_response("index.html", request.scope)
+
+
+app.mount("/", static_frontend, name="static")

@@ -921,7 +921,7 @@
         ? `<img class="market-creator-avatar" src="${escapeHtml(item.creator_avatar_url)}" alt="" loading="lazy">`
         : `<span class="market-creator-avatar avatar-fallback" aria-hidden="true">${escapeHtml((item.creator_name || '#').charAt(0).toUpperCase())}</span>`;
       const creatorHtml = item.creator_num
-        ? `<a class="market-creator" href="/?u=${encodeURIComponent(item.creator_num)}" data-user-num="${encodeURIComponent(item.creator_num)}">
+        ? `<a class="market-creator" href="/WebToApp/?u=${encodeURIComponent(item.creator_num)}" data-user-num="${encodeURIComponent(item.creator_num)}">
              ${creatorAvatar}<span class="market-creator-name">${escapeHtml(item.creator_name || t('profile.anon'))}</span>
            </a>`
         : '';
@@ -3084,7 +3084,7 @@
         ? `<img class="board-avatar" loading="lazy" src="${escapeHtml(item.avatar_url)}" alt="">`
         : `<span class="board-avatar board-avatar-fallback" aria-hidden="true">${escapeHtml((name || '#').charAt(0).toUpperCase())}</span>`;
       const badge = item.is_admin ? `<span class="board-admin-badge">${escapeHtml(t('board.admin'))}</span>` : '';
-      return `<a class="board-author" href="/?u=${item.user_num}" data-board-user="${item.user_num}">${avatar}<span class="board-author-name">${escapeHtml(name)}</span></a>${badge}`;
+      return `<a class="board-author" href="/WebToApp/?u=${item.user_num}" data-board-user="${item.user_num}">${avatar}<span class="board-author-name">${escapeHtml(name)}</span></a>${badge}`;
     }
 
     function imagesHtml(images) {

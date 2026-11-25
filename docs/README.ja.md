@@ -8,7 +8,7 @@
 
 リンクを一つ入れるだけで、**iPhone / iPad · Android · Windows · macOS · Linux** 向けの完成品が出てきます——さらに公開アプリマーケット、クリエイタープロフィール、コメントと評価付き。登録は不要です。
 
-[![ライブデモ](https://img.shields.io/badge/ライブデモ-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs)
+[![ライブデモ](https://img.shields.io/badge/ライブデモ-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs/WebToApp/)
 [![CI](https://img.shields.io/badge/CI-pytest%20336-059669?style=for-the-badge)](https://github.com/shiaho777/WebToApp/actions)
 [![ライセンス: MIT](https://img.shields.io/badge/License-MIT-1e1914?style=for-the-badge)](../LICENSE)
 [![プラットフォーム](https://img.shields.io/badge/プラットフォーム-5-736357?style=for-the-badge)](#生成されるもの)
@@ -27,7 +27,7 @@ URL を入力——または自分の `.html` / `.zip` をアップロード—�
 
 生成されたアプリはすべて専用のダウンロードページ `/a/<id>` を持ちます：プラットフォーム別インストール項目、クリエイターが内容を書き込める折りたたみ式「このページについて」、そしてコメントと星評価のコミュニティレイヤー。公開リンクとして発行すれば、**アプリマーケット**にも掲載されます。
 
-オープンソース · 無料 · 登録不要。ライブで試す：**[shiaho.sbs](https://shiaho.sbs)**。
+オープンソース · 無料 · 登録不要。ライブで試す：**[shiaho.sbs](https://shiaho.sbs/WebToApp/)**。
 
 ---
 

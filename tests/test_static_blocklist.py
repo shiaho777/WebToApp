@@ -120,12 +120,13 @@ class MiddlewareWiringTests(unittest.TestCase):
         self.assertEqual(self._status_for("/webtoapp.env"), 404)
 
     def test_homepage_still_serves(self):
-        self.assertEqual(self._status_for("/index.html"), 200)
+        self.assertEqual(self._status_for("/WebToApp/"), 200)
 
     def test_unknown_project_paths_are_hard_404(self):
         self.assertEqual(self._status_for("/.venv/pyvenv.cfg"), 404)
         self.assertEqual(self._status_for("/tests/test_main.py"), 404)
         self.assertEqual(self._status_for("/README.md"), 404)
+        self.assertEqual(self._status_for("/WebToApp/private.txt"), 404)
 
 
 if __name__ == "__main__":

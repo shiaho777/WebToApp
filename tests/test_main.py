@@ -103,14 +103,31 @@ class EntryCacheHeaderTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(main.app)
 
-    def test_root_html_must_revalidate(self):
-        # Stale entry HTML + fresh ?v= assets inside it = users stranded on
-        # old UI talking to a new API (all-zero stats). no-cache forces a
-        # cheap 304 revalidation instead of heuristic caching.
-        for path in ("/", "/index.html"):
-            resp = self.client.get(path)
-            self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.headers.get("cache-control"), "no-cache")
+    def test_legacy_entry_preserves_query_without_caching_redirect(self):
+        for path in ("/", "/index.html", "/WebToApp"):
+            with self.subTest(path=path):
+                query = "?u=17&source=old%20link%23x"
+                resp = self.client.get(path + query, follow_redirects=False)
+                self.assertEqual(resp.status_code, 307)
+                self.assertEqual(resp.headers["location"], "/WebToApp/" + query)
+                self.assertEqual(resp.headers["cache-control"], "no-store")
+
+    def test_project_html_must_revalidate(self):
+        resp = self.client.get("/WebToApp/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("<title>WebToApp", resp.text)
+        self.assertEqual(resp.headers["cache-control"], "no-cache")
+        revalidated = self.client.get("/WebToApp/", headers={"If-None-Match": resp.headers["etag"]})
+        self.assertEqual(revalidated.status_code, 304)
+
+    def test_pwa_manifest_retains_identity_under_project_scope(self):
+        resp = self.client.get("/manifest.webmanifest")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers["cache-control"], "no-cache")
+        manifest = resp.json()
+        self.assertEqual(manifest["id"], "/")
+        self.assertEqual(manifest["start_url"], "/WebToApp/")
+        self.assertEqual(manifest["scope"], "/WebToApp/")
 
     def test_versioned_assets_stay_long_cached(self):
         resp = self.client.get("/css/style.css")
@@ -118,10 +135,12 @@ class EntryCacheHeaderTests(unittest.TestCase):
         self.assertIn("max-age=86400", resp.headers.get("cache-control", ""))
 
     def test_service_worker_must_revalidate(self):
-        resp = self.client.get("/sw.js")
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.headers.get("cache-control"), "no-cache")
-        self.assertEqual(resp.headers.get("cdn-cache-control"), "no-store")
+        for path in ("/sw.js", "/WebToApp/sw.js"):
+            with self.subTest(path=path):
+                resp = self.client.get(path)
+                self.assertEqual(resp.status_code, 200)
+                self.assertEqual(resp.headers.get("cache-control"), "no-cache")
+                self.assertEqual(resp.headers.get("cdn-cache-control"), "no-store")
 
 
 class HistoryBulkDeleteTests(unittest.TestCase):

@@ -8,7 +8,7 @@
 
 На входе одна ссылка, на выходе готовые продукты для **iPhone / iPad · Android · Windows · macOS · Linux** — плюс публичный маркет приложений, профили авторов, комментарии и оценки, и всё это без регистрации.
 
-[![Живое демо](https://img.shields.io/badge/Живое_демо-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs)
+[![Живое демо](https://img.shields.io/badge/Живое_демо-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs/WebToApp/)
 [![CI](https://img.shields.io/badge/CI-pytest%20336-059669?style=for-the-badge)](https://github.com/shiaho777/WebToApp/actions)
 [![Лицензия: MIT](https://img.shields.io/badge/License-MIT-1e1914?style=for-the-badge)](../LICENSE)
 [![Платформы](https://img.shields.io/badge/Платформы-5-736357?style=for-the-badge)](#что-вы-получаете)
@@ -27,7 +27,7 @@
 
 Каждое созданное приложение живёт на собственной странице загрузки `/a/<id>`: варианты установки по платформам, сворачиваемая секция «Об этой странице», которую автор может заполнить реальным содержимым, и слой сообщества с комментариями и звёздными оценками. Опубликуйте публичную ссылку — и приложение также появится в **маркете приложений** для всех.
 
-Open source · Бесплатно · Без регистрации. Попробуйте вживую: **[shiaho.sbs](https://shiaho.sbs)**.
+Open source · Бесплатно · Без регистрации. Попробуйте вживую: **[shiaho.sbs](https://shiaho.sbs/WebToApp/)**.
 
 ---
 

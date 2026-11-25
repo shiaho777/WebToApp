@@ -8,7 +8,7 @@
 
 Ein Link geht rein, fertige Produkte für **iPhone / iPad · Android · Windows · macOS · Linux** kommen raus — dazu ein öffentlicher App-Markt, Creator-Profile, Kommentare und Bewertungen, alles ohne Registrierung.
 
-[![Live-Demo](https://img.shields.io/badge/Live--Demo-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs)
+[![Live-Demo](https://img.shields.io/badge/Live--Demo-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs/WebToApp/)
 [![CI](https://img.shields.io/badge/CI-pytest%20336-059669?style=for-the-badge)](https://github.com/shiaho777/WebToApp/actions)
 [![Lizenz: MIT](https://img.shields.io/badge/License-MIT-1e1914?style=for-the-badge)](../LICENSE)
 [![Plattformen](https://img.shields.io/badge/Plattformen-5-736357?style=for-the-badge)](#was-du-bekommst)
@@ -27,7 +27,7 @@ URL eingeben — oder eigenes `.html` / `.zip` hochladen — und Sekunden späte
 
 Jede generierte App lebt auf ihrer eigenen Download-Seite `/a/<id>`: Installationsoptionen pro Plattform, eine einklappbare Sektion „Über diese Seite", die der Creator mit echtem Inhalt füllen kann, und eine Community-Ebene mit Kommentaren und Sternebewertungen. Als öffentlichen Link veröffentlicht, erscheint sie außerdem im **App-Markt** für alle.
 
-Open Source · Kostenlos · Keine Registrierung. Live ausprobieren: **[shiaho.sbs](https://shiaho.sbs)**.
+Open Source · Kostenlos · Keine Registrierung. Live ausprobieren: **[shiaho.sbs](https://shiaho.sbs/WebToApp/)**.
 
 ---
 

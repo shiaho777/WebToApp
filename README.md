@@ -8,7 +8,7 @@
 
 One link in, finished products out for **iPhone / iPad · Android · Windows · macOS · Linux** — plus a public app market, creator profiles, comments and ratings, all without sign-up.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs/WebToApp/)
 [![CI](https://img.shields.io/badge/CI-pytest%20336-059669?style=for-the-badge)](https://github.com/shiaho777/WebToApp/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-1e1914?style=for-the-badge)](LICENSE)
 [![Platforms](https://img.shields.io/badge/Platforms-5-736357?style=for-the-badge)](#what-you-get)
@@ -27,7 +27,7 @@ Enter a URL — or upload your own `.html` / `.zip` — and seconds later you ge
 
 Every generated app lives at its own download page `/a/<id>`: platform picks, a foldable "About this page" section the creator can fill with real content, and a community layer with comments and star ratings. Publish it as a public link and it also appears in the **app market** for everyone to find.
 
-Open source · Free · No sign-up. Try it live at **[shiaho.sbs](https://shiaho.sbs)**.
+Open source · Free · No sign-up. Try it live at **[shiaho.sbs](https://shiaho.sbs/WebToApp/)**.
 
 ---
 
