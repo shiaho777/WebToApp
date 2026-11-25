@@ -211,7 +211,7 @@
   var pickedRating = 0;
 
   function profileLink(num) {
-    return '/' + '?u=' + encodeURIComponent(num);
+    return '/WebToApp/?u=' + encodeURIComponent(num);
   }
 
   function renderCreator(c) {

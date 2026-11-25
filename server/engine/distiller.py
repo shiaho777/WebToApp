@@ -1380,7 +1380,7 @@ a{{color:inherit;text-decoration:none}}
 <body>
 <div class="page">
   <div class="nav">
-    <a class="brand" href="/">
+    <a class="brand" href="/WebToApp/">
       <img src="/assets/site-logo-96.jpg?v=20261104-brand2" alt="WebToApp" width="28" height="28">
       <span>WebToApp</span>
     </a>
@@ -1450,7 +1450,7 @@ a{{color:inherit;text-decoration:none}}
 <script>{script_body}</script>
 <script src="/js/ui.js?v=20261104-ui3"></script>
 <script src="/js/mdmini.js"></script>
-<script src="/js/community.js?v=20261118-report1"></script>
+<script src="/js/community.js?v=20261125-project-path"></script>
 </body>
 </html>"""
         return html

@@ -405,7 +405,7 @@ class BrandAndComponentSystemTests(unittest.TestCase):
 
     def test_pages_reference_new_icon_set(self):
         html = _read("index.html")
-        self.assertIn('href="assets/site-logo-96.jpg', html)
+        self.assertIn('href="/assets/site-logo-96.jpg', html)
         self.assertIn('rel="apple-touch-icon"', html)
         self.assertIn('rel="manifest"', html)
         self.assertIn("/assets/site-logo-96.jpg", _read("server/engine/distiller.py"))
@@ -711,7 +711,7 @@ class StreamingFirstLoadTests(unittest.TestCase):
 
     def test_streaming_assets_are_cache_busted(self):
         self.assertIn("css/style.css?v=20261118-board1", self.html)
-        self.assertIn("js/app.v5.js?v=20261118-board1", self.html)
+        self.assertIn("js/app.v5.js?v=20261125-project-path", self.html)
 
     def test_feedback_board_is_wired(self):
         # #248: nav entry + modal + the board module in app.v5.js.
@@ -774,7 +774,7 @@ class ServiceWorkerTests(unittest.TestCase):
     """Guards for the main-site shell cache (issue #213)."""
 
     def setUp(self):
-        self.sw = _read("sw.js")
+        self.sw = _read("WebToApp/sw.js")
         self.html = _read("index.html")
 
     def test_worker_caches_the_shell_and_assets(self):
@@ -796,7 +796,7 @@ class ServiceWorkerTests(unittest.TestCase):
             self.assertIn(marker, self.sw)
 
     def test_page_registers_the_worker_without_http_cache(self):
-        self.assertIn("navigator.serviceWorker.register('/sw.js'", self.html)
+        self.assertIn("navigator.serviceWorker.register('/WebToApp/sw.js'", self.html)
         self.assertIn("updateViaCache: 'none'", self.html)
 
 

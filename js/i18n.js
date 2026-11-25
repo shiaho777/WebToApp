@@ -44,7 +44,7 @@
     if (loadedLangs[lang] || pendingLangs[lang]) return pendingLangs[lang] || Promise.resolve();
     var promise = new Promise(function (resolve) {
       var script = document.createElement('script');
-      script.src = 'js/i18n.' + lang + '.js?v=' + LANG_VERSION;
+      script.src = '/js/i18n.' + lang + '.js?v=' + LANG_VERSION;
       script.onload = function () { loadedLangs[lang] = true; resolve(); };
       script.onerror = function () { resolve(); }; // t() falls back to en per key
       document.head.appendChild(script);

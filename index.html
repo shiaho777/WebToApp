@@ -11,9 +11,9 @@
   <meta property="og:type" content="website">
   <meta name="theme-color" content="#efe4d4" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#17130f" media="(prefers-color-scheme: dark)">
-  <link rel="icon" href="assets/site-logo-96.jpg?v=20261104-brand2">
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=20261104-brand2">
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="/assets/site-logo-96.jpg?v=20261104-brand2">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=20261104-brand2">
+  <link rel="manifest" href="/manifest.webmanifest">
   <script>
   // Start the dynamic API calls while the page/CSS/JS are still downloading.
   // app.v5.js consumes these promises instead of issuing a second round-trip.
@@ -48,14 +48,14 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20261118-board1">
-  <script src="js/i18n.js?v=20261118-board1"></script>
-  <script src="js/i18n.en.js?v=20261118-board1"></script>
+  <link rel="stylesheet" href="/css/style.css?v=20261118-board1">
+  <script src="/js/i18n.js?v=20261125-project-path"></script>
+  <script src="/js/i18n.en.js?v=20261118-board1"></script>
 </head>
 <body>
   <header id="nav">
-    <a class="logo" href="/">
-      <img src="assets/site-logo-96.jpg?v=20261104-brand2" alt="WebToApp" width="28" height="28">
+    <a class="logo" href="/WebToApp/">
+      <img src="/assets/site-logo-96.jpg?v=20261104-brand2" alt="WebToApp" width="28" height="28">
       <span>WebToApp</span>
     </a>
     <div class="nav-actions">
@@ -802,15 +802,18 @@
     </div>
   </div>
 
-  <script src="js/ui.js?v=20261104-ui3"></script>
-  <script src="js/announcements.js?v=20261120-reten2"></script>
-  <script src="js/mdmini.js?v=20261013-ads1"></script>
-  <script src="js/pow.js?v=20261118-pow1"></script>
-  <script src="js/app.v5.js?v=20261118-board1"></script>
+  <script src="/js/ui.js?v=20261104-ui3"></script>
+  <script src="/js/announcements.js?v=20261120-reten2"></script>
+  <script src="/js/mdmini.js?v=20261013-ads1"></script>
+  <script src="/js/pow.js?v=20261118-pow1"></script>
+  <script src="/js/app.v5.js?v=20261125-project-path"></script>
   <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(function () {});
+      navigator.serviceWorker.register('/WebToApp/sw.js', { updateViaCache: 'none' }).catch(function () {});
+      navigator.serviceWorker.getRegistration('/').then(function (previous) {
+        if (previous) return previous.update();
+      }).catch(function () {});
     });
   }
   </script>

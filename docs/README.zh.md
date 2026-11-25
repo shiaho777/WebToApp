@@ -8,7 +8,7 @@
 
 输入一个链接，输出覆盖 **iPhone / iPad · Android · Windows · macOS · Linux** 的成品——还自带公开应用市场、创建者主页、评论和评分，全程无需注册。
 
-[![在线演示](https://img.shields.io/badge/在线演示-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs)
+[![在线演示](https://img.shields.io/badge/在线演示-shiaho.sbs-c97953?style=for-the-badge)](https://shiaho.sbs/WebToApp/)
 [![CI](https://img.shields.io/badge/CI-pytest%20336-059669?style=for-the-badge)](https://github.com/shiaho777/WebToApp/actions)
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-1e1914?style=for-the-badge)](../LICENSE)
 [![平台](https://img.shields.io/badge/平台-5-736357?style=for-the-badge)](#你能得到什么)
@@ -27,7 +27,7 @@ QQ 群 **947508787**
 
 每个生成的应用都有自己的下载页 `/a/<id>`：平台安装入口、可折叠的「关于本页」区块（创作者可以填入真实内容）、以及带评论和星级评分的社区层。以公链形式发布后，它还会出现在**应用市场**里供所有人发现。
 
-开源 · 免费 · 无需登录。在线体验：**[shiaho.sbs](https://shiaho.sbs)**。
+开源 · 免费 · 无需登录。在线体验：**[shiaho.sbs](https://shiaho.sbs/WebToApp/)**。
 
 ---
 
