@@ -281,7 +281,7 @@ class DownloadPageHardeningTests(unittest.TestCase):
     """Generated page.html / pwa.html interpolate user-controlled recipe
     fields — every interpolation must be output-encoded (issue #73)."""
 
-    def _page(self, **overrides):
+    def _page(self, *, files=(), **overrides):
         import tempfile
         from pathlib import Path
 
@@ -292,6 +292,10 @@ class DownloadPageHardeningTests(unittest.TestCase):
         }
         recipe.update(overrides)
         with tempfile.TemporaryDirectory() as tmp:
+            downloads = Path(tmp) / "downloads"
+            downloads.mkdir()
+            for filename in files:
+                (downloads / filename).write_bytes(b"package")
             return Distiller().render_download_page(Path(tmp), recipe)
 
     def test_recipe_fields_are_escaped(self):
@@ -371,7 +375,7 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertEqual(recipe["languages"], ["zh", "en"])
 
     def test_download_page_marker_invalidates_old_ads_cache(self):
-        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v10-report -->")
+        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v11-device -->")
 
     def test_download_page_supports_dark_mode(self):
         page = self._page()
@@ -571,7 +575,7 @@ class DownloadPageLayoutTests(unittest.TestCase):
     """Verbose prose is folded into <details>; key info stays visible."""
 
     def _page(self):
-        return DownloadPageHardeningTests()._page(description="A demo app")
+        return DownloadPageHardeningTests()._page(files=("ios.mobileconfig",), description="A demo app")
 
     def test_prose_is_collapsed_not_inline(self):
         page = self._page()
@@ -595,8 +599,27 @@ class DownloadPageLayoutTests(unittest.TestCase):
     def test_platforms_render_before_ios_fold(self):
         page = self._page()
         body = page[page.find("<body>"):]
-        self.assertLess(body.find('class="platforms"'), body.find('ios-fold'))
+        self.assertLess(body.find('id="device-list"'), body.find('ios-fold'))
+        iphone_card = body.split('data-device="ios"', 1)[1].split('</article>', 1)[0]
+        self.assertIn('/download/ios', iphone_card)
+        self.assertIn('class="fold ios-fold"', iphone_card)
+        self.assertEqual(body.count('/download/ios'), 1)
         self.assertLess(body.find('class="hero-panel"'), body.find('id="community-sec"'))
+
+
+    def test_android_fallback_and_failed_platforms_are_labeled(self):
+        page = DownloadPageHardeningTests()._page(
+            files=("android.zip", "macos.zip"),
+            platform_errors={"macos": "builder failed"},
+            downloads_cdn={"windows.zip": "https://cdn.example.com/windows.zip"},
+        )
+        body = page[page.find("<body>"):]
+        android_card = body.split('data-device="android"', 1)[1].split('</article>', 1)[0]
+        self.assertIn('data-available="true"', android_card)
+        self.assertIn('data-i18n="actionDownloadPwa"', android_card)
+        self.assertIn('/download/android', android_card)
+        self.assertNotIn('/download/macos', body)
+        self.assertIn('/download/windows', body)
 
 
 class IconPipelineTests(unittest.TestCase):

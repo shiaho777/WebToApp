@@ -48,9 +48,9 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="/css/style.css?v=20261118-board1">
-  <script src="/js/i18n.js?v=20261125-project-path"></script>
-  <script src="/js/i18n.en.js?v=20261118-board1"></script>
+  <link rel="stylesheet" href="/css/style.css?v=20261127-create1">
+  <script src="/js/i18n.js?v=20261127-create1"></script>
+  <script src="/js/i18n.en.js?v=20261127-create1"></script>
 </head>
 <body>
   <header id="nav">
@@ -67,59 +67,67 @@
         <label id="lang-label" class="sr-only" for="lang-select" data-i18n="nav.langLabel">Language</label>
         <select id="lang-select" aria-labelledby="lang-label"></select>
       </div>
-      <button id="board-btn" class="board-btn" type="button"
-        aria-haspopup="dialog" aria-expanded="false" aria-controls="board-modal"
-        data-i18n-aria-label="board.title" data-i18n-title="board.title" aria-label="Feedback board" title="Feedback board">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <button id="nav-more-btn" class="nav-more-btn btn-secondary" type="button" aria-expanded="false" aria-controls="nav-secondary" data-i18n-aria-label="nav.more" aria-label="More">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
       </button>
-      <div class="nav-notices">
-        <button id="notices-btn" class="nav-notices-btn" type="button"
-          aria-haspopup="dialog" aria-expanded="false" aria-controls="notices-panel"
-          aria-label="Notices" title="Notices">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <div id="nav-secondary" class="nav-secondary">
+        <button id="board-btn" class="board-btn" type="button"
+          aria-haspopup="dialog" aria-expanded="false" aria-controls="board-modal"
+          data-i18n-aria-label="board.title" data-i18n-title="board.title" aria-label="Feedback board" title="Feedback board">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span class="nav-secondary-label" data-i18n="board.title">Feedback board</span>
         </button>
-        <div id="notices-panel" class="nav-notices-panel hidden" role="dialog" aria-labelledby="notices-title" hidden>
-          <div class="nav-notices-head">
-            <p id="notices-title" class="nav-notices-title"></p>
-            <button id="notices-close" class="nav-notices-close" type="button" aria-label="Close">×</button>
-          </div>
-          <div id="notices-scroll" class="nav-notices-scroll"></div>
-        </div>
-      </div>
-      <a class="gh-link" href="https://github.com/shiaho777/WebToApp" target="_blank" rel="noopener noreferrer"
-         data-i18n-aria-label="nav.github" aria-label="View source on GitHub" title="GitHub">
-        <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor">
-          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-        </svg>
-      </a>
-      <div class="qq-group">
-        <button id="qq-group-btn" class="qq-group-btn" type="button"
-          aria-haspopup="dialog" aria-expanded="false" aria-controls="qq-group-panel"
-          data-i18n-aria-label="nav.qq" data-i18n-title="nav.qq" aria-label="Community" title="Community">
-          <span data-i18n="nav.qqShort">Community</span>
-        </button>
-        <div id="qq-group-panel" class="qq-group-panel hidden" role="dialog" aria-labelledby="community-title">
-          <button id="qq-group-close" class="qq-group-close" type="button" data-i18n-aria-label="nav.qqClose" aria-label="Close">×</button>
-          <p id="community-title" class="qq-group-title" data-i18n="nav.communityTitle">社区</p>
-          <section class="community-block">
-            <h2 class="community-kicker" data-i18n="nav.tgTitle">Telegram</h2>
-            <p class="qq-group-lead" data-i18n="nav.tgNote">这是另一个同名项目的群，这边的事也可以在那里一起聊。</p>
-            <a class="qq-group-join community-link" href="https://t.me/webtoapp777" target="_blank" rel="noopener noreferrer" data-i18n="nav.tgJoin">打开 Telegram</a>
-          </section>
-          <section class="community-block">
-            <h2 class="community-kicker" data-i18n="nav.qqSection">QQ 群</h2>
-            <p class="community-name">WebToApp 网页版</p>
-            <p class="qq-group-lead" data-i18n="nav.qqLead">点击链接加入群聊【WebToApp 网页版】</p>
-            <p class="qq-group-number-row">
-              <span data-i18n="nav.qqNumber">群号</span>
-              <strong id="qq-group-number">947508787</strong>
-            </p>
-            <div class="qq-group-actions">
-              <a class="qq-group-join" href="https://qm.qq.com/q/F9BHHJNvtm" target="_blank" rel="noopener noreferrer" data-i18n="nav.qqJoin">加入群聊</a>
-              <button id="qq-group-copy" class="qq-group-copy" type="button" data-i18n="nav.qqCopy">复制群号</button>
+        <div class="nav-notices">
+          <button id="notices-btn" class="nav-notices-btn" type="button"
+            aria-haspopup="dialog" aria-expanded="false" aria-controls="notices-panel"
+            aria-label="Notices" title="Notices">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span class="nav-secondary-label" data-i18n="nav.notices">Notices</span>
+          </button>
+          <div id="notices-panel" class="nav-notices-panel hidden" role="dialog" aria-labelledby="notices-title" hidden>
+            <div class="nav-notices-head">
+              <p id="notices-title" class="nav-notices-title"></p>
+              <button id="notices-close" class="nav-notices-close" type="button" aria-label="Close">×</button>
             </div>
-            <p id="qq-group-status" class="qq-group-status" role="status"></p>
-          </section>
+            <div id="notices-scroll" class="nav-notices-scroll"></div>
+          </div>
+        </div>
+        <a class="gh-link" href="https://github.com/shiaho777/WebToApp" target="_blank" rel="noopener noreferrer"
+           data-i18n-aria-label="nav.github" aria-label="View source on GitHub" title="GitHub">
+          <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          <span class="nav-secondary-label" data-i18n="nav.github">View source on GitHub</span>
+        </a>
+        <div class="qq-group">
+          <button id="qq-group-btn" class="qq-group-btn" type="button"
+            aria-haspopup="dialog" aria-expanded="false" aria-controls="qq-group-panel"
+            data-i18n-aria-label="nav.qq" data-i18n-title="nav.qq" aria-label="Community" title="Community">
+            <span data-i18n="nav.qqShort">Community</span>
+          </button>
+          <div id="qq-group-panel" class="qq-group-panel hidden" role="dialog" aria-labelledby="community-title">
+            <button id="qq-group-close" class="qq-group-close" type="button" data-i18n-aria-label="nav.qqClose" aria-label="Close">×</button>
+            <p id="community-title" class="qq-group-title" data-i18n="nav.communityTitle">社区</p>
+            <section class="community-block">
+              <h2 class="community-kicker" data-i18n="nav.tgTitle">Telegram</h2>
+              <p class="qq-group-lead" data-i18n="nav.tgNote">这是另一个同名项目的群，这边的事也可以在那里一起聊。</p>
+              <a class="qq-group-join community-link" href="https://t.me/webtoapp777" target="_blank" rel="noopener noreferrer" data-i18n="nav.tgJoin">打开 Telegram</a>
+            </section>
+            <section class="community-block">
+              <h2 class="community-kicker" data-i18n="nav.qqSection">QQ 群</h2>
+              <p class="community-name">WebToApp 网页版</p>
+              <p class="qq-group-lead" data-i18n="nav.qqLead">点击链接加入群聊【WebToApp 网页版】</p>
+              <p class="qq-group-number-row">
+                <span data-i18n="nav.qqNumber">群号</span>
+                <strong id="qq-group-number">947508787</strong>
+              </p>
+              <div class="qq-group-actions">
+                <a class="qq-group-join" href="https://qm.qq.com/q/F9BHHJNvtm" target="_blank" rel="noopener noreferrer" data-i18n="nav.qqJoin">加入群聊</a>
+                <button id="qq-group-copy" class="qq-group-copy" type="button" data-i18n="nav.qqCopy">复制群号</button>
+              </div>
+              <p id="qq-group-status" class="qq-group-status" role="status"></p>
+            </section>
+          </div>
         </div>
       </div>
     </div>
@@ -183,49 +191,6 @@
     <!-- ===== WORKSPACE ===== -->
     <section id="workspace" class="hidden">
       <div class="workspace-grid">
-        <!-- Analysis -->
-        <div class="panel" id="analysis-panel">
-          <div class="panel-head">
-            <h2 data-i18n="analysis.title">Site analysis</h2>
-            <span id="analysis-status" class="status-badge" data-i18n="analysis.statusAnalyzing">Analyzing</span>
-          </div>
-          <div id="analysis-body" class="panel-body">
-            <div class="analysis-loader">
-              <div class="loader-bar"></div>
-              <p id="loader-text" data-i18n="analysis.fetching">Fetching page...</p>
-            </div>
-          </div>
-          <!-- Platform overview: static, always visible. One build ships all
-               five installers at once — this is what kills the
-               "Android-only" misunderstanding the old config panel created. -->
-          <div class="platform-overview">
-            <h3 data-i18n="platforms.title">One build, five apps</h3>
-            <p class="platform-overview-sub" data-i18n="platforms.sub">Every generation produces all five installers at once — no extra ticks, no rebuilds.</p>
-            <ul class="platform-list">
-              <li>
-                <span class="p-icon p-icon-android" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg></span>
-                <div><strong>Android</strong><span data-i18n="platforms.androidDetail">Signed WebView APK · ~21 KB</span></div>
-              </li>
-              <li>
-                <span class="p-icon p-icon-apple" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></span>
-                <div><strong>iOS / iPadOS</strong><span data-i18n="platforms.iosDetail">Web Clip profile · ~4 KB</span></div>
-              </li>
-              <li>
-                <span class="p-icon p-icon-apple" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></span>
-                <div><strong>macOS</strong><span data-i18n="platforms.macosDetail">Standalone .app window · ~135 KB</span></div>
-              </li>
-              <li>
-                <span class="p-icon p-icon-windows" aria-hidden="true"><svg viewBox="0 0 88 88"><path d="M0 12.402 35.687 7.542l.016 34.423-35.67.203zm35.67 33.529.028 34.453L.028 75.48.026 45.7zm4.326-39.025L87.314 0v41.527l-47.318.376zm47.329 39.349-.011 41.34-47.318-6.678-.066-34.739z"/></svg></span>
-                <div><strong>Windows</strong><span data-i18n="platforms.windowsDetail">Launcher .zip · ~1.2 KB</span></div>
-              </li>
-              <li>
-                <span class="p-icon p-icon-linux p-icon-outline" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg></span>
-                <div><strong>Linux</strong><span data-i18n="platforms.linuxDetail">Desktop entry .tar.gz · ~0.7 KB</span></div>
-              </li>
-            </ul>
-          </div>
-        </div>
-
         <!-- Config -->
         <div class="panel" id="config-panel">
           <div class="panel-head"><h2 data-i18n="config.title">App configuration</h2></div>
@@ -235,32 +200,6 @@
                 <span data-i18n="config.appName">App name</span>
                 <input id="app-name" type="text" data-i18n-placeholder="config.appNamePlaceholder" placeholder="Auto-detecting...">
                 <small id="app-name-source-note" class="field-note field-note-inline" data-i18n="config.appNameNote">Name and source are filled in automatically after analysis</small>
-              </label>
-              <label class="field field-full">
-                <span data-i18n="config.appDesc">App description (optional)</span>
-                <input id="app-desc" type="text" maxlength="80" data-i18n-placeholder="config.appDescPlaceholder" placeholder="One line shown on the market card and app page">
-              </label>
-              <label class="field field-full">
-                <span data-i18n="config.aboutLabel">About section (optional)</span>
-                <textarea id="about-text" rows="3" maxlength="2000" data-i18n-placeholder="config.aboutPlaceholder" placeholder="Intro shown inside the About fold on the app page"></textarea>
-              </label>
-              <div class="field field-full">
-                <span data-i18n="config.aboutImagesLabel">About images (optional)</span>
-                <div class="file-picker-row">
-                  <input id="about-images-input" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
-                  <label for="about-images-input" class="file-picker-btn" data-i18n="config.chooseFile">Choose file</label>
-                  <span id="about-images-name" class="file-picker-name" data-i18n="config.noFileChosen">No file chosen</span>
-                  <button id="about-images-clear" class="icon-upload-clear" type="button" data-i18n="config.aboutImagesClear">Clear</button>
-                </div>
-                <div id="about-images-preview" class="about-images-preview"></div>
-                <small class="field-note" data-i18n="config.aboutImagesNote">Up to 3 images; anything over 800KB is auto-compressed near-losslessly.</small>
-              </div>
-              <label class="field">
-                <span data-i18n="config.themeColor">Theme color</span>
-                <div class="color-wrap">
-                  <input id="app-color" type="color" value="#7c3aed">
-                  <span id="color-hex">#7c3aed</span>
-                </div>
               </label>
               <label class="field field-full">
                 <span data-i18n="config.appIcon">App icon</span>
@@ -281,231 +220,6 @@
                   </div>
                 </div>
               </label>
-            </div>
-
-            <!-- Platform settings: one tab per platform. Only Android has
-                 extra knobs today (they drive the real APK build); the other
-                 four shells reuse the shared name/icon/theme above, and each
-                 tab says so explicitly instead of pretending. -->
-            <div class="platform-config">
-              <div class="platform-config-head">
-                <span data-i18n="config.platformsTitle">Platform settings</span>
-                <small data-i18n="config.platformsSub">One build covers all five — pick a tab to inspect</small>
-              </div>
-              <div class="platform-tabs" role="tablist" data-i18n-aria-label="config.tabsLabel" aria-label="Platform settings tabs">
-                <button class="platform-tab active" type="button" role="tab" aria-selected="true" aria-controls="panel-android" id="tab-android" data-platform-tab="android">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg>
-                  <span>Android</span>
-                </button>
-                <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-ios" id="tab-ios" data-platform-tab="ios" tabindex="-1">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
-                  <span>iOS</span>
-                </button>
-                <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-macos" id="tab-macos" data-platform-tab="macos" tabindex="-1">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
-                  <span>macOS</span>
-                </button>
-                <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-windows" id="tab-windows" data-platform-tab="windows" tabindex="-1">
-                  <svg viewBox="0 0 88 88" aria-hidden="true"><path d="M0 12.402 35.687 7.542l.016 34.423-35.67.203zm35.67 33.529.028 34.453L.028 75.48.026 45.7zm4.326-39.025L87.314 0v41.527l-47.318.376zm47.329 39.349-.011 41.34-47.318-6.678-.066-34.739z"/></svg>
-                  <span>Windows</span>
-                </button>
-                <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-linux" id="tab-linux" data-platform-tab="linux" tabindex="-1">
-                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>
-                  <span>Linux</span>
-                </button>
-              </div>
-              <div class="platform-panels">
-                <section class="platform-panel" role="tabpanel" id="panel-android" aria-labelledby="tab-android" data-platform-panel="android" tabindex="0">
-                  <div class="feature-grid">
-                    <section class="feature-card">
-                      <div class="feature-copy">
-                        <div class="feature-heading-row">
-                          <strong data-i18n="config.immersiveTitle">Immersive fullscreen</strong>
-                          <span class="feature-tag">Android</span>
-                        </div>
-                        <p data-i18n="config.immersiveDesc">Hide the Android status and navigation bars so content fills the screen. iPhone apps already launch fullscreen by default.</p>
-                      </div>
-                      <label class="switch" data-i18n-aria-label="config.immersiveTitle" aria-label="Immersive fullscreen">
-                        <input id="feature-immersive-fullscreen" type="checkbox" checked>
-                        <span class="switch-ui"></span>
-                      </label>
-                    </section>
-
-                    <section class="feature-card">
-                      <div class="feature-copy">
-                        <div class="feature-heading-row">
-                          <strong data-i18n="config.desktopTitle">Desktop mode</strong>
-                          <span class="feature-tag">Android</span>
-                        </div>
-                        <p data-i18n="config.desktopDesc">Visit the site with a desktop browser identity. Good for dashboards, consoles and some video pages.</p>
-                      </div>
-                      <label class="switch" data-i18n-aria-label="config.desktopTitle" aria-label="Desktop mode">
-                        <input id="feature-desktop-mode" type="checkbox">
-                        <span class="switch-ui"></span>
-                      </label>
-                    </section>
-                  </div>
-                  <details class="advanced-panel">
-                    <summary>
-                      <span data-i18n="config.advancedTitle">Advanced settings</span>
-                      <small data-i18n="config.advancedSub">Android version and package name</small>
-                    </summary>
-                    <div class="advanced-grid">
-                      <label class="field">
-                        <span data-i18n="config.versionName">Android version name</span>
-                        <input id="android-version-name" type="text" placeholder="1.0.0" value="1.0.0">
-                        <small class="field-note" data-i18n="config.versionNameNote">Only letters, digits, dots, underscores and hyphens are kept</small>
-                      </label>
-                      <label class="field">
-                        <span data-i18n="config.versionCode">Android version code</span>
-                        <input id="android-version-code" type="number" min="1" step="1" data-i18n-placeholder="config.versionCodePlaceholder" placeholder="Leave blank to auto-increment">
-                        <small class="field-note" data-i18n="config.versionCodeNote">Auto-increments by default; a manual value takes priority</small>
-                      </label>
-                      <label class="field field-full">
-                        <span data-i18n="config.packagePrefix">Android package prefix</span>
-                        <input id="android-package-prefix" type="text" placeholder="com.webtoapp" value="com.webtoapp">
-                        <small class="field-note" data-i18n="config.packagePrefixNote">e.g. com.company.product; the app ID is appended automatically</small>
-                      </label>
-                    </div>
-                  </details>
-                </section>
-                <section class="platform-panel" role="tabpanel" id="panel-ios" aria-labelledby="tab-ios" data-platform-panel="ios" tabindex="0" hidden>
-                  <div class="platform-note">
-                    <strong data-i18n="config.noExtraTitle">No extra options</strong>
-                    <p data-i18n="platformPanel.iosDesc">Web Clip profile installed via Safari; the home-screen icon launches fullscreen. It points at /launch, so the URL can be hot-swapped without reinstalling.</p>
-                    <p class="field-note" data-i18n="config.sharedNote">Reuses the shared name, icon and theme above — nothing else to set.</p>
-                  </div>
-                </section>
-                <section class="platform-panel" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos" data-platform-panel="macos" tabindex="0" hidden>
-                  <div class="platform-note">
-                    <strong data-i18n="config.noExtraTitle">No extra options</strong>
-                    <p data-i18n="platformPanel.macosDesc">Native .app bundle opening a standalone WKWebView window — no address bar, no third-party browser needed.</p>
-                    <p data-i18n="platformPanel.macosSize">Opens centered at 1280 × 800; resize freely afterwards.</p>
-                    <p class="field-note" data-i18n="config.sharedNote">Reuses the shared name, icon and theme above — nothing else to set.</p>
-                  </div>
-                </section>
-                <section class="platform-panel" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows" data-platform-panel="windows" tabindex="0" hidden>
-                  <p class="platform-panel-intro" data-i18n="platformPanel.windowsDesc">Launcher plus desktop-shortcut helper; opens the system browser in app mode.</p>
-                  <div class="window-size-grid">
-                    <label class="field">
-                      <span data-i18n="window.width">Width</span>
-                      <input id="windows-window-width" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="1280">
-                    </label>
-                    <label class="field">
-                      <span data-i18n="window.height">Height</span>
-                      <input id="windows-window-height" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="800">
-                    </label>
-                  </div>
-                  <p class="field-note" data-i18n="window.sizeDesc">Suggested initial window size in pixels. Blank = browser default (it may restore your last window).</p>
-                  <section class="feature-card">
-                    <div class="feature-copy">
-                      <div class="feature-heading-row">
-                        <strong data-i18n="window.maxTitle">Launch maximized</strong>
-                      </div>
-                      <p data-i18n="window.maxDesc">Open maximized instead of a sized window. Takes priority over the size above.</p>
-                    </div>
-                    <label class="switch" data-i18n-aria-label="window.maxTitle" aria-label="Launch maximized">
-                      <input id="windows-window-maximized" type="checkbox">
-                      <span class="switch-ui"></span>
-                    </label>
-                  </section>
-                </section>
-                <section class="platform-panel" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux" data-platform-panel="linux" tabindex="0" hidden>
-                  <p class="platform-panel-intro" data-i18n="platformPanel.linuxDesc">Desktop entry plus install script; opens the system browser in app mode with the app icon.</p>
-                  <div class="window-size-grid">
-                    <label class="field">
-                      <span data-i18n="window.width">Width</span>
-                      <input id="linux-window-width" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="1280">
-                    </label>
-                    <label class="field">
-                      <span data-i18n="window.height">Height</span>
-                      <input id="linux-window-height" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="800">
-                    </label>
-                  </div>
-                  <p class="field-note" data-i18n="window.sizeDesc">Suggested initial window size in pixels. Blank = browser default (it may restore your last window).</p>
-                  <section class="feature-card">
-                    <div class="feature-copy">
-                      <div class="feature-heading-row">
-                        <strong data-i18n="window.maxTitle">Launch maximized</strong>
-                      </div>
-                      <p data-i18n="window.maxDesc">Open maximized instead of a sized window. Takes priority over the size above.</p>
-                    </div>
-                    <label class="switch" data-i18n-aria-label="window.maxTitle" aria-label="Launch maximized">
-                      <input id="linux-window-maximized" type="checkbox">
-                      <span class="switch-ui"></span>
-                    </label>
-                  </section>
-                </section>
-              </div>
-            </div>
-
-            <div class="visibility-row">
-              <label class="visibility-control">
-                <span class="visibility-label" data-i18n="config.visibilityLabel">Link visibility</span>
-                <div class="source-mode visibility-toggle" role="group" aria-label="Link visibility">
-                  <button id="visibility-private-btn" class="mode-btn" type="button" data-i18n="config.visibilityPrivate">Private</button>
-                  <button id="visibility-public-btn" class="mode-btn active" type="button" data-i18n="config.visibilityPublic">Public</button>
-                </div>
-                <small class="field-note" data-i18n="config.visibilityNote">Private links work for anyone who has the link but are never listed. Public links appear in the app market.</small>
-              </label>
-              <div class="field field-full">
-                <span data-i18n="config.tagsLabel">Tags (required)</span>
-                <div class="tags-picker" id="tags-picker">
-                  <div class="tags-builtins" role="group" aria-label="Built-in tags">
-                    <button type="button" class="tag-chip" data-tag="tools" data-i18n="tags.tools">Tools</button>
-                    <button type="button" class="tag-chip" data-tag="games" data-i18n="tags.games">Games</button>
-                    <button type="button" class="tag-chip" data-tag="social" data-i18n="tags.social">Social</button>
-                    <button type="button" class="tag-chip" data-tag="news" data-i18n="tags.news">News</button>
-                    <button type="button" class="tag-chip" data-tag="entertainment" data-i18n="tags.entertainment">Entertainment</button>
-                  </div>
-                  <div class="tags-custom-row">
-                    <input id="tag-custom-input" type="text" maxlength="24" data-i18n-placeholder="config.tagsCustomPlaceholder" placeholder="Custom tag, press Enter">
-                  </div>
-                </div>
-                <small class="field-note" data-i18n="config.tagsNote">Pick at least one tag — 5 built-ins or type your own. Tags show on the app page and in the market.</small>
-              </div>
-            </div>
-
-            <div class="field field-full language-field">
-              <span data-i18n="config.languageLabel">App language</span>
-              <div class="language-picker" id="language-picker">
-                <div class="lang-primary-grid" id="lang-primary-grid" role="group" data-i18n-aria-label="config.languagePrimary" aria-label="Primary language">
-                    <button type="button" class="lang-chip" data-lang="en" aria-pressed="false">English</button>
-                    <button type="button" class="lang-chip" data-lang="zh" aria-pressed="false">中文</button>
-                    <button type="button" class="lang-chip" data-lang="ja" aria-pressed="false">日本語</button>
-                    <button type="button" class="lang-chip" data-lang="ko" aria-pressed="false">한국어</button>
-                    <button type="button" class="lang-chip" data-lang="ar" aria-pressed="false">العربية</button>
-                    <button type="button" class="lang-chip" data-lang="ru" aria-pressed="false">Русский</button>
-                    <button type="button" class="lang-chip" data-lang="es" aria-pressed="false">Español</button>
-                    <button type="button" class="lang-chip" data-lang="pt" aria-pressed="false">Português</button>
-                    <button type="button" class="lang-chip" data-lang="fr" aria-pressed="false">Français</button>
-                    <button type="button" class="lang-chip" data-lang="de" aria-pressed="false">Deutsch</button>
-                    <button type="button" class="lang-chip" data-lang="other" data-i18n="language.other" aria-pressed="false">Other</button>
-                    <button type="button" class="lang-chip" data-lang="und" data-i18n="language.und" aria-pressed="false">Unspecified</button>
-                </div>
-                <label class="lang-multi-toggle">
-                  <input id="lang-multilingual" type="checkbox">
-                  <span class="switch-ui"></span>
-                  <span data-i18n="config.languageMultilingual">Multilingual app</span>
-                </label>
-                <div class="lang-additional hidden" id="lang-additional-wrap">
-                  <span class="lang-additional-label" data-i18n="config.languageAdditional">Additional languages</span>
-                  <div class="lang-additional-grid" id="lang-additional-grid" role="group" data-i18n-aria-label="config.languageAdditional" aria-label="Additional languages">
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="en" aria-pressed="false">English</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="zh" aria-pressed="false">中文</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ja" aria-pressed="false">日本語</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ko" aria-pressed="false">한국어</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ar" aria-pressed="false">العربية</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="ru" aria-pressed="false">Русский</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="es" aria-pressed="false">Español</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="pt" aria-pressed="false">Português</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="fr" aria-pressed="false">Français</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="de" aria-pressed="false">Deutsch</button>
-                      <button type="button" class="lang-chip lang-chip-add" data-add-lang="other" data-i18n="language.other" aria-pressed="false">Other</button>
-                  </div>
-                </div>
-              </div>
-              <small class="field-note" data-i18n="config.languageNote">Choose the app's main language. Add more to mark it multilingual.</small>
             </div>
 
             <button id="generate-btn" class="btn-primary" type="button" data-i18n="config.generateBtn">Generate app</button>
@@ -535,19 +249,237 @@
                 <button id="build-retry-btn" class="btn-secondary" type="button" data-i18n="build.retry">Try again</button>
               </div>
             </div>
+            <details class="build-settings">
+              <summary data-i18n="config.moreSettings">Advanced settings</summary>
+              <div class="config-grid">
+                <label class="field field-full">
+                  <span data-i18n="config.aboutLabel">About section (optional)</span>
+                  <textarea id="about-text" rows="3" maxlength="2000" data-i18n-placeholder="config.aboutPlaceholder" placeholder="Intro shown inside the About fold on the app page"></textarea>
+                </label>
+                <div class="field field-full">
+                  <span data-i18n="config.aboutImagesLabel">About images (optional)</span>
+                  <div class="file-picker-row">
+                    <input id="about-images-input" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
+                    <label for="about-images-input" class="file-picker-btn" data-i18n="config.chooseFile">Choose file</label>
+                    <span id="about-images-name" class="file-picker-name" data-i18n="config.noFileChosen">No file chosen</span>
+                    <button id="about-images-clear" class="icon-upload-clear" type="button" data-i18n="config.aboutImagesClear">Clear</button>
+                  </div>
+                  <div id="about-images-preview" class="about-images-preview"></div>
+                  <small class="field-note" data-i18n="config.aboutImagesNote">Up to 3 images; anything over 800KB is auto-compressed near-losslessly.</small>
+                </div>
+                <label class="field">
+                  <span data-i18n="config.themeColor">Theme color</span>
+                  <div class="color-wrap">
+                    <input id="app-color" type="color" value="#7c3aed">
+                    <span id="color-hex">#7c3aed</span>
+                  </div>
+                </label>
+              </div>
+              <div class="platform-config">
+                <div class="platform-config-head">
+                  <span data-i18n="config.platformsTitle">Platform settings</span>
+                  <small data-i18n="config.platformsSub">One build covers all five — pick a tab to inspect</small>
+                </div>
+                <div class="platform-tabs" role="tablist" data-i18n-aria-label="config.tabsLabel" aria-label="Platform settings tabs">
+                  <button class="platform-tab active" type="button" role="tab" aria-selected="true" aria-controls="panel-android" id="tab-android" data-platform-tab="android">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg>
+                    <span>Android</span>
+                  </button>
+                  <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-ios" id="tab-ios" data-platform-tab="ios" tabindex="-1">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+                    <span>iOS</span>
+                  </button>
+                  <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-macos" id="tab-macos" data-platform-tab="macos" tabindex="-1">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+                    <span>macOS</span>
+                  </button>
+                  <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-windows" id="tab-windows" data-platform-tab="windows" tabindex="-1">
+                    <svg viewBox="0 0 88 88" aria-hidden="true"><path d="M0 12.402 35.687 7.542l.016 34.423-35.67.203zm35.67 33.529.028 34.453L.028 75.48.026 45.7zm4.326-39.025L87.314 0v41.527l-47.318.376zm47.329 39.349-.011 41.34-47.318-6.678-.066-34.739z"/></svg>
+                    <span>Windows</span>
+                  </button>
+                  <button class="platform-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-linux" id="tab-linux" data-platform-tab="linux" tabindex="-1">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>
+                    <span>Linux</span>
+                  </button>
+                </div>
+                <div class="platform-panels">
+                  <section class="platform-panel" role="tabpanel" id="panel-android" aria-labelledby="tab-android" data-platform-panel="android" tabindex="0">
+                    <div class="feature-grid">
+                      <section class="feature-card">
+                        <div class="feature-copy">
+                          <div class="feature-heading-row">
+                            <strong data-i18n="config.immersiveTitle">Immersive fullscreen</strong>
+                            <span class="feature-tag">Android</span>
+                          </div>
+                          <p data-i18n="config.immersiveDesc">Hide the Android status and navigation bars so content fills the screen. iPhone apps already launch fullscreen by default.</p>
+                        </div>
+                        <label class="switch" data-i18n-aria-label="config.immersiveTitle" aria-label="Immersive fullscreen">
+                          <input id="feature-immersive-fullscreen" type="checkbox" checked>
+                          <span class="switch-ui"></span>
+                        </label>
+                      </section>
+
+                      <section class="feature-card">
+                        <div class="feature-copy">
+                          <div class="feature-heading-row">
+                            <strong data-i18n="config.desktopTitle">Desktop mode</strong>
+                            <span class="feature-tag">Android</span>
+                          </div>
+                          <p data-i18n="config.desktopDesc">Visit the site with a desktop browser identity. Good for dashboards, consoles and some video pages.</p>
+                        </div>
+                        <label class="switch" data-i18n-aria-label="config.desktopTitle" aria-label="Desktop mode">
+                          <input id="feature-desktop-mode" type="checkbox">
+                          <span class="switch-ui"></span>
+                        </label>
+                      </section>
+                    </div>
+                    <details class="advanced-panel">
+                      <summary>
+                        <span data-i18n="config.advancedTitle">Advanced settings</span>
+                        <small data-i18n="config.advancedSub">Android version and package name</small>
+                      </summary>
+                      <div class="advanced-grid">
+                        <label class="field">
+                          <span data-i18n="config.versionName">Android version name</span>
+                          <input id="android-version-name" type="text" placeholder="1.0.0" value="1.0.0">
+                          <small class="field-note" data-i18n="config.versionNameNote">Only letters, digits, dots, underscores and hyphens are kept</small>
+                        </label>
+                        <label class="field">
+                          <span data-i18n="config.versionCode">Android version code</span>
+                          <input id="android-version-code" type="number" min="1" step="1" data-i18n-placeholder="config.versionCodePlaceholder" placeholder="Leave blank to auto-increment">
+                          <small class="field-note" data-i18n="config.versionCodeNote">Auto-increments by default; a manual value takes priority</small>
+                        </label>
+                        <label class="field field-full">
+                          <span data-i18n="config.packagePrefix">Android package prefix</span>
+                          <input id="android-package-prefix" type="text" placeholder="com.webtoapp" value="com.webtoapp">
+                          <small class="field-note" data-i18n="config.packagePrefixNote">e.g. com.company.product; the app ID is appended automatically</small>
+                        </label>
+                      </div>
+                    </details>
+                  </section>
+                  <section class="platform-panel" role="tabpanel" id="panel-ios" aria-labelledby="tab-ios" data-platform-panel="ios" tabindex="0" hidden>
+                    <div class="platform-note">
+                      <strong data-i18n="config.noExtraTitle">No extra options</strong>
+                      <p data-i18n="platformPanel.iosDesc">Web Clip profile installed via Safari; the home-screen icon launches fullscreen. It points at /launch, so the URL can be hot-swapped without reinstalling.</p>
+                      <p class="field-note" data-i18n="config.sharedNote">Reuses the shared name, icon and theme above — nothing else to set.</p>
+                    </div>
+                  </section>
+                  <section class="platform-panel" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos" data-platform-panel="macos" tabindex="0" hidden>
+                    <div class="platform-note">
+                      <strong data-i18n="config.noExtraTitle">No extra options</strong>
+                      <p data-i18n="platformPanel.macosDesc">Native .app bundle opening a standalone WKWebView window — no address bar, no third-party browser needed.</p>
+                      <p data-i18n="platformPanel.macosSize">Opens centered at 1280 × 800; resize freely afterwards.</p>
+                      <p class="field-note" data-i18n="config.sharedNote">Reuses the shared name, icon and theme above — nothing else to set.</p>
+                    </div>
+                  </section>
+                  <section class="platform-panel" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows" data-platform-panel="windows" tabindex="0" hidden>
+                    <p class="platform-panel-intro" data-i18n="platformPanel.windowsDesc">Launcher plus desktop-shortcut helper; opens the system browser in app mode.</p>
+                    <div class="window-size-grid">
+                      <label class="field">
+                        <span data-i18n="window.width">Width</span>
+                        <input id="windows-window-width" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="1280">
+                      </label>
+                      <label class="field">
+                        <span data-i18n="window.height">Height</span>
+                        <input id="windows-window-height" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="800">
+                      </label>
+                    </div>
+                    <p class="field-note" data-i18n="window.sizeDesc">Suggested initial window size in pixels. Blank = browser default (it may restore your last window).</p>
+                    <section class="feature-card">
+                      <div class="feature-copy">
+                        <div class="feature-heading-row">
+                          <strong data-i18n="window.maxTitle">Launch maximized</strong>
+                        </div>
+                        <p data-i18n="window.maxDesc">Open maximized instead of a sized window. Takes priority over the size above.</p>
+                      </div>
+                      <label class="switch" data-i18n-aria-label="window.maxTitle" aria-label="Launch maximized">
+                        <input id="windows-window-maximized" type="checkbox">
+                        <span class="switch-ui"></span>
+                      </label>
+                    </section>
+                  </section>
+                  <section class="platform-panel" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux" data-platform-panel="linux" tabindex="0" hidden>
+                    <p class="platform-panel-intro" data-i18n="platformPanel.linuxDesc">Desktop entry plus install script; opens the system browser in app mode with the app icon.</p>
+                    <div class="window-size-grid">
+                      <label class="field">
+                        <span data-i18n="window.width">Width</span>
+                        <input id="linux-window-width" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="1280">
+                      </label>
+                      <label class="field">
+                        <span data-i18n="window.height">Height</span>
+                        <input id="linux-window-height" type="number" min="320" max="7680" step="1" inputmode="numeric" placeholder="800">
+                      </label>
+                    </div>
+                    <p class="field-note" data-i18n="window.sizeDesc">Suggested initial window size in pixels. Blank = browser default (it may restore your last window).</p>
+                    <section class="feature-card">
+                      <div class="feature-copy">
+                        <div class="feature-heading-row">
+                          <strong data-i18n="window.maxTitle">Launch maximized</strong>
+                        </div>
+                        <p data-i18n="window.maxDesc">Open maximized instead of a sized window. Takes priority over the size above.</p>
+                      </div>
+                      <label class="switch" data-i18n-aria-label="window.maxTitle" aria-label="Launch maximized">
+                        <input id="linux-window-maximized" type="checkbox">
+                        <span class="switch-ui"></span>
+                      </label>
+                    </section>
+                  </section>
+                </div>
+              </div>
+            </details>
             <small class="field-note create-note" data-i18n="config.retentionNote">A generated app link is cleaned up automatically after 30 days with no visits, to avoid holding system resources long-term.</small>
           </div>
         </div>
+        <details class="panel" id="analysis-panel">
+          <summary class="panel-head">
+            <span data-i18n="analysis.title">Site analysis</span>
+            <span id="analysis-status" class="status-badge" role="status" data-i18n="analysis.statusAnalyzing">Analyzing</span>
+          </summary>
+          <div id="analysis-body" class="panel-body">
+            <div class="analysis-loader">
+              <div class="loader-bar"></div>
+              <p id="loader-text" data-i18n="analysis.fetching">Fetching page...</p>
+            </div>
+          </div>
+          <div class="platform-overview">
+            <h3 data-i18n="platforms.title">One build, five apps</h3>
+            <p class="platform-overview-sub" data-i18n="platforms.sub">Every generation produces all five installers at once — no extra ticks, no rebuilds.</p>
+            <ul class="platform-list">
+              <li>
+                <span class="p-icon p-icon-android" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg></span>
+                <div><strong>Android</strong><span data-i18n="platforms.androidDetail">Signed WebView APK · ~21 KB</span></div>
+              </li>
+              <li>
+                <span class="p-icon p-icon-apple" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></span>
+                <div><strong>iOS / iPadOS</strong><span data-i18n="platforms.iosDetail">Web Clip profile · ~4 KB</span></div>
+              </li>
+              <li>
+                <span class="p-icon p-icon-apple" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></span>
+                <div><strong>macOS</strong><span data-i18n="platforms.macosDetail">Standalone .app window · ~135 KB</span></div>
+              </li>
+              <li>
+                <span class="p-icon p-icon-windows" aria-hidden="true"><svg viewBox="0 0 88 88"><path d="M0 12.402 35.687 7.542l.016 34.423-35.67.203zm35.67 33.529.028 34.453L.028 75.48.026 45.7zm4.326-39.025L87.314 0v41.527l-47.318.376zm47.329 39.349-.011 41.34-47.318-6.678-.066-34.739z"/></svg></span>
+                <div><strong>Windows</strong><span data-i18n="platforms.windowsDetail">Launcher .zip · ~1.2 KB</span></div>
+              </li>
+              <li>
+                <span class="p-icon p-icon-linux p-icon-outline" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg></span>
+                <div><strong>Linux</strong><span data-i18n="platforms.linuxDetail">Desktop entry .tar.gz · ~0.7 KB</span></div>
+              </li>
+            </ul>
+          </div>
+        </details>
       </div>
 
       <!-- Result -->
       <div id="result-panel" class="panel result-panel hidden">
         <h2 data-i18n="result.title">Generated</h2>
-        <p class="result-sub" data-i18n="result.sub">Open the link below on any device to download or install</p>
-        <div class="result-link-wrap">
-          <input id="app-link" type="text" readonly>
-          <button id="copy-btn" type="button" data-i18n="result.copy">Copy</button>
+        <div class="result-actions">
+          <a id="result-download" class="btn-primary" data-i18n="result.downloadPage">Open download page</a>
+          <button id="copy-btn" class="btn-secondary" type="button" data-i18n="result.copyLink">Copy link</button>
+          <button id="result-publish" class="btn-secondary hidden" type="button" data-i18n="publish.action">Publish to market</button>
         </div>
+        <p id="result-visibility" class="result-visibility" role="status"></p>
+        <input id="app-link" class="result-url" type="text" readonly data-i18n-aria-label="result.linkLabel" aria-label="App link">
         <div class="platforms" id="result-platforms">
           <span class="platform-tag">Android</span>
           <span class="platform-tag">iOS</span>
@@ -555,33 +487,12 @@
           <span class="platform-tag">macOS</span>
           <span class="platform-tag">Linux</span>
         </div>
-        <div class="preview-shell">
-          <div class="preview-shell-head">
-            <div class="preview-shell-chrome">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <div id="preview-url" class="preview-url" data-i18n="result.waitingLink">Waiting for the link...</div>
-            <button id="preview-open-btn" class="preview-open-btn" type="button" data-i18n-aria-label="result.openFull" aria-label="Open full">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M14 4h6v6"></path>
-                <path d="M10 14 20 4"></path>
-                <path d="M20 14v6H4V4h6"></path>
-              </svg>
-              <span data-i18n="result.openFull">Open full</span>
-            </button>
-          </div>
+        <details id="result-preview" class="preview-shell">
+          <summary data-i18n="result.previewTitle">App preview</summary>
           <div class="preview-frame-wrap">
-            <iframe
-              id="preview-frame"
-              data-i18n-title="result.previewTitle"
-              title="App preview"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-            ></iframe>
+            <iframe id="preview-frame" data-i18n-title="result.previewTitle" title="App preview" loading="lazy" referrerpolicy="no-referrer"></iframe>
           </div>
-        </div>
+        </details>
       </div>
     </section>
 
@@ -631,6 +542,7 @@
               <button id="history-cancel-select-btn" class="btn-secondary" type="button" data-i18n="history.cancelSelect">Cancel</button>
             </div>
           </div>
+          <div id="pending-builds" class="pending-builds hidden"></div>
           <div id="history-list" class="app-rows" aria-busy="true">
             <div class="skeleton-row" aria-hidden="true"><span class="skeleton skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line w60"></span><span class="skeleton skeleton-line w40"></span></div></div>
             <div class="skeleton-row" aria-hidden="true"><span class="skeleton skeleton-icon"></span><div class="skeleton-lines"><span class="skeleton skeleton-line w50"></span><span class="skeleton skeleton-line w30"></span></div></div>
@@ -802,11 +714,86 @@
     </div>
   </div>
 
+  <dialog id="publish-dialog" class="publish-dialog" aria-labelledby="publish-title">
+    <form id="publish-form">
+      <h2 id="publish-title" data-i18n="publish.action">Publish to market</h2>
+      <p id="publish-app-name" class="publish-app-name"></p>
+      <label class="field field-full">
+        <span data-i18n="config.appDesc">App description (optional)</span>
+        <input id="app-desc" type="text" maxlength="80" data-i18n-placeholder="config.appDescPlaceholder" placeholder="One line shown on the market card and app page">
+      </label>
+      <div class="field field-full">
+        <span data-i18n="config.tagsLabel">Tags (required)</span>
+        <div class="tags-picker" id="tags-picker">
+          <div class="tags-builtins" role="group" aria-label="Built-in tags">
+            <button type="button" class="tag-chip" data-tag="tools" data-i18n="tags.tools">Tools</button>
+            <button type="button" class="tag-chip" data-tag="games" data-i18n="tags.games">Games</button>
+            <button type="button" class="tag-chip" data-tag="social" data-i18n="tags.social">Social</button>
+            <button type="button" class="tag-chip" data-tag="news" data-i18n="tags.news">News</button>
+            <button type="button" class="tag-chip" data-tag="entertainment" data-i18n="tags.entertainment">Entertainment</button>
+          </div>
+          <div class="tags-custom-row">
+            <input id="tag-custom-input" type="text" maxlength="24" data-i18n-placeholder="config.tagsCustomPlaceholder" placeholder="Custom tag, press Enter">
+          </div>
+        </div>
+        <small class="field-note" data-i18n="config.tagsNote">Pick at least one tag — 5 built-ins or type your own. Tags show on the app page and in the market.</small>
+      </div>
+
+      <div class="field field-full language-field">
+        <span data-i18n="config.languageLabel">App language</span>
+        <div class="language-picker" id="language-picker">
+          <div class="lang-primary-grid" id="lang-primary-grid" role="group" data-i18n-aria-label="config.languagePrimary" aria-label="Primary language">
+              <button type="button" class="lang-chip" data-lang="en" aria-pressed="false">English</button>
+              <button type="button" class="lang-chip" data-lang="zh" aria-pressed="false">中文</button>
+              <button type="button" class="lang-chip" data-lang="ja" aria-pressed="false">日本語</button>
+              <button type="button" class="lang-chip" data-lang="ko" aria-pressed="false">한국어</button>
+              <button type="button" class="lang-chip" data-lang="ar" aria-pressed="false">العربية</button>
+              <button type="button" class="lang-chip" data-lang="ru" aria-pressed="false">Русский</button>
+              <button type="button" class="lang-chip" data-lang="es" aria-pressed="false">Español</button>
+              <button type="button" class="lang-chip" data-lang="pt" aria-pressed="false">Português</button>
+              <button type="button" class="lang-chip" data-lang="fr" aria-pressed="false">Français</button>
+              <button type="button" class="lang-chip" data-lang="de" aria-pressed="false">Deutsch</button>
+              <button type="button" class="lang-chip" data-lang="other" data-i18n="language.other" aria-pressed="false">Other</button>
+              <button type="button" class="lang-chip" data-lang="und" data-i18n="language.und" aria-pressed="false">Unspecified</button>
+          </div>
+          <label class="lang-multi-toggle">
+            <input id="lang-multilingual" type="checkbox">
+            <span class="switch-ui"></span>
+            <span data-i18n="config.languageMultilingual">Multilingual app</span>
+          </label>
+          <div class="lang-additional hidden" id="lang-additional-wrap">
+            <span class="lang-additional-label" data-i18n="config.languageAdditional">Additional languages</span>
+            <div class="lang-additional-grid" id="lang-additional-grid" role="group" data-i18n-aria-label="config.languageAdditional" aria-label="Additional languages">
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="en" aria-pressed="false">English</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="zh" aria-pressed="false">中文</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="ja" aria-pressed="false">日本語</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="ko" aria-pressed="false">한국어</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="ar" aria-pressed="false">العربية</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="ru" aria-pressed="false">Русский</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="es" aria-pressed="false">Español</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="pt" aria-pressed="false">Português</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="fr" aria-pressed="false">Français</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="de" aria-pressed="false">Deutsch</button>
+                <button type="button" class="lang-chip lang-chip-add" data-add-lang="other" data-i18n="language.other" aria-pressed="false">Other</button>
+            </div>
+          </div>
+        </div>
+        <small class="field-note" data-i18n="config.languageNote">Choose the app's main language. Add more to mark it multilingual.</small>
+      </div>
+
+      <p id="publish-error" class="publish-error" role="alert" hidden></p>
+      <div class="publish-actions">
+        <button id="publish-cancel" class="btn-secondary" type="button" data-i18n="ui.cancel">Cancel</button>
+        <button id="publish-submit" class="btn-primary" type="submit" data-i18n="publish.submit">Publish</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="/js/ui.js?v=20261104-ui3"></script>
   <script src="/js/announcements.js?v=20261120-reten2"></script>
   <script src="/js/mdmini.js?v=20261013-ads1"></script>
   <script src="/js/pow.js?v=20261118-pow1"></script>
-  <script src="/js/app.v5.js?v=20261125-project-path"></script>
+  <script src="/js/app.v5.js?v=20261127-create1"></script>
   <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {

@@ -395,4 +395,23 @@ R('ko', {
     'board.badImage': '유효한 이미지가 아닙니다.',
     'board.removeImage': '이미지 제거'
   });
+R('ko', {
+    'nav.more': "더 보기",
+    'nav.notices': "사이트 공지",
+    'config.moreSettings': "고급 설정",
+    'result.downloadPage': "다운로드 페이지 열기",
+    'result.copyLink': "링크 복사",
+    'result.linkLabel': "앱 링크",
+    'publish.action': "마켓에 게시",
+    'publish.edit': "마켓 정보 수정",
+    'publish.submit': "게시",
+    'publish.unlist': "마켓에서 내리기",
+    'publish.listed': "앱 마켓에 게시되었습니다.",
+    'publish.unlisted': "링크가 있는 사람은 앱을 열 수 있습니다.",
+    'publish.linkOnly': "링크로만 접속",
+    'publish.tagsRequired': "게시하려면 태그를 하나 이상 선택하세요.",
+    'publish.iconRequired': "앱 설정에서 사용할 수 있는 아이콘을 업로드하고 다시 생성한 후 게시하세요.",
+    'build.reconnecting': "빌드에 다시 연결하는 중…",
+    'build.dismiss': "닫기"
+});
 })();

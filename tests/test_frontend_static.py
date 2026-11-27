@@ -496,7 +496,7 @@ class FrontendBuildFlowTests(unittest.TestCase):
         self.assertNotIn("config.generateBtnEmoji", self.js)
 
     def test_concurrent_builds_are_blocked(self):
-        self.assertIn("if (buildInFlight) throw new Error(t('build.busy'))", self.js)
+        self.assertIn("if (buildInFlight || analysisPending) throw new Error(t('build.busy'))", self.js)
         regen = self.js[self.js.index("if (target.dataset.regenerate)"):]
         self.assertLess(regen.index("buildInFlight"), regen.index("applyHistoryItemToForm"))
 
@@ -642,9 +642,21 @@ class HomeHistoryMarketRedesignTests(unittest.TestCase):
             'data-lang="und"',
         ):
             self.assertIn(marker, self.html)
-        self.assertIn("options['languages'] = currentLanguages()", self.js)
+        self.assertIn("languages: currentLanguages()", self.js)
         self.assertIn("marketLanguageSelect", self.js)
         self.assertIn("params.set('language'", self.js)
+
+    def test_creation_and_market_publication_have_separate_controls(self):
+        create_start = self.html.index('id="config-panel"')
+        generate = self.html.index('id="generate-btn"', create_start)
+        advanced = self.html.index('class="build-settings"', generate)
+        analysis = self.html.index('id="analysis-panel"', advanced)
+        publish = self.html.index('id="publish-dialog"', analysis)
+        self.assertLess(self.html.index('id="app-name"', create_start), generate)
+        self.assertLess(publish, self.html.index('id="tags-picker"'))
+        self.assertIn('id="result-download"', self.html)
+        self.assertIn('id="result-publish"', self.html)
+        self.assertIn('id="pending-builds"', self.html)
 
     def test_new_components_have_styles(self):
         for cls in (
@@ -710,8 +722,8 @@ class StreamingFirstLoadTests(unittest.TestCase):
         self.assertIn("promise.catch(function () {})", self.html)
 
     def test_streaming_assets_are_cache_busted(self):
-        self.assertIn("css/style.css?v=20261118-board1", self.html)
-        self.assertIn("js/app.v5.js?v=20261125-project-path", self.html)
+        self.assertIn("css/style.css?v=20261127-create1", self.html)
+        self.assertIn("js/app.v5.js?v=20261127-create1", self.html)
 
     def test_feedback_board_is_wired(self):
         # #248: nav entry + modal + the board module in app.v5.js.
@@ -749,11 +761,11 @@ class StreamingFirstLoadTests(unittest.TestCase):
         # the upload control and the 409 code is translated, not shown raw.
         self.assertIn('id="icon-required-note"', self.html)
         self.assertIn("function setIconRequiredNote(visible)", self.js)
-        self.assertIn("code === 'icon_required'", self.js)
-        self.assertIn("t('err.iconRequired')", self.js)
+        self.assertIn("detail.detail === 'icon_required'", self.js)
+        self.assertIn("t('publish.iconRequired')", self.js)
         self.assertIn(".icon-required-note", self.css)
         strings = _strings_src()
-        for key in ("err.iconRequired", "config.iconRequiredNote"):
+        for key in ("publish.iconRequired", "config.iconRequiredNote"):
             for lang in LANGS:
                 self.assertIn(f"'{key}'", _read(f"js/i18n.{lang}.js"), f"{lang}: {key}")
 

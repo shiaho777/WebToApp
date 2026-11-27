@@ -356,6 +356,19 @@ DISTILL_MAX_PENDING_PER_DEVICE = 2
 DISTILL_PRUNE_INTERVAL_SECONDS = 60
 
 
+_APP_WRITE_LOCKS = tuple(threading.Lock() for _ in range(64))
+
+
+def _distill_app_id(payload: dict) -> str:
+    return payload.get("app_id") or hashlib.md5(
+        f"{payload['url']}:{payload.get('name', '')}".encode()
+    ).hexdigest()[:8]
+
+
+def _app_write_lock(app_id: str):
+    return _APP_WRITE_LOCKS[hash(app_id) % len(_APP_WRITE_LOCKS)]
+
+
 class DistillTaskQueue:
     def __init__(self, worker_count: int = 1, store: Optional[TaskStore] = None,
                  max_pending: int = DISTILL_QUEUE_MAX_PENDING,
@@ -411,11 +424,7 @@ class DistillTaskQueue:
     async def submit(self, payload: dict) -> dict:
         now = _utc_now_iso()
         task_id = uuid.uuid4().hex
-        # HTML uploads pass an explicit app_id (derived from content hash);
-        # URL flows keep deriving it from url:name.
-        app_id = payload.get("app_id") or hashlib.md5(
-            f"{payload['url']}:{payload.get('name', '')}".encode()
-        ).hexdigest()[:8]
+        app_id = _distill_app_id(payload)
         task = {
             "task_id": task_id,
             "app_id": app_id,
@@ -605,6 +614,9 @@ class CommentPayload(BaseModel):
 class VisibilityPayload(BaseModel):
     visibility: str
     edit_token: str = ""
+    tags: Optional[List[str]] = None
+    languages: Optional[List[str]] = None
+    description: Optional[str] = None
 
 
 # --- API Routes ---
@@ -731,9 +743,8 @@ def _import_recipe_from_payload(item: dict, base_url: str = "") -> dict:
 
 def _build_distill_response(payload: dict, progress_cb=None) -> dict:
     source_type = payload.get("source_type") or "url"
-    app_id = payload.get("app_id") or hashlib.md5(
-        f"{payload['url']}:{payload.get('name', '')}".encode()
-    ).hexdigest()[:8]
+    app_id = _distill_app_id(payload)
+    app_dir = APPS_DIR / app_id
     if source_type == "html":
         # The "site" is hosted by this server; the recipe URL points at the
         # staged content so every platform artifact reuses the URL pipeline.
@@ -742,6 +753,17 @@ def _build_distill_response(payload: dict, progress_cb=None) -> dict:
         target_url = f"{base_url}/a/{app_id}/site/{site_index}"
     else:
         target_url = str(payload["url"])
+    options = payload.get("options") or {}
+    if options.get("preserve-listing") is True:
+        options = dict(options)
+        try:
+            existing = _load_recipe(app_id)
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            existing = {}
+        for key in ("visibility", "tags", "languages", "description"):
+            options[key] = existing.get(key)
     recipe = distiller.create_recipe(
         app_id=app_id,
         url=target_url,
@@ -749,11 +771,10 @@ def _build_distill_response(payload: dict, progress_cb=None) -> dict:
         color=payload.get("color") or "#7c3aed",
         display=payload.get("display") or "fullscreen",
         orientation=payload.get("orientation") or "any",
-        options=payload.get("options") or {},
+        options=options,
         source_type=source_type,
         content_hash=payload.get("content_hash"),
     )
-    app_dir = APPS_DIR / app_id
     base_url = payload.get("base_url") or ""
     build_meta = distiller.write_app_files(
         app_dir,
@@ -823,7 +844,8 @@ def _run_distill_job(payload: dict, queue: Optional["DistillTaskQueue"] = None, 
         except Exception:
             pass
 
-    result = _build_distill_response(payload, progress_cb=progress_cb)
+    with _app_write_lock(_distill_app_id(payload)):
+        result = _build_distill_response(payload, progress_cb=progress_cb)
     duration_ms = int((time.perf_counter() - started) * 1000)
     result["duration_ms"] = duration_ms
     android_meta = result.get("android") or {}
@@ -2332,6 +2354,11 @@ def admin_takedown_app(app_id: str, request: Request):
 
 @app.post("/api/history/{app_id}/visibility")
 def set_history_visibility(app_id: str, payload: VisibilityPayload, request: Request):
+    with _app_write_lock(app_id):
+        return _save_app_visibility(app_id, payload, request)
+
+
+def _save_app_visibility(app_id: str, payload: VisibilityPayload, request: Request):
     # Ownership check: the edit_token minted at build time is the authority —
     # a device fingerprint alone is not proof (see the recover leak in #59).
     recipe_path = APPS_DIR / app_id / "recipe.json"
@@ -2348,8 +2375,13 @@ def set_history_visibility(app_id: str, payload: VisibilityPayload, request: Req
     supplied = str(payload.edit_token or "")
     if not expected or not supplied or not secrets.compare_digest(supplied, expected):
         raise HTTPException(403, "Not the app owner")
-    if visibility == "public" and not (stored.get("tags") or []):
-        raise HTTPException(400, "Public apps need at least one tag")
+    changes = {}
+    if visibility == "public":
+        incoming = payload.model_dump(include={"tags", "languages", "description"}, exclude_none=True)
+        normalized = distiller.publication_metadata(incoming)
+        changes = {key: normalized[key] for key in incoming}
+        if not changes.get("tags", stored.get("tags")):
+            raise HTTPException(400, "Public apps need at least one tag")
     creator_fp = community_store.creator_of(app_id)
     if visibility == "public":
         # Publishing requires a usable icon, full stop (#232). The old gate
@@ -2370,10 +2402,18 @@ def set_history_visibility(app_id: str, payload: VisibilityPayload, request: Req
         and conflicts_with_newer(history_store, community_store, APPS_DIR, creator_fp, app_id)
     ):
         raise HTTPException(409, "duplicate_public_app")
-    if not history_store.set_app_visibility(app_id, visibility, stored.get("tags")):
-        raise HTTPException(500, "Update failed")
-    stored["visibility"] = visibility
-    recipe_path.write_text(json.dumps(stored, ensure_ascii=False))
+    stored.update(changes, visibility=visibility)
+    with tempfile.TemporaryDirectory(dir=recipe_path.parent) as staging_dir:
+        staged_recipe = Path(staging_dir) / recipe_path.name
+        staged_recipe.write_text(json.dumps(stored, ensure_ascii=False))
+        if not history_store.set_app_visibility(
+            app_id, visibility, stored.get("tags"),
+            languages=changes.get("languages"), description=changes.get("description"),
+        ):
+            raise HTTPException(500, "Update failed")
+        staged_recipe.replace(recipe_path)
+    with _recipe_cache_lock:
+        _recipe_cache.pop(app_id, None)
     retired = []
     if visibility == "public" and creator_fp:
         retired = [item for item in dedupe_creator(
@@ -2498,11 +2538,6 @@ async def serve_download(app_id: str, platform: str):
     filename, media_type = DOWNLOAD_TYPES[platform]
     filepath = APPS_DIR / app_id / "downloads" / filename
 
-    # Android: try APK first, fall back to ZIP
-    if platform == "android" and not filepath.exists():
-        filename, media_type = DOWNLOAD_TYPES["android_fallback"]
-        filepath = APPS_DIR / app_id / "downloads" / filename
-
     recipe = {}
     if (APPS_DIR / app_id / "recipe.json").exists():
         try:
@@ -2512,7 +2547,12 @@ async def serve_download(app_id: str, platform: str):
         except Exception:
             recipe = {}
 
-    cdn_url = (recipe.get("downloads_cdn") or {}).get(filename)
+    cdn_downloads = recipe.get("downloads_cdn") or {}
+    if platform == "android" and not filepath.is_file() and filename not in cdn_downloads:
+        filename, media_type = DOWNLOAD_TYPES["android_fallback"]
+        filepath = APPS_DIR / app_id / "downloads" / filename
+
+    cdn_url = cdn_downloads.get(filename)
     if cdn_url:
         history_store.record_visit(app_id, f"download:{platform}")
         # 302 keeps the URL hot-swappable if we later re-upload under the same key.

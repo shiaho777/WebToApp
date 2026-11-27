@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional
+from unittest import mock
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -429,6 +430,67 @@ class MarketAndVisibilityTests(unittest.TestCase):
             cookies={"webtoapp_device_fingerprint": "someone-else"},
         )
         self.assertEqual(resp.status_code, 400)
+
+    def test_publish_adds_market_metadata_to_an_unlisted_app(self):
+        app_id = "ab12cd34"
+        self._build(app_id, "private", [])
+        recipe_path = self.apps_dir / app_id / "recipe.json"
+        previous = recipe_path.read_text()
+        body = {
+            "visibility": "public", "tags": ["tools", "TOOLS", " custom "],
+            "languages": ["zh", "en", "invalid"], "description": " A  test app ",
+        }
+        route = f"/api/history/{app_id}/visibility"
+        denied = self.client.post(route, json=body, cookies=self._cookies())
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(recipe_path.read_text(), previous)
+
+        response = self.client.post(route, json={**body, "edit_token": f"tok-{app_id}"}, cookies=self._cookies())
+        self.assertEqual(response.status_code, 200)
+        stored = json.loads(recipe_path.read_text())
+        [market] = self.client.get("/api/market?language=mul").json()["items"]
+        [history] = response.json()["history"]["items"]
+        for item in (stored, market, history):
+            self.assertEqual(item["tags"], ["tools", "custom"])
+            self.assertEqual(item["languages"], ["zh", "en"])
+            self.assertEqual(item["description"], "A test app")
+
+        response = self.client.post(
+            route,
+            json={"visibility": "private", "edit_token": f"tok-{app_id}", "tags": []},
+            cookies=self._cookies(),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/api/market").json()["items"], [])
+        self.assertEqual(json.loads(recipe_path.read_text())["tags"], ["tools", "custom"])
+
+    def test_browser_build_preserves_the_existing_listing_for_the_same_app(self):
+        app_id = "abc01234"
+        self._build(app_id, "public", ["tools"], {"languages": ["zh"], "description": "A test app"})
+        payload = {
+            "app_id": app_id, "url": "https://abc01234.test",
+            "options": {"preserve-listing": True}, "device_fingerprint": self.FP,
+        }
+        with mock.patch.object(main.distiller, "write_app_files", return_value={}):
+            recipe = main._build_distill_response(payload)["recipe"]
+            new_recipe = main._build_distill_response({**payload, "app_id": "abc11234"})["recipe"]
+        self.assertEqual(recipe["visibility"], "public")
+        self.assertEqual(recipe["tags"], ["tools"])
+        self.assertEqual(recipe["languages"], ["zh"])
+        self.assertEqual(recipe["description"], "A test app")
+        self.assertEqual(new_recipe["visibility"], "private")
+        self.assertEqual(new_recipe["tags"], [])
+
+    def test_android_prefers_cdn_apk_to_local_fallback(self):
+        app_id = "ad12cd34"
+        url = "https://cdn.example.com/android.apk"
+        self._build(app_id, "private", [], {"downloads_cdn": {"android.apk": url}})
+        downloads = self.apps_dir / app_id / "downloads"
+        downloads.mkdir()
+        (downloads / "android.zip").write_bytes(b"fallback")
+        response = self.client.get(f"/a/{app_id}/download/android", follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["location"], url)
 
     def test_public_requires_a_usable_icon(self):
         # No icon at all -> 409 icon_required, even with a valid token/tags

@@ -388,4 +388,23 @@ R('ru', {
     'board.badImage': 'Этот файл не является изображением.',
     'board.removeImage': 'Убрать изображение'
   });
+R('ru', {
+    'nav.more': "Ещё",
+    'nav.notices': "Объявления сайта",
+    'config.moreSettings': "Расширенные настройки",
+    'result.downloadPage': "Открыть страницу загрузки",
+    'result.copyLink': "Копировать ссылку",
+    'result.linkLabel': "Ссылка на приложение",
+    'publish.action': "Опубликовать в каталоге",
+    'publish.edit': "Изменить карточку в каталоге",
+    'publish.submit': "Опубликовать",
+    'publish.unlist': "Убрать из каталога",
+    'publish.listed': "Опубликовано в каталоге приложений.",
+    'publish.unlisted': "Приложение доступно всем, у кого есть ссылка.",
+    'publish.linkOnly': "Только по ссылке",
+    'publish.tagsRequired': "Для публикации выберите хотя бы один тег.",
+    'publish.iconRequired': "Загрузите подходящий значок в настройках приложения и пересоберите его перед публикацией.",
+    'build.reconnecting': "Восстанавливаем связь со сборкой…",
+    'build.dismiss': "Закрыть"
+});
 })();

@@ -145,10 +145,18 @@
   const appLink = document.getElementById('app-link');
   const copyBtn = document.getElementById('copy-btn');
   const previewFrame = document.getElementById('preview-frame');
-  const previewUrl = document.getElementById('preview-url');
-  const previewOpenBtn = document.getElementById('preview-open-btn');
+  const resultPreview = document.getElementById('result-preview');
+  const resultDownload = document.getElementById('result-download');
+  const resultPublish = document.getElementById('result-publish');
+  const resultVisibility = document.getElementById('result-visibility');
+  const publishDialog = document.getElementById('publish-dialog');
+  const publishForm = document.getElementById('publish-form');
+  const publishError = document.getElementById('publish-error');
+  const publishSubmit = document.getElementById('publish-submit');
+  const pendingBuildList = document.getElementById('pending-builds');
   const configPanel = document.getElementById('config-panel');
-  const configGrid = configPanel ? configPanel.querySelector('.config-grid') : null;
+  const buildSettings = configPanel.querySelector('.build-settings');
+  const configGrid = configPanel.querySelector('.config-grid');
   const buildProgress = document.getElementById('build-progress');
   const buildProgressFill = document.getElementById('build-progress-fill');
   const buildProgressElapsed = document.getElementById('build-progress-elapsed');
@@ -164,8 +172,6 @@
   const historyImportBtn = document.getElementById('history-import-btn');
   const historyImportInput = document.getElementById('history-import-input');
   const historyManageBtn = document.getElementById('history-manage-btn');
-  const visibilityPrivateBtn = document.getElementById('visibility-private-btn');
-  const visibilityPublicBtn = document.getElementById('visibility-public-btn');
   const tagsPicker = document.getElementById('tags-picker');
   const tagCustomInput = document.getElementById('tag-custom-input');
   const marketList = document.getElementById('market-list');
@@ -227,7 +233,13 @@
   let historyExpanded = false;
   const HISTORY_PREVIEW_COUNT = 5;
   const historySelected = new Set();
-  let currentVisibility = 'public';
+  let analysisPending = false;
+  let analysisSequence = 0;
+  let resultApp = null;
+  let publishingApp = null;
+  const pendingBuilds = new Map();
+  const pendingBuildPrefix = 'webtoapp-build:';
+  const pendingBuildMaxAge = 24 * 60 * 60 * 1000;
   const selectedTags = new Set();
 
   // --- App language picker ---
@@ -351,6 +363,15 @@
   function saveEditTokens() {
     try { localStorage.setItem(EDIT_TOKENS_KEY, JSON.stringify(editTokens)); } catch (e) {}
   }
+  function saveBuildEditToken(appId, token) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(EDIT_TOKENS_KEY) || '{}') || {};
+      editTokens = { ...editTokens, ...stored };
+    } catch (_err) {}
+    editTokens[appId] = token;
+    saveEditTokens();
+  }
+
   let restoreIconButtonLabel = '';
   let deviceFingerprint = '';
   const DEVICE_STORAGE_KEY = 'webtoapp-device-fingerprint-v1';
@@ -535,7 +556,14 @@
   }
 
   function setInputMode(mode) {
-    inputMode = mode === 'html' ? 'html' : 'url';
+    const nextMode = mode === 'html' ? 'html' : 'url';
+    if (nextMode !== inputMode) {
+      analysisSequence += 1;
+      analysisPending = false;
+      generateBtn.disabled = buildInFlight;
+      workspace.classList.add('hidden');
+    }
+    inputMode = nextMode;
     modeUrlBtn.classList.toggle('active', inputMode === 'url');
     modeHtmlBtn.classList.toggle('active', inputMode === 'html');
     urlInputWrap.classList.toggle('hidden', inputMode === 'html');
@@ -779,7 +807,6 @@
         : `<span class="app-row-letter" aria-hidden="true">${escapeHtml((item.name || appId || '?').charAt(0).toUpperCase())}</span>`;
       const isHtmlApp = !!(item.recipe && item.recipe.source_type === 'html');
       const isPublic = item.visibility === 'public';
-      const visibilityAction = isPublic ? t('history.makePrivate') : t('history.makePublic');
       row.className = 'app-row';
       row.classList.toggle('selected', historySelected.has(appId));
       row.classList.toggle('is-public', isPublic);
@@ -793,7 +820,7 @@
         <div class="app-row-main" data-expand tabindex="0" role="button" aria-expanded="false">
           <div class="app-row-title">
             <span class="app-row-name">${escapeHtml(item.name || appId)}</span>
-            <span class="pill ${isPublic ? 'pill-public' : 'pill-private'}">${escapeHtml(isPublic ? t('history.visibilityPublic') : t('history.visibilityPrivate'))}</span>
+            <span class="pill ${isPublic ? 'pill-public' : 'pill-private'}">${escapeHtml(isPublic ? t('history.visibilityPublic') : t('publish.linkOnly'))}</span>
             ${isHtmlApp ? `<span class="pill">${escapeHtml(t('history.badgeHtml'))}</span>` : ''}
             <span class="pill pill-lang">${escapeHtml(languageLabel(item.language_category || 'und'))}</span>
           </div>
@@ -822,7 +849,8 @@
             <button type="button" role="menuitem" data-copy="${escapeHtml(publicPath)}">${escapeHtml(t('history.copyLink'))}</button>
             <button type="button" role="menuitem" data-edit="${escapeHtml(appId)}">${escapeHtml(t('history.editForm'))}</button>
             <button type="button" role="menuitem" data-regenerate="${escapeHtml(appId)}">${escapeHtml(t('history.regenerate'))}</button>
-            <button type="button" role="menuitem" data-visibility-toggle="${escapeHtml(appId)}">${escapeHtml(visibilityAction)}</button>
+            ${editTokens[appId] ? `<button type="button" role="menuitem" data-publish="${escapeHtml(appId)}">${escapeHtml(t(isPublic ? 'publish.edit' : 'publish.action'))}</button>` : ''}
+            ${isPublic && editTokens[appId] ? `<button type="button" role="menuitem" data-visibility-toggle="${escapeHtml(appId)}">${escapeHtml(t('publish.unlist'))}</button>` : ''}
             <button type="button" role="menuitem" data-report="${escapeHtml(appId)}">${escapeHtml(t('history.report'))}</button>
             <button type="button" role="menuitem" class="danger" data-delete="${escapeHtml(appId)}">${escapeHtml(t('history.delete'))}</button>
           </div>
@@ -1141,8 +1169,7 @@
   async function recoverHistoryFromPageContext() {
     const candidates = new Set();
     const currentLink = appLink && appLink.value ? appLink.value : '';
-    const currentUrl = previewOpenBtn && previewOpenBtn.dataset ? previewOpenBtn.dataset.href : '';
-    [currentLink, currentUrl, window.location.href].forEach((value) => {
+    [currentLink, window.location.href].forEach((value) => {
       const match = String(value || '').match(/\/a\/([a-f0-9]{8})(?:[/?#]|$)/i);
       if (match) candidates.add(match[1]);
     });
@@ -1218,7 +1245,7 @@
           const icon = a.icon_url
             ? `<img src="${escapeHtml(a.icon_url)}" alt="" loading="lazy">`
             : '<span class="profile-app-dot"></span>';
-          const visKey = a.visibility === 'private' ? 'history.visibilityPrivate'
+          const visKey = a.visibility === 'private' ? 'publish.linkOnly'
             : a.visibility === 'public' ? 'history.visibilityPublic' : '';
           const vis = mine && visKey
             ? `<em class="profile-app-vis">${escapeHtml(t(visKey))}</em>` : '';
@@ -1553,7 +1580,6 @@
     currentUrl = item.target_url || recipe.url || '';
     syncInputValue(urlInput, currentUrl);
     syncInputValue(appNameInput, item.name || recipe.name || '');
-    syncInputValue(appDescInput, recipe.description || '');
     const storedAbout = recipe.about || {};
     syncInputValue(aboutTextInput, storedAbout.text || '');
     // Stored about images can't be re-loaded into a file input; show them
@@ -1588,23 +1614,6 @@
       sanitizeAndroidPackagePrefix(item.android_package_prefix || recipe.android_package_prefix || 'com.webtoapp')
     );
     applyFeatureOptionsToForm(featureOptions);
-    // Rebuild tag/visibility state — a rebuild must keep the stored values
-    // or the user silently re-publishes untagged/private.
-    selectedTags.clear();
-    (recipe.tags || item.tags || []).forEach((tag) => {
-      if (!selectedTags.has(tag)) selectedTags.add(tag);
-      if (!tagsPicker.querySelector(`.tag-chip[data-tag="${CSS.escape(tag)}"]`)) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'tag-chip';
-        btn.dataset.tag = tag;
-        btn.textContent = tag;
-        tagsPicker.querySelector('.tags-builtins').appendChild(btn);
-      }
-    });
-    refreshTagChips();
-    setLanguageSelection(recipe.languages || (recipe.language ? [recipe.language] : ['und']));
-    setVisibility(recipe.visibility || item.visibility || 'private');
     if (item.icon_url) {
       try {
         const iconRes = await fetch(item.icon_url);
@@ -1681,7 +1690,12 @@
       configGrid.classList.toggle('is-locked', locked);
       configGrid.setAttribute('aria-busy', locked ? 'true' : 'false');
     }
-    generateBtn.disabled = locked;
+    buildSettings.inert = locked;
+    distillBtn.disabled = locked;
+    modeUrlBtn.disabled = locked;
+    modeHtmlBtn.disabled = locked;
+    htmlFileInput.disabled = locked;
+    generateBtn.disabled = locked || analysisPending;
     generateBtn.textContent = locked ? t('build.buttonBusy') : t('config.generateBtn');
   }
 
@@ -1789,7 +1803,7 @@
   }
 
   async function generateAppFromCurrentForm() {
-    if (buildInFlight) throw new Error(t('build.busy'));
+    if (buildInFlight || analysisPending) throw new Error(t('build.busy'));
     startBuildProgress();
     try {
       const data = await runBuildRequest();
@@ -1801,6 +1815,117 @@
       throw err;
     }
   }
+
+  function renderPendingBuilds() {
+    pendingBuildList.classList.toggle('hidden', !pendingBuilds.size);
+    pendingBuildList.innerHTML = Array.from(pendingBuilds.values(), (build) => {
+      const status = build.error || (build.reconnecting ? t('build.reconnecting') : t('build.title'));
+      const step = BUILD_STAGE_STEP[build.stage] || 'queued';
+      const detail = buildSteps.querySelector(`[data-step="${step}"] [data-i18n]`);
+      const stage = !build.error && !build.reconnecting && detail ? t(detail.dataset.i18n) : '';
+      const message = stage ? `${status} · ${stage}` : status;
+      const dismiss = build.error ? `<button type="button" class="btn-secondary" data-dismiss-build="${escapeHtml(build.id)}">${escapeHtml(t('build.dismiss'))}</button>` : '';
+      return `<article class="pending-build"><div><strong>${escapeHtml(build.name || t('build.title'))}</strong><p>${escapeHtml(message)}</p></div>${dismiss}</article>`;
+    }).join('');
+  }
+
+  async function fetchBuildStatus(id) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`/api/distill/${encodeURIComponent(id)}`, {
+        headers: apiHeaders(),
+        signal: controller.signal,
+      });
+      if ([408, 429, 502, 503, 504].includes(response.status)) return null;
+      const data = await response.json().catch(() => null);
+      return data ? { status: response.status, data } : null;
+    } catch (_error) {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function pollBuild(build, onProgress) {
+    let delay = 400;
+    while (Date.now() - build.startedAt < pendingBuildMaxAge) {
+      if (document.hidden) {
+        await sleep(1000);
+        continue;
+      }
+      const result = await fetchBuildStatus(build.id);
+      if (!result) {
+        if (!build.reconnecting) {
+          build.reconnecting = true;
+          renderPendingBuilds();
+        }
+        delay = Math.min(5000, delay * 2);
+      } else {
+        const { status, data } = result;
+        if (status === 404) throw new Error(t('err.taskMissing'));
+        if (status !== 200) throw new Error(apiErrorMessage(data.detail, 'err.generateFailed'));
+        if (!data.task_id && data.app_id && data.url) return data;
+        if (data.task_id !== build.id) throw new Error(t('err.generateFailed'));
+        const stage = data.stage || data.status;
+        if (build.stage !== stage || build.reconnecting) {
+          build.stage = stage;
+          build.reconnecting = false;
+          renderPendingBuilds();
+        }
+        onProgress?.(stage, data.progress);
+        delay = Math.min(1000, delay + 100);
+      }
+      await sleep(delay);
+    }
+    throw new Error(t('err.generateTimeout'));
+  }
+
+  async function trackBuild(record, onProgress) {
+    if (pendingBuilds.has(record.id)) return;
+    const build = { ...record, stage: 'queued' };
+    pendingBuilds.set(build.id, build);
+    renderPendingBuilds();
+    try {
+      const result = await pollBuild(build, onProgress);
+      if (result.edit_token) saveBuildEditToken(result.app_id, result.edit_token);
+      pendingBuilds.delete(build.id);
+      return result;
+    } catch (error) {
+      build.error = error.message || t('err.generateFailed');
+      throw error;
+    } finally {
+      try { localStorage.removeItem(pendingBuildPrefix + build.id); } catch (_err) {}
+      renderPendingBuilds();
+    }
+  }
+
+  function restoreBuilds() {
+    try {
+      const keys = Object.keys(localStorage).filter((key) => key.startsWith(pendingBuildPrefix));
+      for (const key of keys) {
+        try {
+          const record = JSON.parse(localStorage.getItem(key));
+          if (record && key === pendingBuildPrefix + record.id && /^[a-f0-9]{32}$/.test(record.id)
+            && typeof record.name === 'string' && Number.isFinite(record.startedAt)
+            && Date.now() - record.startedAt < pendingBuildMaxAge) {
+            trackBuild(record).then((result) => {
+              if (result) loadHistory();
+            }).catch(() => {});
+            continue;
+          }
+        } catch (_error) {}
+        localStorage.removeItem(key);
+      }
+    } catch (_error) {}
+  }
+
+  pendingBuildList.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-dismiss-build]');
+    if (!button) return;
+    pendingBuilds.delete(button.dataset.dismissBuild);
+    renderPendingBuilds();
+  });
 
   async function runBuildRequest() {
     const options = {};
@@ -1815,14 +1940,14 @@
     options['android-package-prefix'] = packagePrefix;
     if (customIconDataUrl) options['custom-icon-data-url'] = customIconDataUrl;
     Object.assign(options, collectFeatureOptions());
-    if (selectedTags.size > 0) options['tags'] = Array.from(selectedTags);
-    options['visibility'] = currentVisibility;
-    options['language'] = primaryLanguage;
-    options['languages'] = currentLanguages();
-    const appDesc = (appDescInput.value || '').trim();
-    if (appDesc) options['description'] = appDesc;
+    options['preserve-listing'] = true;
     options['about-text'] = aboutTextInput.value || '';
     if (aboutImageDataUrls !== null) options['about-images'] = aboutImageDataUrls;
+    const formName = appNameInput.value;
+    const formColor = appColorInput.value;
+    const formFile = inputMode === 'html' ? htmlFile : null;
+    const formUrl = inputMode === 'url' ? currentUrl : '';
+    if (inputMode === 'html' && !formFile) throw new Error(t('err.htmlNoFile'));
 
     // Invisible proof-of-work (#244): mirrors build cost back to the
     // submitter. Solved in a Worker before the request; null only when the
@@ -1835,12 +1960,11 @@
     const powFields = pow ? { pow_challenge: pow.challenge, pow_solution: pow.solution } : {};
 
     let submitRes;
-    if (inputMode === 'html') {
-      if (!htmlFile) throw new Error(t('err.htmlNoFile'));
+    if (formFile) {
       const form = new FormData();
-      form.append('file', htmlFile, htmlFile.name);
-      form.append('name', appNameInput.value);
-      form.append('color', appColorInput.value);
+      form.append('file', formFile, formFile.name);
+      form.append('name', formName);
+      form.append('color', formColor);
       form.append('display', 'fullscreen');
       form.append('orientation', 'any');
       form.append('options', JSON.stringify(options));
@@ -1858,9 +1982,9 @@
         method: 'POST',
         headers: apiHeaders(),
         body: JSON.stringify(Object.assign({
-          url: currentUrl,
-          name: appNameInput.value,
-          color: appColorInput.value,
+          url: formUrl,
+          name: formName,
+          color: formColor,
           display: 'fullscreen',
           orientation: 'any',
           options: options,
@@ -1874,67 +1998,20 @@
     const task = await submitRes.json();
     if (!task.task_id) throw new Error(t('err.taskSubmitFailed'));
 
-    updateBuildProgress('queued', null);
-    let data = null;
-    {
-      let attempts = 0;
-      let transientFailures = 0;
-      const MAX_TRANSIENT_FAILURES = 5;
-      while (attempts < 240) {
-        // Hidden tab: pause without burning the attempt budget — the build
-        // keeps running server-side and polling resumes when visible again.
-        while (document.hidden) await sleep(1000);
-        attempts += 1;
-        await sleep(attempts <= 8 ? 400 : 800 + transientFailures * 600);
-        let pollRes;
-        // A hung request must not stall the loop forever: abort after 10s
-        // and let the transient-failure backoff handle it.
-        const pollAbort = new AbortController();
-        const pollTimer = setTimeout(() => pollAbort.abort(), 10000);
-        try {
-          pollRes = await fetch(`/api/distill/${encodeURIComponent(task.task_id)}`, {
-            headers: apiHeaders(),
-            signal: pollAbort.signal,
-          });
-        } catch (_err) {
-          clearTimeout(pollTimer);
-          transientFailures += 1;
-          if (transientFailures >= MAX_TRANSIENT_FAILURES) throw new Error(t('analysis.failed.network'));
-          continue;
-        }
-        clearTimeout(pollTimer);
-        if (pollRes.status === 502 || pollRes.status === 503 || pollRes.status === 504) {
-          transientFailures += 1;
-          if (transientFailures >= MAX_TRANSIENT_FAILURES) throw new Error(t('err.generateFailed'));
-          continue;
-        }
-        transientFailures = 0;
-        if (pollRes.status === 404) throw new Error(t('err.taskMissing'));
-        if (!pollRes.ok) {
-          let message = '';
-          try {
-            const err = await pollRes.json();
-            message = apiErrorMessage(err && err.detail, 'err.generateFailed');
-          } catch (_err) {}
-          throw new Error(message || t('err.generateFailed'));
-        }
-        const payload = await pollRes.json();
-        if (payload && payload.status && payload.task_id) {
-          updateBuildProgress(payload.stage || payload.status, payload.progress);
-          continue;
-        }
-        data = payload;
-        break;
-      }
-    }
-    if (!data) throw new Error(t('err.generateTimeout'));
-
-    if (data.app_id && data.edit_token) { editTokens[data.app_id] = data.edit_token; saveEditTokens(); }
-    const installLink = `${location.origin}${data.url}`;
+    const record = {
+      id: task.task_id,
+      name: formName || formUrl || formFile?.name || '',
+      startedAt: Date.now(),
+    };
+    try { localStorage.setItem(pendingBuildPrefix + record.id, JSON.stringify(record)); } catch (_err) {}
+    const data = await trackBuild(record, updateBuildProgress);
+    const installLink = getAbsoluteUrl(data.url);
     appLink.value = installLink;
-    previewUrl.textContent = installLink;
-    previewFrame.src = installLink;
-    previewOpenBtn.dataset.href = installLink;
+    resultDownload.href = installLink;
+    resultPreview.open = false;
+    previewFrame.removeAttribute('src');
+    resultApp = { app_id: data.app_id, recipe: data.recipe, visibility: data.recipe?.visibility };
+    renderResultVisibility();
     resultPanel.classList.remove('hidden');
     const androidMeta = data.android || {};
     let note = document.getElementById('android-fallback-note');
@@ -2108,29 +2185,26 @@
   });
   urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && inputMode === 'url') startDistill(); });
   modeUrlBtn.addEventListener('click', () => setInputMode('url'));
-  modeHtmlBtn.addEventListener('click', () => setInputMode('html'));
-
-  // --- Visibility + tags (build form) ---
-  function setVisibility(value) {
-    currentVisibility = value;
-    visibilityPrivateBtn.classList.toggle('active', value === 'private');
-    visibilityPublicBtn.classList.toggle('active', value === 'public');
-  }
+  modeHtmlBtn.addEventListener('click', () => {
+    const switched = inputMode !== 'html';
+    setInputMode('html');
+    if (switched && htmlFile) startHtmlAnalyze(htmlFile);
+  });
 
   function refreshTagChips() {
     tagsPicker.querySelectorAll('.tag-chip').forEach((chip) => {
-      chip.classList.toggle('active', selectedTags.has(chip.dataset.tag));
+      const selected = selectedTags.has(chip.dataset.tag);
+      chip.classList.toggle('active', selected);
+      chip.setAttribute('aria-pressed', String(selected));
     });
   }
-
-  visibilityPrivateBtn.addEventListener('click', () => setVisibility('private'));
-  visibilityPublicBtn.addEventListener('click', () => setVisibility('public'));
 
   tagsPicker.addEventListener('click', (event) => {
     const chip = event.target.closest('.tag-chip');
     if (!chip) return;
     const tag = chip.dataset.tag;
-    if (selectedTags.has(tag)) selectedTags.delete(tag); else selectedTags.add(tag);
+    if (selectedTags.has(tag)) selectedTags.delete(tag);
+    else if (selectedTags.size < 5) selectedTags.add(tag);
     refreshTagChips();
   });
 
@@ -2138,18 +2212,12 @@
     if (event.key !== 'Enter') return;
     event.preventDefault();
     const value = event.target.value.trim().replace(/\s+/g, ' ').slice(0, 24);
-    if (!value || selectedTags.has(value)) { event.target.value = ''; return; }
-    if (selectedTags.size >= 5) return;
-    selectedTags.add(value);
+    if (!value || selectedTags.size >= 5) return;
+    const existing = [...tagsPicker.querySelectorAll('[data-tag]')]
+      .find((chip) => chip.dataset.tag.toLowerCase() === value.toLowerCase());
+    selectedTags.add(existing ? existing.dataset.tag : value);
+    if (!existing) addCustomTag(value);
     event.target.value = '';
-    if (!tagsPicker.querySelector(`.tag-chip[data-tag="${CSS.escape(value)}"]`)) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'tag-chip';
-      btn.dataset.tag = value;
-      btn.textContent = value;
-      tagsPicker.querySelector('.tags-builtins').appendChild(btn);
-    }
     refreshTagChips();
   });
   htmlFileInput.addEventListener('change', () => {
@@ -2173,6 +2241,7 @@
   });
 
   async function selectHtmlFile(file) {
+    if (buildInFlight) return;
     htmlFile = file;
     htmlFileLabel.textContent = file.name;
     htmlFileHint.textContent = `${formatBytes(file.size)} · ${t('mode.htmlHint')}`;
@@ -2181,6 +2250,9 @@
   }
 
   async function startHtmlAnalyze(file) {
+    const sequence = ++analysisSequence;
+    analysisPending = true;
+    generateBtn.disabled = true;
     let data = null;
     let uploadError = null;
     try {
@@ -2200,9 +2272,13 @@
     } catch (_err) {
       // Network failure: fall through to a local, file-name-only prefill.
     }
+    if (sequence !== analysisSequence) return;
+    analysisPending = false;
+    generateBtn.disabled = buildInFlight;
     if (uploadError) {
       notify(uploadError, 'error');
       resetHtmlFile();
+      workspace.classList.add('hidden');
       return;
     }
     if (!data) {
@@ -2281,6 +2357,10 @@
       return;
     }
 
+    if (buildInFlight) return;
+    const sequence = ++analysisSequence;
+    analysisPending = true;
+    generateBtn.disabled = true;
     const url = normalizeUrl(raw);
     currentUrl = url;
     workspace.classList.remove('hidden');
@@ -2329,6 +2409,9 @@
       data.analysisFailed = true;
       data.failureReason = failureReason || t('analysis.failed.generic');
     }
+    if (sequence !== analysisSequence) return;
+    analysisPending = false;
+    generateBtn.disabled = buildInFlight;
     showAnalysisResults(data);
   }
 
@@ -2495,17 +2578,7 @@
   // --- Generate App ---
 
   async function handleGenerateClick() {
-    if (buildInFlight) return;
-    if (selectedTags.size === 0) {
-      notify(t('err.tagsRequired'), 'error');
-      tagsPicker.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      return;
-    }
-    if (!hasValidLanguages()) {
-      notify(t('err.languageRequired'), 'error');
-      if (languagePicker) languagePicker.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      return;
-    }
+    if (buildInFlight || analysisPending) return;
     try {
       await generateAppFromCurrentForm();
     } catch (_err) {
@@ -2529,10 +2602,140 @@
       });
   });
 
-  previewOpenBtn.addEventListener('click', () => {
-    const href = previewOpenBtn.dataset.href;
-    if (!href) return;
-    window.open(href, '_blank', 'noopener,noreferrer');
+  resultPreview.addEventListener('toggle', () => {
+    if (resultPreview.open && !previewFrame.hasAttribute('src')) previewFrame.src = appLink.value;
+  });
+
+  function renderResultVisibility() {
+    if (!resultApp) return;
+    const isPublic = resultApp.visibility === 'public';
+    resultVisibility.textContent = t(isPublic ? 'publish.listed' : 'publish.unlisted');
+    const label = isPublic ? 'publish.edit' : 'publish.action';
+    resultPublish.textContent = t(label);
+    resultPublish.setAttribute('data-i18n', label);
+    resultPublish.classList.toggle('hidden', !editTokens[resultApp.app_id]);
+  }
+
+  function addCustomTag(value) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'tag-chip';
+    chip.dataset.tag = value;
+    chip.dataset.customTag = '';
+    chip.textContent = value;
+    tagsPicker.querySelector('.tags-builtins').appendChild(chip);
+  }
+
+  function openPublication(item) {
+    if (!editTokens[item.app_id]) return;
+    const recipe = item.recipe || {};
+    publishingApp = item;
+    const label = item.visibility === 'public' ? 'publish.edit' : 'publish.action';
+    const title = document.getElementById('publish-title');
+    title.textContent = t(label);
+    title.setAttribute('data-i18n', label);
+    document.getElementById('publish-app-name').textContent = recipe.name || item.name || item.app_id;
+    appDescInput.value = recipe.description || item.description || '';
+    tagsPicker.querySelectorAll('[data-custom-tag]').forEach((chip) => chip.remove());
+    selectedTags.clear();
+    (recipe.tags || item.tags || []).forEach((value) => {
+      selectedTags.add(value);
+      if (!tagsPicker.querySelector(`[data-tag="${CSS.escape(value)}"]`)) addCustomTag(value);
+    });
+    tagCustomInput.value = '';
+    refreshTagChips();
+    const languages = recipe.languages || item.languages;
+    const defaultLanguage = window.I18n?.current || 'en';
+    setLanguageSelection(languages?.some((code) => code !== 'und') ? languages : [defaultLanguage]);
+    publishError.hidden = true;
+    publishDialog.showModal();
+  }
+
+  async function savePublication(appId, options) {
+    const res = await fetch(`/api/history/${encodeURIComponent(appId)}/visibility`, {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ ...options, edit_token: editTokens[appId] || '' }),
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      if (detail.detail === 'duplicate_public_app') throw new Error(t('err.duplicatePublic'));
+      if (detail.detail === 'icon_required') {
+        if (appId === resultApp?.app_id) setIconRequiredNote(true);
+        throw new Error(t('publish.iconRequired'));
+      }
+      throw new Error(apiErrorMessage(detail.detail, 'err.visibilityRetry'));
+    }
+    const data = await res.json();
+    const items = data.history?.items || [];
+    renderHistory(items);
+    writeRenderCache('history', { items });
+    if (resultApp) {
+      const updated = items.find((item) => item.app_id === resultApp.app_id);
+      if (updated) resultApp = updated;
+      renderResultVisibility();
+    }
+    loadMarket();
+  }
+
+  resultPublish.addEventListener('click', () => {
+    if (resultApp) openPublication(resultApp);
+  });
+
+  document.getElementById('publish-cancel').addEventListener('click', () => publishDialog.close());
+  publishDialog.addEventListener('cancel', (event) => {
+    if (publishSubmit.disabled) event.preventDefault();
+  });
+  publishForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (publishSubmit.disabled || !publishingApp) return;
+    publishError.hidden = true;
+    if (!selectedTags.size || !hasValidLanguages()) {
+      const tagsMissing = !selectedTags.size;
+      publishError.textContent = t(tagsMissing ? 'publish.tagsRequired' : 'err.languageRequired');
+      publishError.hidden = false;
+      const picker = tagsMissing ? tagsPicker : languagePicker;
+      picker.querySelector('button:not(:disabled)').focus();
+      return;
+    }
+    const cancel = document.getElementById('publish-cancel');
+    publishSubmit.disabled = true;
+    cancel.disabled = true;
+    try {
+      await savePublication(publishingApp.app_id, {
+        visibility: 'public',
+        tags: Array.from(selectedTags),
+        languages: currentLanguages(),
+        description: appDescInput.value.trim(),
+      });
+      publishDialog.close();
+      notify(t('publish.listed'), 'success');
+    } catch (error) {
+      publishError.textContent = error.message || t('err.visibilityRetry');
+      publishError.hidden = false;
+    } finally {
+      publishSubmit.disabled = false;
+      cancel.disabled = false;
+    }
+  });
+
+  const navMore = document.getElementById('nav-more-btn');
+  const navSecondary = document.getElementById('nav-secondary');
+
+  function setNavMore(open) {
+    navSecondary.classList.toggle('is-open', open);
+    navMore.setAttribute('aria-expanded', String(open));
+  }
+
+  navMore.addEventListener('click', () => setNavMore(!navSecondary.classList.contains('is-open')));
+  document.addEventListener('click', (event) => {
+    if (!navMore.contains(event.target) && !navSecondary.contains(event.target)) setNavMore(false);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !navSecondary.classList.contains('is-open')) return;
+    if (navSecondary.querySelector('[aria-expanded="true"]')) return;
+    setNavMore(false);
+    navMore.focus();
   });
 
   function closeRowMenus(except) {
@@ -2592,7 +2795,7 @@
       return;
     }
 
-    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate], [data-visibility-toggle], [data-report], [data-delete]');
+    const target = event.target.closest('[data-open], [data-copy], [data-edit], [data-regenerate], [data-publish], [data-visibility-toggle], [data-report], [data-delete]');
     if (!target) {
       closeRowMenus();
       return;
@@ -2643,37 +2846,16 @@
       }
       return;
     }
+    if (target.dataset.publish && item) {
+      openPublication(item);
+      return;
+    }
     if (target.dataset.visibilityToggle) {
-      const appId = target.dataset.visibilityToggle;
-      const current = item && item.visibility === 'public' ? 'public' : 'private';
-      const next = current === 'public' ? 'private' : 'public';
+      target.disabled = true;
       try {
-        target.disabled = true;
-        const res = await fetch(`/api/history/${encodeURIComponent(appId)}/visibility`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Device-Fingerprint': deviceFingerprint },
-          body: JSON.stringify({ visibility: next, edit_token: editTokens[appId] || '' }),
-        });
-        if (!res.ok) {
-          const detail = await res.json().catch(() => ({}));
-          const code = typeof detail.detail === 'string' ? detail.detail : '';
-          if (res.status === 409 && code === 'duplicate_public_app') {
-            throw new Error(t('err.duplicatePublic'));
-          }
-          if (res.status === 409 && code === 'icon_review_expired') {
-            throw new Error(t('err.iconReviewExpired'));
-          }
-          if (res.status === 409 && code === 'icon_required') {
-            setIconRequiredNote(true);
-            throw new Error(t('err.iconRequired'));
-          }
-          throw new Error(code || 'visibility failed');
-        }
-        const data = await res.json();
-        renderHistory((data.history && data.history.items) || []);
-        loadMarket();
-      } catch (err) {
-        notify(err.message || t('err.visibilityRetry'), 'error');
+        await savePublication(target.dataset.visibilityToggle, { visibility: 'private' });
+      } catch (error) {
+        notify(error.message || t('err.visibilityRetry'), 'error');
       } finally {
         target.disabled = false;
       }
@@ -2961,12 +3143,16 @@
     window.addEventListener('i18n:changed', () => {
       select.value = window.I18n.current;
       if (lastHistoryItems.length) renderHistory(lastHistoryItems);
+      renderPendingBuilds();
+      renderResultVisibility();
       if (lastMarketItems.length) renderMarket(lastMarketItems);
       if (!profileModal.classList.contains('hidden')) {
         openProfile(profileViewingSelf ? null : profileViewedNum);
       }
     });
   })();
+
+  restoreBuilds();
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 

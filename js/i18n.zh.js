@@ -412,4 +412,23 @@ R('zh', {
     'board.badImage': '该文件不是有效的图片。',
     'board.removeImage': '移除图片'
   });
+R('zh', {
+    'nav.more': "更多",
+    'nav.notices': "站点通知",
+    'config.moreSettings': "高级设置",
+    'result.downloadPage': "打开下载页",
+    'result.copyLink': "复制链接",
+    'result.linkLabel': "应用链接",
+    'publish.action': "发布到市场",
+    'publish.edit': "编辑市场信息",
+    'publish.submit': "发布",
+    'publish.unlist': "从市场下架",
+    'publish.listed': "已在应用市场公开。",
+    'publish.unlisted': "拥有链接的人可以访问此应用。",
+    'publish.linkOnly': "仅链接可访问",
+    'publish.tagsRequired': "发布前请至少选择一个标签。",
+    'publish.iconRequired': "请在应用配置中上传一个可用图标并重新生成，然后再发布。",
+    'build.reconnecting': "正在重新连接构建任务…",
+    'build.dismiss': "关闭"
+});
 })();

@@ -844,10 +844,15 @@ class HistoryStore:
             snapshot = self._app_row_to_snapshot(row)
             return {"visibility": snapshot["visibility"], "tags": snapshot["tags"]}
 
-    def set_app_visibility(self, app_id: str, visibility: str, tags: Optional[List[str]] = None) -> bool:
-        """Flip public/private for an app, optionally refreshing its tags.
-        Updates both the apps columns and the embedded recipe_json so the
-        download page (which renders tags from recipe.json) stays in sync."""
+    def set_app_visibility(
+        self,
+        app_id: str,
+        visibility: str,
+        tags: Optional[List[str]] = None,
+        *,
+        languages: Optional[List[str]] = None,
+        description: Optional[str] = None,
+    ) -> bool:
         if visibility not in ("public", "private"):
             return False
         with self._lock:
@@ -862,6 +867,10 @@ class HistoryStore:
             recipe["visibility"] = visibility
             if tags is not None:
                 recipe["tags"] = [str(tag) for tag in tags]
+            if languages is not None:
+                recipe["languages"] = languages
+            if description is not None:
+                recipe["description"] = description
             new_tags = tags if tags is not None else json.loads(row["tags_json"] or "[]")
             self._conn.execute(
                 "UPDATE apps SET visibility = ?, tags_json = ?, recipe_json = ?, updated_at = ? WHERE app_id = ?",
