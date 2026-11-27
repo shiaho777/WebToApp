@@ -9,8 +9,8 @@
   <meta property="og:title" content="WebToApp — Turn websites into apps">
   <meta property="og:description" content="Enter a link. Seconds later it can be installed, shared and used like an app.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#efe4d4" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#17130f" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#efe4d4">
+  <script src="/js/theme.js?v=20261127-theme1"></script>
   <link rel="icon" href="/assets/site-logo-96.jpg?v=20261104-brand2">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=20261104-brand2">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -48,7 +48,8 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Noto+Serif+SC:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="/css/style.css?v=20261127-create1">
+  <link rel="stylesheet" href="/css/style.css?v=20261127-theme1">
+  <link rel="stylesheet" href="/css/theme.css?v=20261127-theme1">
   <script src="/js/i18n.js?v=20261127-create1"></script>
   <script src="/js/i18n.en.js?v=20261127-create1"></script>
 </head>
@@ -67,6 +68,19 @@
         <label id="lang-label" class="sr-only" for="lang-select" data-i18n="nav.langLabel">Language</label>
         <select id="lang-select" aria-labelledby="lang-label"></select>
       </div>
+      <details class="theme-picker" hidden>
+        <summary aria-label="Appearance" title="Appearance">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5"/>
+            <path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor" stroke="none"/>
+          </svg>
+        </summary>
+        <div class="theme-options" role="group" aria-label="Appearance">
+          <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+        </div>
+      </details>
       <button id="nav-more-btn" class="nav-more-btn btn-secondary" type="button" aria-expanded="false" aria-controls="nav-secondary" data-i18n-aria-label="nav.more" aria-label="More">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
       </button>
