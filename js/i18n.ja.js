@@ -388,4 +388,23 @@ R('ja', {
     'board.badImage': 'そのファイルは有効な画像ではありません。',
     'board.removeImage': '画像を削除'
   });
+R('ja', {
+    'nav.more': "その他",
+    'nav.notices': "お知らせ",
+    'config.moreSettings': "詳細設定",
+    'result.downloadPage': "ダウンロードページを開く",
+    'result.copyLink': "リンクをコピー",
+    'result.linkLabel': "アプリのリンク",
+    'publish.action': "マーケットに公開",
+    'publish.edit': "公開情報を編集",
+    'publish.submit': "公開",
+    'publish.unlist': "マーケットから削除",
+    'publish.listed': "アプリマーケットに公開されています。",
+    'publish.unlisted': "リンクを知っている人がアプリを開けます。",
+    'publish.linkOnly': "リンク限定",
+    'publish.tagsRequired': "公開するにはタグを 1 つ以上選んでください。",
+    'publish.iconRequired': "アプリ設定で有効なアイコンをアップロードし、再生成してから公開してください。",
+    'build.reconnecting': "ビルドに再接続しています…",
+    'build.dismiss': "閉じる"
+});
 })();

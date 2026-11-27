@@ -388,4 +388,23 @@ R('pt', {
     'board.badImage': 'Esse arquivo não é uma imagem válida.',
     'board.removeImage': 'Remover imagem'
   });
+R('pt', {
+    'nav.more': "Mais",
+    'nav.notices': "Avisos do site",
+    'config.moreSettings': "Configurações avançadas",
+    'result.downloadPage': "Abrir página de download",
+    'result.copyLink': "Copiar link",
+    'result.linkLabel': "Link do aplicativo",
+    'publish.action': "Publicar no catálogo",
+    'publish.edit': "Editar entrada no catálogo",
+    'publish.submit': "Publicar",
+    'publish.unlist': "Remover do catálogo",
+    'publish.listed': "Publicado no catálogo de aplicativos.",
+    'publish.unlisted': "Qualquer pessoa com o link pode abrir o aplicativo.",
+    'publish.linkOnly': "Somente pelo link",
+    'publish.tagsRequired': "Escolha pelo menos uma etiqueta para publicar.",
+    'publish.iconRequired': "Envie um ícone válido nas configurações e gere o aplicativo novamente antes de publicar.",
+    'build.reconnecting': "Reconectando à compilação…",
+    'build.dismiss': "Fechar"
+});
 })();

@@ -388,4 +388,23 @@ R('de', {
     'board.badImage': 'Diese Datei ist kein gültiges Bild.',
     'board.removeImage': 'Bild entfernen'
   });
+R('de', {
+    'nav.more': "Mehr",
+    'nav.notices': "Website-Mitteilungen",
+    'config.moreSettings': "Erweiterte Einstellungen",
+    'result.downloadPage': "Downloadseite öffnen",
+    'result.copyLink': "Link kopieren",
+    'result.linkLabel': "App-Link",
+    'publish.action': "Im App-Katalog veröffentlichen",
+    'publish.edit': "Katalogeintrag bearbeiten",
+    'publish.submit': "Veröffentlichen",
+    'publish.unlist': "Aus dem Katalog entfernen",
+    'publish.listed': "Im App-Katalog veröffentlicht.",
+    'publish.unlisted': "Alle mit dem Link können diese App öffnen.",
+    'publish.linkOnly': "Nur per Link",
+    'publish.tagsRequired': "Wähle zum Veröffentlichen mindestens ein Schlagwort.",
+    'publish.iconRequired': "Lade in den Einstellungen ein gültiges Symbol hoch und erstelle die App erneut, bevor du sie veröffentlichst.",
+    'build.reconnecting': "Verbindung zum Build wird wiederhergestellt…",
+    'build.dismiss': "Schließen"
+});
 })();

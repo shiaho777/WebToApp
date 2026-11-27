@@ -388,4 +388,23 @@ R('fr', {
     'board.badImage': 'Ce fichier n’est pas une image valide.',
     'board.removeImage': 'Retirer l’image'
   });
+R('fr', {
+    'nav.more': "Plus",
+    'nav.notices': "Annonces du site",
+    'config.moreSettings': "Paramètres avancés",
+    'result.downloadPage': "Ouvrir la page de téléchargement",
+    'result.copyLink': "Copier le lien",
+    'result.linkLabel': "Lien de l’application",
+    'publish.action': "Publier dans le catalogue",
+    'publish.edit': "Modifier la fiche du catalogue",
+    'publish.submit': "Publier",
+    'publish.unlist': "Retirer du catalogue",
+    'publish.listed': "Publié dans le catalogue d’applications.",
+    'publish.unlisted': "Toute personne disposant du lien peut ouvrir cette application.",
+    'publish.linkOnly': "Accès par lien",
+    'publish.tagsRequired': "Choisissez au moins une étiquette pour publier.",
+    'publish.iconRequired': "Ajoutez une icône valide dans les paramètres et régénérez l’application avant de la publier.",
+    'build.reconnecting': "Reconnexion à la tâche de génération…",
+    'build.dismiss': "Fermer"
+});
 })();

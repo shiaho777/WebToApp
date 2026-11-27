@@ -192,7 +192,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v10-report -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v11-device -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")
@@ -215,9 +215,7 @@ class Distiller:
             "android_version_name": version_name,
             "android_package_prefix": package_prefix,
             "visibility": self._visibility(options),
-            "tags": self._tags(options),
-            "languages": self._languages(options),
-            "description": self._description(options),
+            **self.publication_metadata(options),
             "_about_text": self._about_text(options),
             "_about_images": self._about_images(options),
             "_custom_icon_data_url": self._custom_icon_data_url(options),
@@ -410,6 +408,13 @@ class Distiller:
         raw = str(options.get("visibility") or "private").strip().lower()
         return raw if raw in ("public", "private") else "private"
 
+    def publication_metadata(self, options):
+        return {
+            "tags": self._tags(options),
+            "languages": self._languages(options),
+            "description": self._description(options),
+        }
+
     def _tags(self, options):
         raw = options.get("tags")
         if isinstance(raw, str):
@@ -548,7 +553,6 @@ class Distiller:
                 pass
 
         report("writing_shell")
-        self._write_download_page(app_dir, recipe)
         direct_url = recipe["url"]
         self._write_pwa_files(app_dir, recipe, direct_url)
 
@@ -631,6 +635,7 @@ class Distiller:
         if platform_errors:
             stored_recipe["platform_errors"] = platform_errors
         (app_dir / "recipe.json").write_text(json.dumps(stored_recipe, ensure_ascii=False, indent=2))
+        self._write_download_page(app_dir, stored_recipe)
         report("done", {"android": android_meta, "ios": ios_meta})
 
         return {
@@ -1041,24 +1046,30 @@ class Distiller:
             if ios_signed else
             '<span class="ios-badge ios-badge-warn" data-i18n="iosBadgeUnsigned">Unsigned, but still installable</span>'
         )
-        android_apk = (app_dir / "downloads" / "android.apk").exists()
-        android_zip = (app_dir / "downloads" / "android.zip").exists()
-        android_meta = r.get("android") if isinstance(r.get("android"), dict) else {}
-        if android_meta.get("apk") is True or (android_apk and not android_zip):
+        cdn_downloads = r.get("downloads_cdn") or {}
+        platform_errors = r.get("platform_errors") or {}
+
+        def has_download(filename):
+            return bool(cdn_downloads.get(filename)) or (app_dir / "downloads" / filename).is_file()
+
+        android_apk = has_download("android.apk")
+        android_zip = has_download("android.zip")
+        if android_apk:
             android_detail_key = "platAndroidApkDetail"
             android_badge = '<span class="android-badge android-badge-ok" data-i18n="androidBadgeApk">Signed APK</span>'
-        elif android_zip or android_meta.get("fallback") is True:
+        elif android_zip:
             android_detail_key = "platAndroidZipDetail"
             android_badge = '<span class="android-badge android-badge-warn" data-i18n="androidBadgeZip">PWA package</span>'
         else:
             android_detail_key = "platAndroidDetail"
             android_badge = ""
         platform_rows = [
-            ("iPhone / iPad", "apple", f"{base}/download/ios", "platIosDetail", "actionInstall", ""),
-            ("Android", "android", f"{base}/download/android", android_detail_key, "actionDownload", android_badge),
-            ("macOS", "apple", f"{base}/download/macos", "platMacDetail", "actionDownload", ""),
-            ("Windows", "windows", f"{base}/download/windows", "platWinDetail", "actionDownload", ""),
-            ("Linux", "linux", f"{base}/download/linux", "platLinuxDetail", "actionDownload", ""),
+            ("ios", "iPhone / iPad", "apple", "ios.mobileconfig", "platIosDetail", "downloadIosProfile", ""),
+            ("android", "Android", "android", "android.apk" if android_apk else "android.zip",
+             android_detail_key, "actionDownloadPwa" if android_zip and not android_apk else "actionDownload", android_badge),
+            ("macos", "macOS", "apple", "macos.zip", "platMacDetail", "actionDownload", ""),
+            ("windows", "Windows", "windows", "windows.zip", "platWinDetail", "actionDownload", ""),
+            ("linux", "Linux", "linux", "linux.tar.gz", "platLinuxDetail", "actionDownload", ""),
         ]
         platform_icons = {
             "windows": (
@@ -1082,17 +1093,36 @@ class Distiller:
                 '</svg>'
             ),
         }
-        platform_links = "\n".join(
-            (
-                f'<a href="{href}" class="plat">'
+        ios_guide = f"""
+          <details class="fold ios-fold">
+            <summary><span data-i18n="iosTitle">iPhone install guide</span>{ios_badge}</summary>
+            <div class="fold-body">
+              <ol class="ios-steps">
+                <li data-i18n="iosStep1">Download the profile above in Safari.</li>
+                <li data-i18n="iosStep3">Open "Profile Downloaded" in Settings and finish installing.</li>
+                <li data-i18n="iosStep4">Return to the home screen and tap the icon to open.</li>
+              </ol>
+            </div>
+          </details>"""
+        platform_cards = []
+        for key, name, icon_key, filename, detail_key, action_key, extra_badge in platform_rows:
+            available = key not in platform_errors and has_download(filename)
+            if available:
+                action = (
+                    f'<a href="{base}/download/{key}" class="plat-badge plat-dl" data-i18n="{action_key}">'
+                    f'{"Install" if key == "ios" else "Download"}</a>'
+                )
+            else:
+                action = '<span class="plat-unavailable" data-i18n="unavailableDevice">Download unavailable</span>'
+            guide = ios_guide if key == "ios" and available else ""
+            platform_cards.append(
+                f'<article class="plat" data-device="{key}" data-available="{str(available).lower()}">'
                 f'<span class="plat-icon plat-icon-{icon_key}">{platform_icons[icon_key]}</span>'
                 f'<div class="plat-info"><div class="plat-name">{name}{extra_badge}</div>'
                 f'<div class="plat-detail" data-i18n="{detail_key}"></div></div>'
-                f'<span class="plat-badge plat-dl" data-i18n="{action_key}"></span>'
-                f'</a>'
+                f'{action}{guide}</article>'
             )
-            for name, icon_key, href, detail_key, action_key, extra_badge in platform_rows
-        )
+        platform_links = "\n".join(platform_cards)
         # ---- i18n: in-page translations (visitor can switch; default English) ----
         dl_i18n = self._download_page_translations()
         dl_i18n_json = json.dumps(dl_i18n, ensure_ascii=False).replace("<", "\\u003c")
@@ -1165,12 +1195,37 @@ class Distiller:
     var titleT=t("pageTitle"); if(titleT) document.title=titleT.replace("{{name}}",APP_NAME);
     try{{ localStorage.setItem(KEY,cur); }}catch(e){{}}
   }}
+  function recommendDevice(){{
+    var ua = navigator.userAgent || "";
+    var hints = navigator.userAgentData;
+    var platform = (hints && hints.platform) || navigator.platform || "";
+    var device = "";
+    if (/iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(platform) && navigator.maxTouchPoints > 1)) device = "ios";
+    else if (/Android/i.test(ua + " " + platform)) device = "android";
+    else if (/CrOS|Chrome OS/i.test(ua + " " + platform)) return;
+    else if (/Win/i.test(platform)) device = "windows";
+    else if (/Mac/i.test(platform)) device = "macos";
+    else if (/Linux/i.test(platform)) device = "linux";
+    if (!device) return;
+    var card = document.querySelector('[data-device="' + device + '"][data-available="true"]');
+    if (!card) return;
+    var recommended = document.getElementById("recommended-device");
+    recommended.appendChild(card);
+    recommended.hidden = false;
+    document.getElementById("device-title").setAttribute("data-i18n", "recommendedDevice");
+    var other = document.getElementById("other-devices");
+    other.appendChild(document.getElementById("device-list"));
+    other.hidden = false;
+    var guide = card.querySelector(".ios-fold");
+    if (guide) guide.open = true;
+  }}
   var sel=document.getElementById("dl-lang");
   SUPPORTED.forEach(function(l){{ var o=document.createElement("option"); o.value=l; o.textContent=NAMES[l]; sel.appendChild(o); }});
   sel.value=cur;
   sel.addEventListener("change",function(){{ cur=sel.value; apply(); }});
   var ic=document.querySelector("img.icon");
   if(ic)ic.addEventListener("error",function(){{ic.style.display="none";}});
+  recommendDevice();
   apply();
 }})();"""
         script_body = f"\n{inline_js}\n"
@@ -1280,14 +1335,17 @@ a{{color:inherit;text-decoration:none}}
 .app-actions{{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:22px}}
 .action{{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface);font-size:.94rem;font-weight:600;transition:border-color .18s ease,background .18s ease}}
 .action:hover{{border-color:var(--line-strong);background:var(--paper-strong)}}
-.action.primary{{background:var(--ink);border-color:transparent;color:var(--paper)}}
-.action.primary:hover{{background:var(--ink-hover)}}
 .app-hero .app-rating{{justify-content:center;margin:18px 0 0}}
 .hero-panel{{width:100%;margin-top:34px;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--surface-strong)}}
 .section-label{{margin-bottom:16px;font-size:.8rem;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;text-align:center}}
 .platforms{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}}
 .plat{{display:flex;flex-direction:column;align-items:flex-start;gap:12px;height:100%;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);transition:border-color .18s ease,background .18s ease}}
 .plat:hover{{border-color:var(--line-strong);background:var(--paper-strong)}}
+#recommended-device .plat{{max-width:520px;margin-inline:auto}}
+#other-devices .platforms{{padding:0 12px 12px}}
+.plat .ios-fold{{width:100%;margin-top:0}}
+.plat-unavailable{{margin-top:auto;color:var(--ink-soft);font-size:.85rem}}
+.plat-dl:hover{{background:var(--ink);color:var(--paper)}}
 .plat-icon{{width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px;background:var(--paper-strong);border:1px solid var(--line)}}
 .plat-icon svg{{width:22px;height:22px;fill:currentColor;display:block}}
 .plat-icon-windows{{color:#1889d6}}
@@ -1398,30 +1456,21 @@ a{{color:inherit;text-decoration:none}}
       {desc_html}
       {tags_row}
       <p class="source">{source_host}</p>
-      <div class="app-actions">
-        <a class="action primary" href="{url_esc}" target="_blank" rel="noopener noreferrer" data-i18n="{open_site_key}">Open original site</a>
-        <a class="action" href="{base}/download/ios" data-i18n="downloadIosProfile">Download iPhone profile</a>
-      </div>
       <div id="app-rating" class="app-rating"></div>
     </section>
 
     <section class="hero-panel">
-      <p class="section-label" data-i18n="chooseDevice">Choose your device</p>
-      <div class="platforms">
+      <p id="device-title" class="section-label" data-i18n="chooseDevice">Choose your device</p>
+      <div id="recommended-device" hidden></div>
+      <div id="device-list" class="platforms">
 {platform_links}
       </div>
-      <details class="fold ios-fold">
-        <summary><span data-i18n="iosTitle">iPhone install guide</span>{ios_badge}</summary>
-        <div class="fold-body">
-          <p class="ios-copy" data-i18n="iosCopy">iPhone and iPad don't need a separate page. Download the profile right in Safari, then finish installing in Settings and the icon appears on your home screen.</p>
-          <ol class="ios-steps">
-            <li data-i18n="iosStep1">In Safari, tap the iPhone install entry above or below</li>
-            <li data-i18n="iosStep2">Download the <code>.mobileconfig</code> profile</li>
-            <li data-i18n="iosStep3">Open "Profile Downloaded" in Settings and finish installing</li>
-            <li data-i18n="iosStep4">Return to the home screen and tap the icon to open</li>
-          </ol>
-        </div>
+      <details id="other-devices" class="fold" hidden>
+        <summary data-i18n="otherDevices">Other devices</summary>
       </details>
+      <div class="app-actions">
+        <a class="action" href="{url_esc}" target="_blank" rel="noopener noreferrer" data-i18n="{open_site_key}">Open original site</a>
+      </div>
     </section>
 
     <details class="fold about-fold">
@@ -1476,11 +1525,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "Signed",
                 "iosBadgeUnsigned": "Unsigned, but still installable",
                 "iosCopy": "iPhone and iPad don't need a separate page. Download the profile right in Safari, then finish installing in Settings and the icon appears on your home screen.",
-                "iosStep1": "In Safari, tap the iPhone install entry above or below",
+                "iosStep1": "In Safari, download the profile above.",
                 "iosStep2": "Download the .mobileconfig profile",
                 "iosStep3": "Open \u201cProfile Downloaded\u201d in Settings and finish installing",
                 "iosStep4": "Return to the home screen and tap the icon to open",
                 "chooseDevice": "Choose your device",
+                "recommendedDevice": "Install on this device",
+                "otherDevices": "Other devices",
+                "actionDownloadPwa": "Download PWA package",
+                "unavailableDevice": "Download unavailable",
                 "footnote": "On iPhone install via Safari; on desktop just unzip after downloading. Android ships an installer, while macOS and Windows keep the app icon.",
                 "actionInstall": "Install",
                 "actionDownload": "Download",
@@ -1511,11 +1564,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "已签名",
                 "iosBadgeUnsigned": "未签名，但仍可安装",
                 "iosCopy": "iPhone 和 iPad 不需要单独跳去另一个页面。直接在 Safari 里下载描述文件，然后去设置里完成安装，桌面就会出现图标。",
-                "iosStep1": "在 Safari 中点击上方或下方的 iPhone 安装入口",
+                "iosStep1": "在 Safari 中下载上方的描述文件。",
                 "iosStep2": "下载 .mobileconfig 描述文件",
                 "iosStep3": "打开“设置”中的“已下载描述文件”并完成安装",
                 "iosStep4": "回到桌面，点击图标即可打开",
                 "chooseDevice": "选择设备",
+                "recommendedDevice": "在此设备上安装",
+                "otherDevices": "其他设备",
+                "actionDownloadPwa": "下载 PWA 包",
+                "unavailableDevice": "暂不可下载",
                 "footnote": "iPhone 请在 Safari 中安装；桌面端下载后直接解压即可。Android 提供安装包，macOS 与 Windows 会保留应用图标。",
                 "actionInstall": "安装",
                 "actionDownload": "下载",
@@ -1546,11 +1603,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "署名済み",
                 "iosBadgeUnsigned": "未署名ですがインストール可能",
                 "iosCopy": "iPhone と iPad は別ページに移動する必要はありません。Safari でプロファイルをダウンロードし、設定でインストールを完了するとホーム画面にアイコンが表示されます。",
-                "iosStep1": "Safari で上または下の iPhone インストール入口をタップ",
+                "iosStep1": "Safari で上のプロファイルをダウンロードします。",
                 "iosStep2": ".mobileconfig プロファイルをダウンロード",
                 "iosStep3": "設定の「ダウンロード済みプロファイル」を開いてインストールを完了",
                 "iosStep4": "ホーム画面に戻り、アイコンをタップして開く",
                 "chooseDevice": "デバイスを選択",
+                "recommendedDevice": "この端末にインストール",
+                "otherDevices": "その他の端末",
+                "actionDownloadPwa": "PWA パッケージをダウンロード",
+                "unavailableDevice": "ダウンロード不可",
                 "footnote": "iPhone は Safari でインストール。デスクトップはダウンロード後に解凍するだけ。Android はインストーラー、macOS と Windows はアプリアイコンを保持します。",
                 "actionInstall": "インストール",
                 "actionDownload": "ダウンロード",
@@ -1581,11 +1642,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "موقّع",
                 "iosBadgeUnsigned": "غير موقّع، لكن قابل للتثبيت",
                 "iosCopy": "لا يحتاج iPhone وiPad إلى صفحة منفصلة. نزّل ملف التعريف مباشرةً في Safari، ثم أكمل التثبيت من الإعدادات وستظهر الأيقونة على الشاشة الرئيسية.",
-                "iosStep1": "في Safari، اضغط مدخل تثبيت iPhone أعلى أو أسفل",
+                "iosStep1": "نزّل ملف التعريف أعلاه في Safari.",
                 "iosStep2": "نزّل ملف تعريف .mobileconfig",
                 "iosStep3": "افتح \u201cملف التعريف الذي تم تنزيله\u201d في الإعدادات وأكمل التثبيت",
                 "iosStep4": "ارجع إلى الشاشة الرئيسية واضغط الأيقونة لفتحه",
                 "chooseDevice": "اختر جهازك",
+                "recommendedDevice": "التثبيت على هذا الجهاز",
+                "otherDevices": "الأجهزة الأخرى",
+                "actionDownloadPwa": "تنزيل حزمة PWA",
+                "unavailableDevice": "التنزيل غير متاح",
                 "footnote": "على iPhone ثبّت عبر Safari؛ على سطح المكتب فك الضغط بعد التنزيل. يوفّر Android حزمة تثبيت، بينما يحتفظ macOS وWindows بأيقونة التطبيق.",
                 "actionInstall": "تثبيت",
                 "actionDownload": "تنزيل",
@@ -1616,11 +1681,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "Подписано",
                 "iosBadgeUnsigned": "Без подписи, но устанавливается",
                 "iosCopy": "Для iPhone и iPad не нужна отдельная страница. Скачайте профиль прямо в Safari, затем завершите установку в Настройках — значок появится на главном экране.",
-                "iosStep1": "В Safari нажмите точку установки iPhone выше или ниже",
+                "iosStep1": "Скачайте профиль выше в Safari.",
                 "iosStep2": "Скачайте профиль .mobileconfig",
                 "iosStep3": "Откройте «Загруженный профиль» в Настройках и завершите установку",
                 "iosStep4": "Вернитесь на главный экран и нажмите значок, чтобы открыть",
                 "chooseDevice": "Выберите устройство",
+                "recommendedDevice": "Установить на это устройство",
+                "otherDevices": "Другие устройства",
+                "actionDownloadPwa": "Скачать пакет PWA",
+                "unavailableDevice": "Загрузка недоступна",
                 "footnote": "На iPhone устанавливайте через Safari; на десктопе просто распакуйте после загрузки. Android поставляется с установщиком, а macOS и Windows сохраняют значок приложения.",
                 "actionInstall": "Установить",
                 "actionDownload": "Скачать",
@@ -1651,11 +1720,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "Firmado",
                 "iosBadgeUnsigned": "Sin firmar, pero instalable",
                 "iosCopy": "iPhone y iPad no necesitan otra página. Descarga el perfil en Safari, luego termina de instalar en Ajustes y el icono aparecerá en la pantalla de inicio.",
-                "iosStep1": "En Safari, toca la entrada de instalación de iPhone arriba o abajo",
+                "iosStep1": "Descarga el perfil de arriba en Safari.",
                 "iosStep2": "Descarga el perfil .mobileconfig",
                 "iosStep3": "Abre \u201cPerfil descargado\u201d en Ajustes y termina de instalar",
                 "iosStep4": "Vuelve a la pantalla de inicio y toca el icono para abrir",
                 "chooseDevice": "Elige tu dispositivo",
+                "recommendedDevice": "Instalar en este dispositivo",
+                "otherDevices": "Otros dispositivos",
+                "actionDownloadPwa": "Descargar paquete PWA",
+                "unavailableDevice": "Descarga no disponible",
                 "footnote": "En iPhone instala con Safari; en escritorio solo descomprime tras descargar. Android incluye un instalador, mientras que macOS y Windows conservan el icono de la app.",
                 "actionInstall": "Instalar",
                 "actionDownload": "Descargar",
@@ -1686,11 +1759,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "Assinado",
                 "iosBadgeUnsigned": "Não assinado, mas instalável",
                 "iosCopy": "iPhone e iPad não precisam de outra página. Baixe o perfil no Safari, depois conclua a instalação em Ajustes e o ícone aparecerá na tela inicial.",
-                "iosStep1": "No Safari, toque na entrada de instalação do iPhone acima ou abaixo",
+                "iosStep1": "Baixe o perfil acima no Safari.",
                 "iosStep2": "Baixe o perfil .mobileconfig",
                 "iosStep3": "Abra \u201cPerfil Baixado\u201d em Ajustes e conclua a instalação",
                 "iosStep4": "Volte à tela inicial e toque no ícone para abrir",
                 "chooseDevice": "Escolha seu dispositivo",
+                "recommendedDevice": "Instalar neste dispositivo",
+                "otherDevices": "Outros dispositivos",
+                "actionDownloadPwa": "Baixar pacote PWA",
+                "unavailableDevice": "Download indisponível",
                 "footnote": "No iPhone instale via Safari; no desktop apenas descompacte após baixar. O Android traz um instalador, enquanto macOS e Windows mantêm o ícone do app.",
                 "actionInstall": "Instalar",
                 "actionDownload": "Baixar",
@@ -1721,11 +1798,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "Signé",
                 "iosBadgeUnsigned": "Non signé, mais installable",
                 "iosCopy": "iPhone et iPad n'ont pas besoin d'une page séparée. Téléchargez le profil dans Safari, puis terminez l'installation dans Réglages et l'icône apparaît sur l'écran d'accueil.",
-                "iosStep1": "Dans Safari, touchez l'entrée d'installation iPhone ci-dessus ou ci-dessous",
+                "iosStep1": "Téléchargez le profil ci-dessus dans Safari.",
                 "iosStep2": "Téléchargez le profil .mobileconfig",
                 "iosStep3": "Ouvrez \u201cProfil téléchargé\u201d dans Réglages et terminez l'installation",
                 "iosStep4": "Revenez à l'écran d'accueil et touchez l'icône pour ouvrir",
                 "chooseDevice": "Choisissez votre appareil",
+                "recommendedDevice": "Installer sur cet appareil",
+                "otherDevices": "Autres appareils",
+                "actionDownloadPwa": "Télécharger le paquet PWA",
+                "unavailableDevice": "Téléchargement indisponible",
                 "footnote": "Sur iPhone, installez via Safari ; sur ordinateur, décompressez après le téléchargement. Android fournit un installateur, tandis que macOS et Windows conservent l'icône de l'app.",
                 "actionInstall": "Installer",
                 "actionDownload": "Télécharger",
@@ -1756,11 +1837,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "Signiert",
                 "iosBadgeUnsigned": "Unsigniert, aber installierbar",
                 "iosCopy": "iPhone und iPad brauchen keine separate Seite. Lade das Profil direkt in Safari herunter, schließe die Installation in den Einstellungen ab und das Icon erscheint auf dem Startbildschirm.",
-                "iosStep1": "Tippe in Safari oben oder unten auf den iPhone-Installationseinstieg",
+                "iosStep1": "Lade das Profil oben in Safari herunter.",
                 "iosStep2": "Lade das .mobileconfig-Profil herunter",
                 "iosStep3": "Öffne \u201eGeladenes Profil\u201c in den Einstellungen und schließe die Installation ab",
                 "iosStep4": "Kehre zum Startbildschirm zurück und tippe auf das Icon zum Öffnen",
                 "chooseDevice": "Gerät auswählen",
+                "recommendedDevice": "Auf diesem Gerät installieren",
+                "otherDevices": "Andere Geräte",
+                "actionDownloadPwa": "PWA-Paket herunterladen",
+                "unavailableDevice": "Download nicht verfügbar",
                 "footnote": "Auf dem iPhone über Safari installieren; am Desktop nach dem Download einfach entpacken. Android liefert einen Installer, während macOS und Windows das App-Icon behalten.",
                 "actionInstall": "Installieren",
                 "actionDownload": "Herunterladen",
@@ -1791,11 +1876,15 @@ a{{color:inherit;text-decoration:none}}
                 "iosBadgeSigned": "서명됨",
                 "iosBadgeUnsigned": "서명되지 않았지만 설치 가능",
                 "iosCopy": "iPhone과 iPad는 별도 페이지가 필요 없습니다. Safari에서 프로필을 다운로드한 뒤 설정에서 설치를 마치면 홈 화면에 아이콘이 나타납니다.",
-                "iosStep1": "Safari에서 위 또는 아래의 iPhone 설치 항목을 탭하세요",
+                "iosStep1": "Safari에서 위의 프로필을 다운로드하세요.",
                 "iosStep2": ".mobileconfig 프로필 다운로드",
                 "iosStep3": "설정의 “다운로드된 프로필”을 열고 설치를 완료하세요",
                 "iosStep4": "홈 화면으로 돌아가 아이콘을 탭해 여세요",
                 "chooseDevice": "기기 선택",
+                "recommendedDevice": "이 기기에 설치",
+                "otherDevices": "다른 기기",
+                "actionDownloadPwa": "PWA 패키지 다운로드",
+                "unavailableDevice": "다운로드 불가",
                 "footnote": "iPhone은 Safari에서 설치하고, 데스크톱은 다운로드 후 압축을 풀면 됩니다. Android는 설치 파일을 제공하며 macOS와 Windows는 앱 아이콘을 유지합니다.",
                 "actionInstall": "설치",
                 "actionDownload": "다운로드",

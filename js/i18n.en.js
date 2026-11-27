@@ -412,4 +412,23 @@ R('en', {
     'board.badImage': 'That file isn’t a valid image.',
     'board.removeImage': 'Remove image'
   });
+R('en', {
+    'nav.more': "More",
+    'nav.notices': "Site notices",
+    'config.moreSettings': "Advanced settings",
+    'result.downloadPage': "Open download page",
+    'result.copyLink': "Copy link",
+    'result.linkLabel': "App link",
+    'publish.action': "Publish to market",
+    'publish.edit': "Edit market listing",
+    'publish.submit': "Publish",
+    'publish.unlist': "Remove from market",
+    'publish.listed': "Published in the app market.",
+    'publish.unlisted': "Anyone with the link can open this app.",
+    'publish.linkOnly': "Link only",
+    'publish.tagsRequired': "Choose at least one tag to publish.",
+    'publish.iconRequired': "To publish, upload a usable icon in the app settings and regenerate.",
+    'build.reconnecting': "Reconnecting to the build…",
+    'build.dismiss': "Dismiss"
+});
 })();

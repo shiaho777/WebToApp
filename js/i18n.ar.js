@@ -388,4 +388,23 @@ R('ar', {
     'board.badImage': 'هذا الملف ليس صورة صالحة.',
     'board.removeImage': 'إزالة الصورة'
   });
+R('ar', {
+    'nav.more': "المزيد",
+    'nav.notices': "إشعارات الموقع",
+    'config.moreSettings': "إعدادات متقدمة",
+    'result.downloadPage': "فتح صفحة التنزيل",
+    'result.copyLink': "نسخ الرابط",
+    'result.linkLabel': "رابط التطبيق",
+    'publish.action': "النشر في السوق",
+    'publish.edit': "تعديل صفحة التطبيق في السوق",
+    'publish.submit': "نشر",
+    'publish.unlist': "إزالة من السوق",
+    'publish.listed': "تم النشر في سوق التطبيقات.",
+    'publish.unlisted': "يمكن لأي شخص لديه الرابط فتح التطبيق.",
+    'publish.linkOnly': "عبر الرابط فقط",
+    'publish.tagsRequired': "اختر وسمًا واحدًا على الأقل للنشر.",
+    'publish.iconRequired': "حمّل أيقونة صالحة من إعدادات التطبيق وأعد إنشاءه قبل النشر.",
+    'build.reconnecting': "جارٍ إعادة الاتصال بعملية الإنشاء…",
+    'build.dismiss': "إغلاق"
+});
 })();
