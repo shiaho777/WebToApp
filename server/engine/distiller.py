@@ -193,7 +193,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v12-appearance -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v13-dark-logo -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")
@@ -1243,7 +1243,7 @@ class Distiller:
 <meta name="description" content="Download the installer or config profile of {name_esc} for your device. Works on iPhone, Android, Windows, macOS and Linux.">
 <meta name="theme-color" content="{color_safe}">
 <script src="/js/theme.js?v=20261127-theme1"></script>
-<link rel="stylesheet" href="/css/theme.css?v=20261127-theme1">
+<link rel="stylesheet" href="/css/theme.css?v=20261127-theme2">
 <link rel="icon" href="/assets/site-logo-96.jpg?v=20261104-brand2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

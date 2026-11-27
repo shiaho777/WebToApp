@@ -375,11 +375,11 @@ class DownloadPageHardeningTests(unittest.TestCase):
         self.assertEqual(recipe["languages"], ["zh", "en"])
 
     def test_download_page_marker_invalidates_old_ads_cache(self):
-        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v12-appearance -->")
+        self.assertEqual(Distiller.DOWNLOAD_PAGE_MARKER, "<!-- WebToAppDownloadPage:v13-dark-logo -->")
 
     def test_download_page_loads_shared_appearance_assets(self):
         page = self._page(color="#345678")
-        self.assertIn('/css/theme.css?v=20261127-theme1', page)
+        self.assertIn('/css/theme.css?v=20261127-theme2', page)
         self.assertIn('/js/theme.js?v=20261127-theme1', page)
         self.assertIn('<meta name="theme-color" content="#345678">', page)
         for choice in ("system", "light", "dark"):

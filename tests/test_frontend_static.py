@@ -308,6 +308,12 @@ class FrontendPerformanceTests(unittest.TestCase):
             self.assertNotIn('src="assets/site-logo.jpg"', src, rel)
             self.assertNotIn('src="/assets/site-logo.jpg"', src, rel)
 
+    def test_header_logo_recolors_in_dark_appearance(self):
+        css = _read("css/theme.css")
+        self.assertRegex(css, r':root\[data-theme="dark"\] :is\(\.logo, \.brand\) > img\s*\{\s*filter:')
+        for rel in ("index.html", "server/engine/distiller.py"):
+            self.assertIn('/css/theme.css?v=20261127-theme2', _read(rel))
+
     def test_dynamic_images_are_lazy(self):
         src = _read("js/app.v5.js")
         for line in src.splitlines():
