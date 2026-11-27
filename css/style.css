@@ -56,36 +56,6 @@
   --transition: 160ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --ink-rgb: 236, 228, 216;
-    --glass-rgb: 52, 45, 38;
-    --surface-rgb: 36, 31, 26;
-    --paper-strong-rgb: 34, 29, 24;
-    --paper-deep-rgb: 28, 24, 20;
-    --accent-rgb: 214, 139, 103;
-    --success-rgb: 132, 176, 144;
-    --danger-rgb: 222, 128, 104;
-    --shadow-rgb: 0, 0, 0;
-
-    --paper: #17130f;
-    --paper-deep: #1d1915;
-    --paper-strong: #221d18;
-    --paper-sunk: #2c261f;
-    --ink-hover: #fffaf2;
-    --ink-faint: #979088;
-    --ink-muted: #a8977f;
-    --accent-warm: #e09a74;
-    --accent-text: #e8a684;
-    --on-ink: #17130f;
-    --on-accent: #1b140f;
-    --danger-text: #e88d79;
-    --scrim: rgba(0, 0, 0, 0.55);
-    --shadow-pop: 0 8px 28px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line);
-  }
-}
-
 *,
 *::before,
 *::after {

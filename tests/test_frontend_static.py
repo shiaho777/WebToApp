@@ -335,10 +335,11 @@ class FrontendDesignSystemTests(unittest.TestCase):
         self.css = _read("css/style.css")
 
     def test_dark_palette_is_defined(self):
-        self.assertIn("@media (prefers-color-scheme: dark)", self.css)
-        self.assertRegex(self.css, r"color-scheme:\s*dark")
-        html = _read("index.html")
-        self.assertIn('media="(prefers-color-scheme: dark)"', html)
+        theme_css = _read("css/theme.css")
+        self.assertIn(':root[data-theme="dark"]', theme_css)
+        self.assertRegex(theme_css, r"color-scheme:\s*dark")
+        for token in ("paper", "surface", "ink", "primary"):
+            self.assertRegex(theme_css, rf"--{token}:\s*[^;]+;")
 
     def test_no_hard_coded_ink_channels(self):
         # Ink-tinted colors must go through --ink-rgb so dark mode can flip them.
@@ -347,7 +348,8 @@ class FrontendDesignSystemTests(unittest.TestCase):
         self.assertNotRegex(body, r"rgba\(\s*30\s*,\s*25\s*,\s*20\s*,")
 
     def test_every_custom_property_is_defined(self):
-        css = re.sub(r"/\*[\s\S]*?\*/", "", self.css)
+        styles = self.css + _read("css/theme.css")
+        css = re.sub(r"/\*[\s\S]*?\*/", "", styles)
         used = set(re.findall(r"var\(\s*(--[\w-]+)", css))
         defined = set(re.findall(r"(--[\w-]+)\s*:", css))
         self.assertEqual(sorted(used - defined), [])
@@ -722,8 +724,17 @@ class StreamingFirstLoadTests(unittest.TestCase):
         self.assertIn("promise.catch(function () {})", self.html)
 
     def test_streaming_assets_are_cache_busted(self):
-        self.assertIn("css/style.css?v=20261127-create1", self.html)
+        self.assertIn("css/style.css?v=20261127-theme1", self.html)
         self.assertIn("js/app.v5.js?v=20261127-create1", self.html)
+
+    def test_home_initializes_shared_appearance_before_styles(self):
+        theme = _read("js/theme.js")
+        self.assertLess(self.html.index("/js/theme.js?v="), self.html.index("/css/style.css?v="))
+        self.assertIn("/css/theme.css?v=", self.html)
+        for choice in ("system", "light", "dark"):
+            self.assertIn(f'data-theme-choice="{choice}"', self.html)
+        self.assertIn("prefers-color-scheme: dark", theme)
+        self.assertIn("localStorage.setItem(key, preference)", theme)
 
     def test_feedback_board_is_wired(self):
         # #248: nav entry + modal + the board module in app.v5.js.

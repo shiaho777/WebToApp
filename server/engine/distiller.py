@@ -127,16 +127,17 @@ def _js_literal(value) -> str:
     return json.dumps(str(value or ""), ensure_ascii=False).replace("<", "\\u003c")
 
 
-def _csp_meta(script_body: str, extra: str = "", self_scripts: bool = False) -> str:
+def _csp_meta(script_body: str, extra: str = "", self_scripts: bool = False, self_styles: bool = False) -> str:
     """Hash-pinned CSP meta tag: only the exact inline script body we emit may
     execute — injected scripts, javascript: URLs and inline handlers die here.
     ``self_scripts`` additionally allows same-origin <script src> files
     (the download page loads /js/mdmini.js + /js/community.js)."""
     digest = base64.b64encode(hashlib.sha256(script_body.encode("utf-8")).digest()).decode("ascii")
     script_src = f"script-src 'sha256-{digest}'" + (" 'self'" if self_scripts else "")
+    style_src = "style-src 'unsafe-inline' https://fonts.googleapis.com" + (" 'self'" if self_styles else "")
     policy = (
         "default-src 'self'; img-src 'self' data: https:; "
-        "style-src 'unsafe-inline' https://fonts.googleapis.com; "
+        f"{style_src}; "
         "font-src 'self' https://fonts.gstatic.com; "
         f"{script_src}; connect-src 'self' http: https:; "
         "object-src 'none'; base-uri 'none'; form-action 'none'"
@@ -192,7 +193,7 @@ def _bundle_id_part(value, default="app") -> str:
 
 
 class Distiller:
-    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v11-device -->"
+    DOWNLOAD_PAGE_MARKER = "<!-- WebToAppDownloadPage:v12-appearance -->"
 
     _ANDROID_PACKAGE_PART_RE = re.compile(r"[^a-z0-9_]")
     _ANDROID_VERSION_NAME_RE = re.compile(r"[^0-9A-Za-z._-]")
@@ -1194,6 +1195,7 @@ class Distiller:
     }});
     var titleT=t("pageTitle"); if(titleT) document.title=titleT.replace("{{name}}",APP_NAME);
     try{{ localStorage.setItem(KEY,cur); }}catch(e){{}}
+    window.dispatchEvent(new Event("i18n:changed"));
   }}
   function recommendDevice(){{
     var ua = navigator.userAgent || "";
@@ -1229,7 +1231,7 @@ class Distiller:
   apply();
 }})();"""
         script_body = f"\n{inline_js}\n"
-        csp_meta = _csp_meta(script_body, self_scripts=True)
+        csp_meta = _csp_meta(script_body, self_scripts=True, self_styles=True)
         html = f"""{self.DOWNLOAD_PAGE_MARKER}
 <!DOCTYPE html>
 <html lang="en">
@@ -1240,6 +1242,8 @@ class Distiller:
 <title>{name_esc} — Download | WebToApp</title>
 <meta name="description" content="Download the installer or config profile of {name_esc} for your device. Works on iPhone, Android, Windows, macOS and Linux.">
 <meta name="theme-color" content="{color_safe}">
+<script src="/js/theme.js?v=20261127-theme1"></script>
+<link rel="stylesheet" href="/css/theme.css?v=20261127-theme1">
 <link rel="icon" href="/assets/site-logo-96.jpg?v=20261104-brand2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1269,40 +1273,6 @@ class Distiller:
   --avatar-fg:#8a7a64;
   --star-off:#ddd3c4;
   --star-on:#e8a33d;
-}}
-@media (prefers-color-scheme: dark){{
-  :root{{
-    color-scheme:dark;
-    --paper:#17130f;
-    --paper-strong:#221d18;
-    --paper-deep:#1d1915;
-    --surface:#241f1a;
-    --surface-strong:#241f1a;
-    --ink:#ece4d8;
-    --ink-hover:#fffaf2;
-    --ink-soft:rgba(236,228,216,.72);
-    --ink-faint:#979088;
-    --line:rgba(236,228,216,.12);
-    --line-strong:rgba(236,228,216,.2);
-    --accent:#d68b67;
-    --accent-text:#e8a684;
-    --on-accent:#1b140f;
-    --success-bg:rgba(132,176,144,.18);
-    --success-fg:#9fd0ac;
-    --warn-bg:rgba(230,190,90,.16);
-    --warn-fg:#e6c27a;
-    --avatar-bg:#2c261f;
-    --avatar-fg:#a8977f;
-    --star-off:#3a332c;
-    --star-on:#e8a33d;
-  }}
-  #dl-lang{{
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8977f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  }}
-  .plat-icon-windows{{color:#5ab0f0}}
-  .plat-icon-apple{{color:var(--ink)}}
-  .plat-icon-linux{{color:#8fbf9f}}
-  .plat-icon-android{{color:#8fcf8b}}
 }}
 *{{margin:0;padding:0;box-sizing:border-box}}
 html{{-webkit-font-smoothing:antialiased}}
@@ -1378,6 +1348,9 @@ a{{color:inherit;text-decoration:none}}
 .about-imgs img{{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}}
 @media (max-width:720px){{
   .page{{padding:18px 18px 40px}}
+  .nav-right{{gap:8px}}
+  .brand-note{{display:none}}
+  #dl-lang{{max-width:6.5rem}}
   .download-page{{padding-top:30px}}
   .icon{{width:72px;height:72px;border-radius:18px}}
   .title{{font-size:clamp(2rem,9vw,2.8rem)}}
@@ -1445,6 +1418,19 @@ a{{color:inherit;text-decoration:none}}
     <div class="nav-right">
       <span class="brand-note" data-i18n="navDownload">Download</span>
       <select id="dl-lang" aria-label="Language"></select>
+      <details class="theme-picker" hidden>
+        <summary aria-label="Appearance" title="Appearance">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5"/>
+            <path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor" stroke="none"/>
+          </svg>
+        </summary>
+        <div class="theme-options" role="group" aria-label="Appearance">
+          <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+        </div>
+      </details>
     </div>
   </div>
 
